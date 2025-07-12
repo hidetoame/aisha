@@ -1,0 +1,53 @@
+services:
+  web:
+    build:
+      context: ./pycharm_project
+      dockerfile: Dockerfile
+      platforms:
+        - linux/amd64  # M1 Mac対応
+    ports:
+      - "${DJANGO_HOST_PORT}:8000"
+    volumes:
+      - ./pycharm_project:/app  # 開発時のみコード即時反映
+    env_file:
+      - ${ENV_FILE}  # 起動時に指定
+    depends_on:
+      - db
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             ${DJANGO_CMD}"
+
+  db:
+    image: postgres:15
+    ports:
+      - "${POSTGRES_HOST_PORT}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  react:
+    build:
+      context: ./react_project
+      target: ${REACT_BUILD_STAGE}  # ← build対象ステージを切り替え
+      args:
+        NODE_ENV: ${NODE_ENV}
+        AISHA_API_BASE: ${AISHA_API_BASE}
+        MOCK_API_BASE: ${MOCK_API_BASE}
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      AISHA_API_BASE: ${AISHA_API_BASE}
+      MOCK_API_BASE: ${MOCK_API_BASE}
+    ports:
+      - "${REACT_PORT}:${REACT_PORT}"
+#    volumes:  # エラーになるのでホットリロードできないかもしれないがコメントアウトする
+#      - ${REACT_VOLUME:-./dummy}  # 未定義/空の場合にエラーにせずデフォルトを指定する書き方
+    env_file:
+      - ${ENV_FILE}
+    command: ${REACT_CMD}
+
+volumes:
+  postgres_data:

@@ -1,0 +1,230 @@
+export type ToastType = 'success' | 'error' | 'info';
+
+export interface User {
+  name: string;
+  personalSettings?: PersonalUserSettings; // Added
+}
+
+export interface CreditsRequestParams {
+  credits: number;
+}
+
+export interface CreditsFetchParams {
+  credits: number;
+}
+
+export interface CreditsOperationResponseParams {
+  newCredits: number;
+}
+
+export enum AspectRatio {
+  Original = "Original",
+  Square_1_1 = "1:1",
+  Landscape_16_9 = "16:9",
+  Portrait_9_16 = "9:16",
+  Landscape_4_3 = "4:3",
+  Portrait_3_4 = "3:4",
+}
+
+export interface PromptVariableInExecution {
+  key: string;
+  value: string;
+}
+
+// MenuExecutionPanel上の情報
+export interface MenuExecutionFormData {
+  category: AdminGenerationMenuCategoryItem | null;
+  menu: AdminGenerationMenuItem | null;
+  image: File | null;
+  additionalPromptForMyCar?: string;
+  additionalPromptForOthers?: string;
+  aspectRatio?: AspectRatio;
+  promptVariables: PromptVariableInExecution[];
+  inputType: 'upload' | 'prompt';
+}
+
+// MenuExecution API実行時のリクエストパラメータ群
+export interface MenuExecutionRequestParams {
+  menuId: number; // メニューIDはリクエストパラメータではなくURLに含める
+  image?: File;
+  additionalPromptForMyCar?: string;
+  additionalPromptForOthers?: string;
+  aspectRatio?: AspectRatio;
+  promptVariables?: PromptVariableInExecution[];
+}
+
+export interface MenuExecutionResponseParams {
+  generatedImageUrl: string;
+  promptFormatted: string;
+  createdAt: Date;
+}
+
+export interface GenerationOptions {
+  selectedMenuId?: string; 
+  userInputValues?: Record<string, string>; 
+
+  finalPromptForService: string; 
+  generationEngineForService: SupportedGenerationEngine; 
+  creditCostForService: number;
+
+  aspectRatio: AspectRatio;
+  additionalInput?: string; 
+  
+  uploadedCarImageFile?: File | null; 
+  uploadedCarImageDataUrl?: string | null; 
+  originalUploadedImageDataUrl?: string | null; 
+}
+
+export interface GeneratedImage {
+  id: string;
+  url: string; 
+  // sourceImageUrl?: string; 
+  // originalUploadedImageDataUrl?: string; 
+  displayPrompt: string; 
+  menuName?: string;
+  usedFormData: MenuExecutionFormData;
+  // fullOptions: GenerationOptions; 
+  timestamp: Date;
+  rating?: 'good' | 'bad';
+  isPublic: boolean; 
+  authorName?: string; 
+}
+
+export interface GoodsVariation {
+  id: string; 
+  typeName: string; 
+  options: string[]; 
+}
+
+export interface GoodsCreationRecord {
+  id: string;
+  goodsName: string;
+  imageId: string; 
+  imageUrl?: string; 
+  prompt?: string; 
+  timestamp: Date;
+  creditCost: number;
+  selectedVariations?: Record<string, string>; 
+}
+
+export interface Plan {
+  id: number;
+  name: string;
+  price: number; 
+  credits: number; 
+}
+
+export interface SuzuriItem { 
+  id: string; 
+  name: string; 
+  apiId: string; 
+  creditCost: number;
+  variations?: GoodsVariation[];
+  imageUrl?: string; 
+}
+
+export type SupportedGenerationEngine = 'imagen3' | 'ideogram' | 'midjourney' | 'black_forest_labs';
+
+export interface AdminGenerationMenuCategoryItem {
+  id: number;
+  name: string;
+  description?: string;
+}
+
+export interface AdminGenerationMenuItem {
+  id: number;
+  name: string;
+  categoryId?: number | null; 
+  description?: string; 
+  engine: SupportedGenerationEngine;
+  prompt: string; 
+  negativePrompt?: string;
+  promptVariables?: { 
+    label: string; 
+    key: string;      
+  }[];
+  credit: number;
+  sampleInputImageUrl?: string; 
+  sampleResultImageUrl?: string; 
+}
+
+export interface AdminGoodsItem {
+  id: string;
+  suzuriApiId: string;
+  goodsName: string;
+  creditCost: number;
+  variations?: GoodsVariation[];
+  imageUrl?: string; 
+}
+
+export interface AdminChargeOptionItem {
+  id: number;
+  name: string; 
+  priceYen: number;
+  creditsAwarded: number;
+  creditsBonus?: number; 
+  displayInfo: string; 
+  isActive: boolean;
+}
+
+export type AdminSection = 
+  | 'genMenuCategories' 
+  | 'genMenus' 
+  | 'chargeManagement' 
+  | 'engines' 
+  | 'generationHistory' 
+  | 'sales' 
+  | 'users' 
+  | 'goods' 
+  | 'suzuriApi' 
+  | 'stripeApi';
+
+export interface SharePageParams {
+  sharedByUser: string;
+  sharedDate: string;
+  sharedImageUrl: string;
+  sharedPrompt?: string;
+  sharedMenuName?: string;
+}
+
+export type ActionAfterLoadType = 'extend' | null;
+export type AppViewMode = 'generator' | 'timeline'; 
+
+// --- START: Personal Settings Types ---
+export interface NumberManagementSettings {
+  licensePlateText?: string;
+  logoMarkImageUrl?: string;      // Data URL for the image
+  originalNumberImageUrl?: string; // Data URL for the image
+}
+
+export type CarPhotoAngle = 'front' | 'side' | 'rear' | 'front_angled_7_3' | 'rear_angled_7_3';
+
+export interface CarReferencePhoto {
+  viewAngle: CarPhotoAngle;
+  label: string; // User-facing label e.g., "フロント正面"
+  imageUrl?: string; // Data URL for the image
+}
+
+export interface ReferenceRegistrationSettings {
+  favoriteCarName?: string;
+  carPhotos: CarReferencePhoto[]; // Should always contain 5 items, one for each angle
+}
+
+export interface PersonalUserSettings {
+  numberManagement: NumberManagementSettings;
+  referenceRegistration: ReferenceRegistrationSettings;
+}
+// --- END: Personal Settings Types ---
+
+
+export class RateLimitError extends Error {
+  title: string;
+  details: string;
+  constructor(title: string, details: string) {
+    super(details); 
+    this.name = "RateLimitError";
+    this.title = title;
+    this.details = details;
+    Object.setPrototypeOf(this, RateLimitError.prototype);
+  }
+}
