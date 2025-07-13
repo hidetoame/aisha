@@ -88,7 +88,8 @@ export interface GeneratedImage {
   timestamp: Date;
   rating?: 'good' | 'bad';
   isPublic: boolean; 
-  authorName?: string; 
+  authorName?: string;
+  isSavedToLibrary?: boolean; // ライブラリに明示的に保存されたかどうか
 }
 
 export interface GoodsVariation {

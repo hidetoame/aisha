@@ -24,6 +24,7 @@ import {
 } from '../icons/HeroIcons';
 import { ShareGeneratedImageModal } from '../modals/ShareGeneratedImageModal';
 import { useCredits } from '@/contexts/CreditsContext';
+import { suzuriApiClient } from '@/services/suzuriApi';
 
 interface GeneratedImagePanelProps {
   image: GeneratedImage;
@@ -65,6 +66,14 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
     Record<string, string>
   >({});
   const [showShareModal, setShowShareModal] = useState(false);
+  
+  // SUZURI関連のstate
+  const [isCreatingMerchandise, setIsCreatingMerchandise] = useState(false);
+  const [merchandiseResult, setMerchandiseResult] = useState<{
+    success: boolean;
+    productUrl?: string;
+    error?: string;
+  } | null>(null);
 
   const handleDownloadImage = () => {
     const link = document.createElement('a');
@@ -95,6 +104,41 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
     setSelectedVariations((prev) => ({ ...prev, [variationId]: option }));
   };
 
+  const handleCreateSuzuriMerchandise = async () => {
+    setIsCreatingMerchandise(true);
+    setMerchandiseResult(null);
+    
+    try {
+      // 車の名前を取得（プロンプトから抽出）
+      const carName = image.displayPrompt.slice(0, 50) || 'AISHA生成画像';
+      
+      const result = await suzuriApiClient.createMerchandise({
+        image_url: image.url,
+        car_name: carName,
+        description: `AISHA で生成された車の画像から作成されたグッズです。\n\n生成プロンプト: ${image.displayPrompt}`
+      });
+      
+      setMerchandiseResult(result);
+      
+      if (result.success && result.product_url) {
+        // 成功時は少し待ってからモーダルを閉じる
+        setTimeout(() => {
+          setShowGoodsModal(false);
+          setMerchandiseResult(null);
+        }, 3000);
+      }
+      
+    } catch (error) {
+      console.error('SUZURI merchandise creation failed:', error);
+      setMerchandiseResult({
+        success: false,
+        error: 'グッズ作成中にエラーが発生しました'
+      });
+    } finally {
+      setIsCreatingMerchandise(false);
+    }
+  };
+
   const handleCreateGoodsClick = (item: SuzuriItem) => {
     if (item.variations && item.variations.length > 0) {
       for (const variation of item.variations) {
@@ -104,6 +148,8 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
         }
       }
     }
+    
+    // 従来のモック機能は残しつつ、SUZURI機能も追加
     onCreateGoods(item, image, selectedVariations);
     setShowGoodsModal(false);
     setSelectedGoodsItemForModal(null);
@@ -285,21 +331,77 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
               <CloseIconMini className="w-6 h-6" />
             </button>
             <h3 className="text-xl font-semibold text-indigo-400 mb-4 flex-shrink-0">
-              グッズ作成 (モック)
+              グッズ作成
             </h3>
 
             <div className="flex-grow overflow-y-auto custom-scrollbar pr-1">
+              {/* SUZURI グッズ作成セクション */}
+              <div className="mb-6 p-4 bg-gradient-to-r from-purple-900/30 to-blue-900/30 rounded-lg border border-purple-500/30">
+                <h4 className="text-lg font-semibold text-purple-300 mb-2 flex items-center">
+                  <ShoppingBagIcon className="w-5 h-5 mr-2" />
+                  SUZURI でリアルグッズ作成
+                </h4>
+                <p className="text-sm text-gray-300 mb-3">
+                  この画像からTシャツなどの実物グッズを作成できます
+                </p>
+                
+                {merchandiseResult ? (
+                  <div className={`p-3 rounded-md ${
+                    merchandiseResult.success 
+                      ? 'bg-green-900/30 border border-green-500/30' 
+                      : 'bg-red-900/30 border border-red-500/30'
+                  }`}>
+                    {merchandiseResult.success ? (
+                      <div>
+                        <p className="text-green-300 font-medium mb-2">✅ グッズ作成完了！</p>
+                        <a
+                          href={merchandiseResult.productUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition-colors"
+                        >
+                          SUZURIで購入する
+                        </a>
+                      </div>
+                    ) : (
+                      <p className="text-red-300">❌ {merchandiseResult.error}</p>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleCreateSuzuriMerchandise}
+                    disabled={isCreatingMerchandise}
+                    className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white font-medium rounded-md transition-colors flex items-center justify-center"
+                  >
+                    {isCreatingMerchandise ? (
+                      <>
+                        <ArrowPathIcon className="w-4 h-4 mr-2 animate-spin" />
+                        作成中...
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingBagIcon className="w-4 h-4 mr-2" />
+                        Tシャツを作成
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {/* 従来のモック機能セクション */}
               {!selectedGoodsItemForModal ? (
                 <>
-                  <p className="text-sm text-gray-400 mb-1 flex-shrink-0">
-                    画像:{' '}
-                    <span className="italic truncate">
-                      {image.displayPrompt.substring(0, 30)}...
-                    </span>
-                  </p>
-                  <p className="text-sm text-gray-400 mb-4">
-                    作成するアイテムを選択 (クレジット消費):
-                  </p>
+                  <div className="border-t border-gray-600 pt-4">
+                    <p className="text-sm text-gray-400 mb-1 flex-shrink-0">
+                      画像:{' '}
+                      <span className="italic truncate">
+                        {image.displayPrompt.substring(0, 30)}...
+                      </span>
+                    </p>
+                    <p className="text-sm text-gray-400 mb-4">
+                      モック機能 - 作成するアイテムを選択 (クレジット消費):
+                    </p>
+                  </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     {GOODS_OPTIONS.map((item) => (
                       <button

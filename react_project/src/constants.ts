@@ -10,6 +10,9 @@ export const APP_NAME = 'マイガレージ - AISHA';
 export const GEMINI_IMAGE_MODEL = 'imagen-3.0-generate-002';
 export const GEMINI_TEXT_MODEL = 'gemini-2.5-flash-preview-04-17';
 
+// API Base URL
+export const AISHA_API_BASE = import.meta.env.VITE_AISHA_API_BASE || 'http://localhost:7999/api';
+
 export const AVAILABLE_ASPECT_RATIOS: AspectRatio[] = [
   AspectRatio.Square_1_1,
   AspectRatio.Landscape_16_9,

@@ -13,7 +13,13 @@ from api.views.credit_charge import (
     ChargeHistoryView,
     stripe_config
 )
-from api.views.library import LibraryListCreateView, LibraryDetailView, PublicLibraryListView
+from api.views.library import TimelineListCreateView, TimelineDetailView, PublicTimelineListView
+from api.views.suzuri import (
+    create_merchandise,
+    get_available_items,
+    get_user_products,
+    get_product_detail
+)
 
 router = DefaultRouter()
 router.register(r'categories', CategoryViewSet, basename='category')
@@ -34,8 +40,14 @@ urlpatterns += [
     path('users/<str:user_id>/charge-history/', ChargeHistoryView.as_view(), name='charge-history'),
     path('stripe/config/', stripe_config, name='stripe-config'),
     
-    # ライブラリ関連
-    path('library/', LibraryListCreateView.as_view(), name='library-list-create'),
-    path('library/<str:frontend_id>/', LibraryDetailView.as_view(), name='library-detail'),
-    path('library/public/', PublicLibraryListView.as_view(), name='library-public'),
+    # タイムライン関連
+    path('timeline/', TimelineListCreateView.as_view(), name='timeline-list-create'),
+    path('timeline/public/', PublicTimelineListView.as_view(), name='timeline-public'),
+    path('timeline/<str:frontend_id>/', TimelineDetailView.as_view(), name='timeline-detail'),
+    
+    # SUZURI関連
+    path('suzuri/merchandise/', create_merchandise, name='suzuri-create-merchandise'),
+    path('suzuri/items/', get_available_items, name='suzuri-get-items'),
+    path('suzuri/products/', get_user_products, name='suzuri-get-products'),
+    path('suzuri/products/<int:product_id>/', get_product_detail, name='suzuri-get-product-detail'),
 ]

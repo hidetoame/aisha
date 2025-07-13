@@ -8,34 +8,47 @@ import logging
 
 from api.models.library import Library
 from api.serializers.library import LibrarySerializer, LibraryCreateUpdateSerializer
+from api.services.gcs_upload_service import gcs_upload_service
 
 logger = logging.getLogger(__name__)
 
 
-class LibraryListCreateView(ListCreateAPIView):
+class TimelineListCreateView(ListCreateAPIView):
     """
-    ライブラリの一覧取得・作成
-    GET /api/library/ - ユーザーのライブラリ一覧を取得
-    POST /api/library/ - ライブラリに画像を保存
+    タイムラインの一覧取得・作成
+    GET /api/timeline/ - ユーザーのタイムライン一覧を取得
+    POST /api/timeline/ - タイムラインに画像を保存（生成時）
     """
     serializer_class = LibrarySerializer
     
     def get_queryset(self):
         """
-        ユーザーIDに基づいてライブラリを絞り込み
+        ユーザーIDに基づいてタイムラインを絞り込み
+        フィルタオプション：
+        - saved_only=true: ライブラリ保存済みのみ
+        - public_only=true: 公開画像のみ
         """
         user_id = self.request.query_params.get('user_id')
+        saved_only = self.request.query_params.get('saved_only', 'false').lower() == 'true'
+        public_only = self.request.query_params.get('public_only', 'false').lower() == 'true'
+        
         if not user_id:
             return Library.objects.none()
         
-        # 自分のライブラリまたは公開されたライブラリを取得
-        return Library.objects.filter(
-            Q(user_id=user_id) | Q(is_public=True)
-        ).order_by('-timestamp')
+        queryset = Library.objects.filter(user_id=user_id)
+        
+        if saved_only:
+            queryset = queryset.filter(is_saved_to_library=True)
+        
+        if public_only:
+            queryset = queryset.filter(is_public=True)
+        
+        return queryset.order_by('-timestamp')
     
     def post(self, request, *args, **kwargs):
         """
-        ライブラリに画像を保存
+        タイムラインに画像を保存（生成時またはライブラリ保存時）
+        GCPアップロード付き
         """
         user_id = request.data.get('user_id')
         if not user_id:
@@ -48,57 +61,97 @@ class LibraryListCreateView(ListCreateAPIView):
         serializer = LibraryCreateUpdateSerializer(data=request.data)
         if serializer.is_valid():
             try:
-                # user_idを追加してライブラリエントリを作成
                 validated_data = serializer.validated_data
                 validated_data['user_id'] = user_id
                 
-                library_entry = Library.objects.create(**validated_data)
+                # デバッグ: validated_dataの内容を確認
+                logger.info(f"📋 validated_data: {validated_data}")
+                
+                # 重複チェック
+                existing_entry = Library.objects.filter(
+                    user_id=user_id, 
+                    frontend_id=validated_data.get('frontend_id')
+                ).first()
+                
+                if existing_entry:
+                    logger.warning(f"重複画像の保存試行: user_id={user_id}, frontend_id={validated_data.get('frontend_id')}")
+                    return Response(
+                        {'error': 'この画像は既にタイムラインに保存されています'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # 元の画像URLを取得
+                original_image_url = validated_data.get('image_url')
+                frontend_id = validated_data.get('frontend_id')
+                
+                if original_image_url and frontend_id:
+                    logger.info(f"🖼️ 画像GCPアップロード開始: user_id={user_id}, frontend_id={frontend_id}")
+                    
+                    try:
+                        # 画像をGCPにアップロード
+                        gcp_image_url = gcs_upload_service.upload_generated_image_from_url(
+                            original_image_url, 
+                            user_id, 
+                            frontend_id
+                        )
+                        
+                        # GCPのURLで置き換え
+                        validated_data['image_url'] = gcp_image_url
+                        logger.info(f"✅ 画像GCPアップロード成功: {gcp_image_url}")
+                        
+                    except Exception as gcp_error:
+                        logger.error(f"❌ 画像GCPアップロードエラー: {gcp_error}")
+                        # GCPアップロードに失敗した場合は元のURLを使用
+                        logger.info("⚠️ 元の画像URLを使用してタイムラインに保存します")
+                
+                # タイムラインエントリを作成
+                timeline_entry = Library.objects.create(**validated_data)
                 
                 # レスポンス用のシリアライザーで返却
-                response_serializer = LibrarySerializer(library_entry)
-                logger.info(f"ライブラリ保存成功: user_id={user_id}, frontend_id={validated_data.get('frontend_id')}")
+                response_serializer = LibrarySerializer(timeline_entry)
+                logger.info(f"✅ タイムライン保存成功: user_id={user_id}, frontend_id={frontend_id}")
                 
                 return Response(response_serializer.data, status=status.HTTP_201_CREATED)
                 
             except Exception as e:
-                logger.error(f"ライブラリ保存エラー: {e}")
+                logger.error(f"❌ タイムライン保存エラー: {e}")
                 return Response(
-                    {'error': 'ライブラリ保存に失敗しました'}, 
+                    {'error': 'タイムライン保存に失敗しました'}, 
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
         else:
-            logger.error(f"ライブラリ保存 - バリデーションエラー: {serializer.errors}")
+            logger.error(f"タイムライン保存 - バリデーションエラー: {serializer.errors}")
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class LibraryDetailView(RetrieveUpdateDestroyAPIView):
+class TimelineDetailView(RetrieveUpdateDestroyAPIView):
     """
-    ライブラリの詳細取得・更新・削除
-    GET /api/library/{id}/ - ライブラリ詳細を取得
-    PUT /api/library/{id}/ - ライブラリを更新
-    DELETE /api/library/{id}/ - ライブラリから削除
+    タイムラインの詳細取得・更新・削除
+    GET /api/timeline/{frontend_id}/ - タイムライン詳細を取得
+    PUT /api/timeline/{frontend_id}/ - タイムライン更新（ライブラリフラグ、評価等）
+    DELETE /api/timeline/{frontend_id}/ - タイムラインから削除
     """
     serializer_class = LibrarySerializer
-    lookup_field = 'frontend_id'  # フロントエンドのIDで検索
+    lookup_field = 'frontend_id'  # フロントエンドIDで検索
     
     def get_queryset(self):
         """
-        ユーザー権限に基づいてアクセス可能なライブラリを取得
+        ユーザー権限に基づいてアクセス可能なタイムラインを取得
         """
         user_id = self.request.query_params.get('user_id')
         if not user_id:
             return Library.objects.none()
         
-        # 自分のライブラリまたは公開されたライブラリのみアクセス可能
+        # 自分のタイムラインまたは公開されたタイムラインのみアクセス可能
         return Library.objects.filter(
             Q(user_id=user_id) | Q(is_public=True)
         )
     
     def put(self, request, *args, **kwargs):
         """
-        ライブラリエントリを更新（評価・公開設定等）
+        タイムラインエントリを更新（ライブラリフラグ、評価・公開設定等）
         """
-        frontend_id = kwargs.get('frontend_id')
+        frontend_id = kwargs.get('frontend_id')  # フロントエンドIDを取得
         user_id = request.data.get('user_id')
         
         if not user_id:
@@ -108,8 +161,8 @@ class LibraryDetailView(RetrieveUpdateDestroyAPIView):
             )
         
         try:
-            # 自分のライブラリのみ更新可能
-            library_entry = get_object_or_404(
+            # 自分のタイムラインのみ更新可能
+            timeline_entry = get_object_or_404(
                 Library, 
                 frontend_id=frontend_id, 
                 user_id=user_id
@@ -117,7 +170,7 @@ class LibraryDetailView(RetrieveUpdateDestroyAPIView):
             
             # 部分更新対応
             serializer = LibraryCreateUpdateSerializer(
-                library_entry, 
+                timeline_entry, 
                 data=request.data, 
                 partial=True
             )
@@ -127,30 +180,30 @@ class LibraryDetailView(RetrieveUpdateDestroyAPIView):
                 
                 # レスポンス用のシリアライザーで返却
                 response_serializer = LibrarySerializer(updated_entry)
-                logger.info(f"ライブラリ更新成功: frontend_id={frontend_id}, user_id={user_id}")
+                logger.info(f"タイムライン更新成功: frontend_id={frontend_id}, user_id={user_id}")
                 
                 return Response(response_serializer.data, status=status.HTTP_200_OK)
             else:
-                logger.error(f"ライブラリ更新 - バリデーションエラー: {serializer.errors}")
+                logger.error(f"タイムライン更新 - バリデーションエラー: {serializer.errors}")
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
                 
         except Library.DoesNotExist:
             return Response(
-                {'error': 'ライブラリエントリが見つかりません'}, 
+                {'error': 'タイムラインエントリが見つかりません'}, 
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
-            logger.error(f"ライブラリ更新エラー: {e}")
+            logger.error(f"タイムライン更新エラー: {e}")
             return Response(
-                {'error': 'ライブラリ更新に失敗しました'}, 
+                {'error': 'タイムライン更新に失敗しました'}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
     def delete(self, request, *args, **kwargs):
         """
-        ライブラリから削除
+        タイムラインから削除（GCP画像も削除）
         """
-        frontend_id = kwargs.get('frontend_id')
+        frontend_id = kwargs.get('frontend_id')  # フロントエンドIDを取得
         user_id = request.query_params.get('user_id')
         
         if not user_id:
@@ -160,56 +213,67 @@ class LibraryDetailView(RetrieveUpdateDestroyAPIView):
             )
         
         try:
-            # 自分のライブラリのみ削除可能
-            library_entry = get_object_or_404(
+            # 自分のタイムラインのみ削除可能
+            timeline_entry = get_object_or_404(
                 Library, 
                 frontend_id=frontend_id, 
                 user_id=user_id
             )
             
-            library_entry.delete()
-            logger.info(f"ライブラリ削除成功: frontend_id={frontend_id}, user_id={user_id}")
+            # GCPから画像を削除
+            image_url = timeline_entry.image_url
+            if image_url and 'storage.googleapis.com' in image_url:
+                try:
+                    logger.info(f"🗑️ GCP画像削除開始: {image_url}")
+                    delete_result = gcs_upload_service.delete_generated_image(image_url)
+                    logger.info(f"🗑️ GCP画像削除結果: {delete_result}")
+                except Exception as gcp_error:
+                    logger.error(f"❌ GCP画像削除エラー: {gcp_error}")
+                    # GCP削除に失敗してもデータベースからは削除
+            
+            timeline_entry.delete()
+            logger.info(f"✅ タイムライン削除成功: frontend_id={frontend_id}, user_id={user_id}")
             
             return Response(
-                {'message': 'ライブラリから削除しました'}, 
+                {'message': 'タイムラインから削除しました'}, 
                 status=status.HTTP_204_NO_CONTENT
             )
             
         except Library.DoesNotExist:
             return Response(
-                {'error': 'ライブラリエントリが見つかりません'}, 
+                {'error': 'タイムラインエントリが見つかりません'}, 
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
-            logger.error(f"ライブラリ削除エラー: {e}")
+            logger.error(f"タイムライン削除エラー: {e}")
             return Response(
-                {'error': 'ライブラリ削除に失敗しました'}, 
+                {'error': 'タイムライン削除に失敗しました'}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 
-class PublicLibraryListView(APIView):
+class PublicTimelineListView(APIView):
     """
-    公開ライブラリの取得（タイムライン用）
-    GET /api/library/public/ - 公開されているライブラリ一覧を取得
+    公開タイムラインの取得（公開画像表示用）
+    GET /api/timeline/public/ - 公開されているタイムライン一覧を取得
     """
     
     def get(self, request):
         """
-        公開されているライブラリ一覧を取得
+        公開されているタイムライン一覧を取得
         """
         try:
-            # 公開設定されているライブラリのみ取得
-            public_libraries = Library.objects.filter(
+            # 公開設定されているタイムラインのみ取得
+            public_timeline = Library.objects.filter(
                 is_public=True
             ).order_by('-timestamp')[:50]  # 最新50件
             
-            serializer = LibrarySerializer(public_libraries, many=True)
+            serializer = LibrarySerializer(public_timeline, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
             
         except Exception as e:
-            logger.error(f"公開ライブラリ取得エラー: {e}")
+            logger.error(f"公開タイムライン取得エラー: {e}")
             return Response(
-                {'error': '公開ライブラリの取得に失敗しました'}, 
+                {'error': '公開タイムラインの取得に失敗しました'}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             ) 

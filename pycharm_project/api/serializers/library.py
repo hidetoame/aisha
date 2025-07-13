@@ -5,12 +5,12 @@ from datetime import datetime
 
 class LibrarySerializer(serializers.ModelSerializer):
     """
-    ライブラリのシリアライザー
-    フロントエンドのGeneratedImage型との相互変換を行う
+    タイムライン（旧ライブラリ）のシリアライザー
+    生成された全画像を管理し、フロントエンドのGeneratedImage型との相互変換を行う
     """
     
-    # フロントエンドのidフィールドに対応
-    id = serializers.CharField(source='frontend_id', read_only=True)
+    # フロントエンドのidフィールドに対応（frontend_idを使用）
+    id = serializers.CharField(source='frontend_id')
     
     # フロントエンドのurlフィールドに対応  
     url = serializers.URLField(source='image_url')
@@ -36,6 +36,9 @@ class LibrarySerializer(serializers.ModelSerializer):
     # フロントエンドのauthorNameフィールドに対応
     authorName = serializers.CharField(source='author_name', required=False, allow_null=True)
     
+    # フロントエンドのisSavedToLibraryフィールドに対応
+    isSavedToLibrary = serializers.BooleanField(source='is_saved_to_library')
+    
     class Meta:
         model = Library
         fields = [
@@ -48,15 +51,16 @@ class LibrarySerializer(serializers.ModelSerializer):
             'rating',
             'isPublic',  # is_public
             'authorName',  # author_name
+            'isSavedToLibrary',  # is_saved_to_library
         ]
 
 
 class LibraryCreateUpdateSerializer(serializers.ModelSerializer):
     """
-    ライブラリの作成・更新用シリアライザー
+    タイムライン（旧ライブラリ）の作成・更新用シリアライザー
     """
     
-    # フロントエンドから送信される形式に対応
+    # フロントエンドから送信される形式に対応（frontend_idを使用）
     id = serializers.CharField(source='frontend_id')
     url = serializers.URLField(source='image_url')
     displayPrompt = serializers.CharField(source='display_prompt')
@@ -66,6 +70,7 @@ class LibraryCreateUpdateSerializer(serializers.ModelSerializer):
     rating = serializers.CharField(required=False, allow_null=True)
     isPublic = serializers.BooleanField(source='is_public', default=False)
     authorName = serializers.CharField(source='author_name', required=False, allow_null=True)
+    isSavedToLibrary = serializers.BooleanField(source='is_saved_to_library', default=False)
     
     class Meta:
         model = Library
@@ -79,18 +84,19 @@ class LibraryCreateUpdateSerializer(serializers.ModelSerializer):
             'rating',
             'isPublic',  # is_public
             'authorName',  # author_name
+            'isSavedToLibrary',  # is_saved_to_library
         ]
     
     def create(self, validated_data):
         """
-        ライブラリエントリを作成
+        タイムラインエントリを作成
         user_idはビューから自動設定される
         """
         return Library.objects.create(**validated_data)
     
     def update(self, instance, validated_data):
         """
-        ライブラリエントリを更新
+        タイムラインエントリを更新
         """
         for attr, value in validated_data.items():
             setattr(instance, attr, value)

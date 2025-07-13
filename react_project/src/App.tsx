@@ -38,11 +38,11 @@ import { useCredits, useCreditsActions } from './contexts/CreditsContext';
 import { chargeCredits } from './services/api/credits';
 import { myGarageLogin, myGarageLogout, validateMyGarageToken } from './services/api/mygarage-auth';
 import { 
-  fetchLibrary, 
-  saveToLibrary, 
-  updateLibraryEntry, 
-  deleteFromLibrary, 
-  fetchPublicLibrary 
+  fetchTimeline, 
+  saveToTimeline, 
+  updateTimelineEntry, 
+  deleteFromTimeline, 
+  fetchPublicTimeline 
 } from './services/api/library';
 
 const App: React.FC = () => {
@@ -117,7 +117,8 @@ const App: React.FC = () => {
   const loadLibraryData = async () => {
     if (!user?.id) return;
     try {
-      const libraryData = await fetchLibrary(user.id);
+      // ライブラリ保存済みの画像のみを取得
+      const libraryData = await fetchTimeline(user.id, true);
       setGenerationHistory(libraryData);
     } catch (error) {
       console.error('ライブラリの読み込みに失敗しました:', error);
@@ -127,7 +128,7 @@ const App: React.FC = () => {
 
   const loadPublicLibraryData = async () => {
     try {
-      const publicData = await fetchPublicLibrary();
+      const publicData = await fetchPublicTimeline();
       setAllPublicImages(publicData);
     } catch (error) {
       console.error('公開ライブラリの読み込みに失敗しました:', error);
@@ -347,11 +348,21 @@ const App: React.FC = () => {
     async (image: GeneratedImage) => {
       if (!user?.id) return;
       
+      // 既にライブラリに保存済みかチェック
+      const isAlreadySaved = generationHistory.some(
+        (existingImage) => existingImage.id === image.id
+      );
+      
+      if (isAlreadySaved) {
+        showToast('info', 'この画像は既にライブラリに保存されています');
+        return;
+      }
+      
       const imageWithAuthor = { ...image, authorName: user?.name || 'ゲスト' };
       
       try {
-        // ライブラリAPIに保存
-        const savedImage = await saveToLibrary(user.id, imageWithAuthor);
+        // タイムラインAPIに保存（ライブラリフラグ=trueで保存）
+        const savedImage = await saveToTimeline(user.id, { ...imageWithAuthor, isSavedToLibrary: true });
         if (savedImage) {
           // ローカルステートも更新
           setGenerationHistory((prev) => [
@@ -380,15 +391,82 @@ const App: React.FC = () => {
           
           showToast('success', 'ライブラリに保存されました');
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('ライブラリ保存に失敗しました:', error);
-        showToast('error', 'ライブラリへの保存に失敗しました');
+        
+        // 重複エラーの場合は特別なメッセージを表示
+        if (error?.response?.status === 400 && 
+            error?.response?.data?.error?.includes?.('unique') ||
+            error?.response?.data?.error?.includes?.('重複')) {
+          showToast('info', 'この画像は既にライブラリに保存されています');
+        } else {
+          showToast('error', 'ライブラリへの保存に失敗しました');
+        }
         
         // エラーの場合はローカルステートのみ更新
         setGenerationHistory((prev) => [
           imageWithAuthor,
           ...prev.filter((img) => img.id !== imageWithAuthor.id),
         ]);
+      }
+    },
+    [user, showToast],
+  );
+
+  // 画像生成時にタイムラインに自動保存（ライブラリフラグ=false）
+  const saveToTimelineOnGeneration = useCallback(
+    async (image: GeneratedImage) => {
+      if (!user?.id) return;
+      
+      const imageWithAuthor = { ...image, authorName: user?.name || 'ゲスト' };
+      
+      try {
+        // タイムラインAPIに保存（ライブラリフラグ=falseで保存）
+        const savedImage = await saveToTimeline(user.id, { ...imageWithAuthor, isSavedToLibrary: false });
+        if (savedImage) {
+          console.log('✅ タイムラインに保存されました:', savedImage.id);
+        }
+      } catch (error: any) {
+        console.error('❌ タイムライン保存に失敗しました:', error);
+        // タイムライン保存に失敗してもエラートーストは出さない（ユーザー体験を損なわないため）
+      }
+    },
+    [user],
+  );
+
+  // 既存画像をライブラリに保存する専用関数
+  const saveExistingImageToLibrary = useCallback(
+    async (image: GeneratedImage) => {
+      if (!user?.id) return;
+      
+      console.log('🔍 ライブラリ保存開始:', { imageId: image.id, currentFlag: image.isSavedToLibrary });
+      
+      try {
+        // 既存画像のライブラリフラグを更新
+        const updatedImage = await updateTimelineEntry(user.id, image.id, { 
+          isSavedToLibrary: true 
+        });
+        
+        console.log('✅ API更新成功:', updatedImage);
+        
+        if (updatedImage) {
+          // セッション画像のライブラリフラグを更新
+          setGeneratedImages((prev) =>
+            prev.map((img) => 
+              img.id === image.id 
+                ? { ...img, isSavedToLibrary: true }
+                : img
+            ),
+          );
+          
+          // ライブラリ履歴を再読み込み
+          loadLibraryData();
+          
+          showToast('success', 'ライブラリに保存されました');
+        }
+      } catch (error: any) {
+        console.error('❌ ライブラリ保存に失敗しました:', error);
+        showToast('error', 'ライブラリへの保存に失敗しました');
       }
     },
     [user, showToast],
@@ -455,7 +533,7 @@ const App: React.FC = () => {
       
       try {
         // ライブラリAPIで評価を更新
-        const updatedImage = await updateLibraryEntry(user.id, imageId, { rating });
+        const updatedImage = await updateTimelineEntry(user.id, imageId, { rating });
         if (updatedImage) {
           // ローカルステートも更新
           setGenerationHistory((prev) =>
@@ -486,7 +564,7 @@ const App: React.FC = () => {
     if (!user?.id) return;
     
     try {
-      const success = await deleteFromLibrary(user.id, imageId);
+      const success = await deleteFromTimeline(user.id, imageId);
       if (success) {
         setGenerationHistory((prev) => prev.filter((img) => img.id !== imageId));
         setAllPublicImages((prev) => prev.filter((img) => img.id !== imageId));
@@ -534,7 +612,7 @@ const App: React.FC = () => {
       
       try {
         const authorName = isPublic ? user?.name || 'ゲスト' : undefined;
-        const updatedImageFromAPI = await updateLibraryEntry(user.id, imageId, { 
+        const updatedImageFromAPI = await updateTimelineEntry(user.id, imageId, { 
           isPublic, 
           authorName 
         });
@@ -644,14 +722,14 @@ const App: React.FC = () => {
       <UserView
         currentUser={user} // Pass full user object
         addToGenerationHistory={addToGenerationHistory}
+        saveToTimelineOnGeneration={saveToTimelineOnGeneration}
+        saveExistingImageToLibrary={saveExistingImageToLibrary}
         onAddToGoodsHistory={addToGoodsHistory}
         onUpdateCredits={handleUpdateCredits}
         menuExePanelFormData={menuExePanelFormData}
         setMenuExePanelFormData={setMenuExePanelFormData}
         generatedImages={generatedImages}
         setGeneratedImages={setGeneratedImages}
-        actionToPerform={actionAfterLoad}
-        onActionPerformed={handleActionAfterLoadPerformed}
         onToggleImagePublicStatus={handleToggleLibraryImagePublicStatus}
         onRateImage={handleRateImageInLibrary}
       />

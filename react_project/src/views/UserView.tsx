@@ -22,6 +22,8 @@ import { consumeCredits } from '@/services/api/credits';
 interface UserViewProps {
   currentUser: User | null;
   addToGenerationHistory: (image: GeneratedImage) => void;
+  saveToTimelineOnGeneration: (image: GeneratedImage) => void;
+  saveExistingImageToLibrary: (image: GeneratedImage) => void;
   onAddToGoodsHistory: (record: GoodsCreationRecord) => void;
   onUpdateCredits: (newCreditAmount: number) => void;
   menuExePanelFormData: MenuExecutionFormData;
@@ -37,6 +39,8 @@ interface UserViewProps {
 const UserView: React.FC<UserViewProps> = ({
   currentUser,
   addToGenerationHistory,
+  saveToTimelineOnGeneration,
+  saveExistingImageToLibrary,
   onAddToGoodsHistory,
   onUpdateCredits,
   menuExePanelFormData,
@@ -114,6 +118,10 @@ const UserView: React.FC<UserViewProps> = ({
           authorName: currentUser?.name || 'ゲスト',
         };
         setGeneratedImages((prev) => [newImage, ...prev]);
+        
+        // タイムラインに保存（生成履歴として、ライブラリフラグ=false）
+        saveToTimelineOnGeneration(newImage);
+        
         showToast('success', '画像が正常に生成されました。');
 
         // クレジット消費API実行
@@ -198,10 +206,10 @@ const UserView: React.FC<UserViewProps> = ({
 
   const handleSaveToLibrary = useCallback(
     (imageToSave: GeneratedImage) => {
-      addToGenerationHistory(imageToSave);
+      saveExistingImageToLibrary(imageToSave);
       showToast('success', '画像がライブラリに保存されました！');
     },
-    [addToGenerationHistory],
+    [saveExistingImageToLibrary],
   );
 
   const handleCreateGoodsForImage = useCallback(
