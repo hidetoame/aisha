@@ -2,7 +2,7 @@ import axios from 'axios';
 import { AdminGenerationMenuItem } from '@/types';
 import { keysToSnakeCase, keysToCamelCase } from '@/utils/caseConverter';
 
-const API_BASE = `${process.env.AISHA_API_BASE}/menus`;
+const API_BASE = `${import.meta.env.VITE_AISHA_API_BASE || 'http://localhost:7999/api'}/menus`;
 
 export const fetchMenus = async (
   onError?: (error: unknown) => void,

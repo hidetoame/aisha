@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["*"],
+    "method": ["GET", "HEAD", "OPTIONS"],
+    "responseHeader": ["Content-Type", "Content-Range", "Date", "Etag", "Expires", "Last-Modified"],
+    "maxAgeSeconds": 3600
+  }
+]

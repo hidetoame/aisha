@@ -2,7 +2,7 @@ import axios from 'axios';
 import { GeneratedImage } from '@/types';
 import { keysToCamelCase, keysToSnakeCase } from '@/utils/caseConverter';
 
-const API_BASE = `${process.env.AISHA_API_BASE}/timeline`;
+const API_BASE = `${import.meta.env.VITE_AISHA_API_BASE || 'http://localhost:7999/api'}/timeline`;
 
 /**
  * タイムライン（旧ライブラリ）API関連のサービス関数

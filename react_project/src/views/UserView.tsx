@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { MenuExecutionPanel } from '../components/panels/MenuExecutionPanel';
 import { GeneratedImagesPanel } from '../components/panels/GeneratedImagesPanel';
+import { DirectionSelectionModal } from '../components/modals/DirectionSelectionModal';
 import {
   GeneratedImage,
   SuzuriItem,
@@ -10,6 +11,7 @@ import {
   CreditsRequestParams,
   MenuExecutionFormData,
 } from '../types';
+import { EXTEND_IMAGE_CREDIT_COST } from '../constants';
 import { useToast } from '@/contexts/ToastContext';
 import { useMenus } from '@/contexts/MenusContext';
 import {
@@ -18,6 +20,7 @@ import {
 } from '@/services/api/menu-execution';
 import { useCredits, useCreditsActions } from '@/contexts/CreditsContext';
 import { consumeCredits } from '@/services/api/credits';
+import { expandImage, AnchorPosition } from '@/services/api/image-expansion';
 
 interface UserViewProps {
   currentUser: User | null;
@@ -57,6 +60,10 @@ const UserView: React.FC<UserViewProps> = ({
   const { refreshCredits } = useCreditsActions();
 
   const [isLoading, setIsLoading] = useState(false);
+  
+  // 拡張モーダル関連のstate
+  const [isDirectionModalOpen, setIsDirectionModalOpen] = useState(false);
+  const [imageToExpand, setImageToExpand] = useState<GeneratedImage | null>(null);
 
   const commonGenerationChecks = (cost: number): boolean => {
     if (!currentUser) {
@@ -195,7 +202,22 @@ const UserView: React.FC<UserViewProps> = ({
   //   handleGenerateImageInternal(extendOptions, 'extend');
 
   // }, [currentUser, initialCredits, handleGenerateImageInternal]);
-  const handleExtendImage = useCallback((image: GeneratedImage) => {}, []);
+  const handleExtendImage = useCallback((image: GeneratedImage) => {
+    if (!currentUser) {
+      showToast('error', 'ログインが必要です。');
+      return;
+    }
+    
+    // クレジット確認
+    if (credits < EXTEND_IMAGE_CREDIT_COST) {
+      showToast('error', '画像拡張に必要なクレジットが不足しています。');
+      return;
+    }
+    
+    // 拡張する画像を設定してモーダルを開く
+    setImageToExpand(image);
+    setIsDirectionModalOpen(true);
+  }, [currentUser, credits, showToast]);
 
   const handleDeleteSessionImage = useCallback((imageIdToDelete: string) => {
     setGeneratedImages((prev) =>
@@ -203,6 +225,57 @@ const UserView: React.FC<UserViewProps> = ({
     );
     showToast('info', 'セッションから画像を削除しました。');
   }, []);
+
+  // 拡張モーダルのコールバック関数
+  const handleDirectionModalClose = useCallback(() => {
+    setIsDirectionModalOpen(false);
+    setImageToExpand(null);
+  }, []);
+
+  const handleDirectionModalConfirm = useCallback(async (anchorPosition: AnchorPosition) => {
+    if (!imageToExpand || !currentUser) {
+      showToast('error', '画像拡張の準備ができていません。');
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      // クレジット消費
+      const reqBody: CreditsRequestParams = { credits: EXTEND_IMAGE_CREDIT_COST };
+      const onError = () =>
+        showToast('error', 'クレジット消費に失敗しました（画像拡張は成功）');
+      await consumeCredits(reqBody, onError);
+      refreshCredits();
+      
+      // 画像拡張API呼び出し
+      const expandedImage = await expandImage(
+        imageToExpand.id,
+        anchorPosition,
+        currentUser.id,
+        (error) => {
+          console.error('画像拡張エラー:', error);
+          showToast('error', error instanceof Error ? error.message : '画像拡張に失敗しました');
+        }
+      );
+
+      if (expandedImage) {
+        // 生成画像リストに追加
+        setGeneratedImages(prev => [expandedImage, ...prev]);
+        
+        // タイムラインに保存（生成履歴として、ライブラリフラグ=false）
+        saveToTimelineOnGeneration(expandedImage);
+        
+        showToast('success', '画像の拡張が完了しました！');
+      }
+    } catch (error) {
+      console.error('画像拡張処理エラー:', error);
+      showToast('error', '画像拡張処理中にエラーが発生しました');
+    } finally {
+      setIsLoading(false);
+      handleDirectionModalClose();
+    }
+  }, [imageToExpand, currentUser, refreshCredits, showToast, setGeneratedImages, addToGenerationHistory, saveToTimelineOnGeneration, handleDirectionModalClose]);
 
   const handleSaveToLibrary = useCallback(
     (imageToSave: GeneratedImage) => {
@@ -272,6 +345,14 @@ const UserView: React.FC<UserViewProps> = ({
           />
         </div>
       </div>
+
+      {/* 方向選択モーダル */}
+      <DirectionSelectionModal
+        isOpen={isDirectionModalOpen}
+        onClose={handleDirectionModalClose}
+        onConfirm={handleDirectionModalConfirm}
+        imageName={imageToExpand?.displayPrompt || '画像'}
+      />
     </div>
   );
 };

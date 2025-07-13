@@ -14,6 +14,7 @@ from api.views.credit_charge import (
     stripe_config
 )
 from api.views.library import TimelineListCreateView, TimelineDetailView, PublicTimelineListView
+from api.views.image_expansion import ImageExpansionView
 from api.views.suzuri import (
     create_merchandise,
     get_available_items,
@@ -44,6 +45,9 @@ urlpatterns += [
     path('timeline/', TimelineListCreateView.as_view(), name='timeline-list-create'),
     path('timeline/public/', PublicTimelineListView.as_view(), name='timeline-public'),
     path('timeline/<str:frontend_id>/', TimelineDetailView.as_view(), name='timeline-detail'),
+    
+    # 画像拡張関連
+    path('image-expansion/', ImageExpansionView.as_view(), name='image-expansion'),
     
     # SUZURI関連
     path('suzuri/merchandise/', create_merchandise, name='suzuri-create-merchandise'),

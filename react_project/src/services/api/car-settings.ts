@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { CarSettings, CarSettingsCreateUpdateRequest, CarSettingsApiResponse } from '../../types';
 
-const API_BASE = `${process.env.AISHA_API_BASE}/car-settings`;
+const API_BASE = `${import.meta.env.VITE_AISHA_API_BASE || 'http://localhost:7999/api'}/car-settings`;
 
 /**
  * 愛車設定一覧取得

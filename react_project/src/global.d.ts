@@ -4,6 +4,7 @@ declare module '*.css';
 
 interface ImportMetaEnv {
   readonly VITE_MGDRIVE_API_BASE_URL: string;
+  readonly VITE_AISHA_API_BASE: string;
 }
 
 interface ImportMeta {

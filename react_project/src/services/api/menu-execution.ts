@@ -7,7 +7,7 @@ import {
 } from '@/types';
 
 // APIエンドポイントのベースURL
-const API_BASE = `${process.env.AISHA_API_BASE}/menus`;
+const API_BASE = `${import.meta.env.VITE_AISHA_API_BASE || 'http://localhost:7999/api'}/menus`;
 
 export const convertFormDataToRequestParams = (formData: MenuExecutionFormData): MenuExecutionRequestParams => {
   return {

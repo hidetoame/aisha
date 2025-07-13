@@ -1,6 +1,8 @@
 import json
 import uuid
 import os
+import requests
+import tempfile
 from datetime import timedelta
 from django.conf import settings
 from google.cloud import storage
@@ -70,7 +72,64 @@ class GCSUploadService:
         except Exception as e:
             logger.error(f"GCS初期化エラー: {e}")
             raise Exception(f"Google Cloud Storage初期化失敗: {str(e)}")
+    
+    def upload_generated_image_from_url(self, image_url: str, user_id: str, frontend_id: str) -> str:
+        """
+        生成画像をURLからダウンロードしてGoogle Cloud Storageにアップロード
         
+        Args:
+            image_url: ダウンロードする画像のURL
+            user_id: ユーザーID
+            frontend_id: フロントエンドの画像ID
+            
+        Returns:
+            str: GCSのパブリックURL
+            
+        Raises:
+            Exception: ダウンロードまたはアップロードに失敗した場合
+        """
+        self._ensure_initialized()
+        try:
+            logger.info(f"🖼️ 生成画像ダウンロード開始: {image_url}")
+            
+            # 画像をダウンロード
+            response = requests.get(image_url, timeout=30)
+            response.raise_for_status()
+            
+            # Content-Typeから拡張子を判定
+            content_type = response.headers.get('content-type', 'image/jpeg')
+            file_extension = self._get_extension_from_content_type(content_type)
+            
+            # GCSオブジェクト名を生成
+            unique_filename = f"{frontend_id}{file_extension}"
+            blob_name = f"generated-images/{user_id}/{unique_filename}"
+            
+            logger.info(f"📁 GCSアップロード開始: {blob_name}")
+            
+            # GCSにアップロード
+            blob = self.bucket.blob(blob_name)
+            blob.content_type = content_type
+            
+            # バイトデータを直接アップロード
+            blob.upload_from_string(response.content, content_type=content_type)
+            
+            # パブリック読み取り権限を設定
+            blob.make_public()
+            
+            # パブリックURLを生成
+            file_url = blob.public_url
+            
+            logger.info(f"✅ 生成画像GCSアップロード成功: {blob_name}")
+            logger.info(f"🔗 パブリックURL: {file_url}")
+            return file_url
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"❌ 画像ダウンロードエラー: {e}")
+            raise Exception(f"画像ダウンロード失敗: {str(e)}")
+        except Exception as e:
+            logger.error(f"❌ 生成画像GCSアップロードエラー: {e}")
+            raise Exception(f"Google Cloud Storageアップロード失敗: {str(e)}")
+    
     def upload_car_setting_image(self, file, user_id: str, car_id: str, image_type: str) -> str:
         """
         愛車設定用画像をGoogle Cloud Storageにアップロード
@@ -182,6 +241,19 @@ class GCSUploadService:
             logger.error(f"❌ エラー詳細: type={type(e)}, args={e.args}")
             return False
     
+    def delete_generated_image(self, image_url: str) -> bool:
+        """
+        Google Cloud Storageから生成画像を削除
+        
+        Args:
+            image_url: 削除するファイルのURL
+            
+        Returns:
+            bool: 削除成功かどうか
+        """
+        # 愛車設定画像削除と同じロジックを使用
+        return self.delete_car_setting_image(image_url)
+    
     def generate_signed_url(self, blob_name: str, expiration_minutes: int = 60) -> str:
         """
         署名付きURLを生成（一時的なプライベートアクセス用）
@@ -225,7 +297,63 @@ class GCSUploadService:
             '.webp': 'image/webp',
         }
         return content_types.get(file_extension.lower(), 'image/jpeg')
+    
+    def _get_extension_from_content_type(self, content_type: str) -> str:
+        """Content-Typeに基づいてファイル拡張子を決定"""
+        content_type_map = {
+            'image/jpeg': '.jpg',
+            'image/jpg': '.jpg',
+            'image/png': '.png',
+            'image/gif': '.gif',
+            'image/webp': '.webp',
+        }
+        return content_type_map.get(content_type.lower(), '.jpg')
+    
+    def upload_image_from_bytes(self, image_data: bytes, user_id: str, frontend_id: str, file_extension: str = '.jpg') -> str:
+        """
+        バイナリデータから生成画像をGoogle Cloud Storageにアップロード
+        
+        Args:
+            image_data: 画像のバイナリデータ
+            user_id: ユーザーID
+            frontend_id: フロントエンドの画像ID
+            file_extension: ファイル拡張子（デフォルト: .jpg）
+            
+        Returns:
+            str: GCSのパブリックURL
+            
+        Raises:
+            Exception: アップロードに失敗した場合
+        """
+        self._ensure_initialized()
+        try:
+            # GCSオブジェクト名を生成
+            unique_filename = f"{frontend_id}{file_extension}"
+            blob_name = f"generated-images/{user_id}/{unique_filename}"
+            
+            logger.info(f"📁 GCSアップロード開始: {blob_name}")
+            
+            # GCSにアップロード
+            blob = self.bucket.blob(blob_name)
+            blob.content_type = self._get_content_type(file_extension)
+            
+            # バイトデータを直接アップロード
+            blob.upload_from_string(image_data, content_type=blob.content_type)
+            
+            # パブリック読み取り権限を設定
+            blob.make_public()
+            
+            # パブリックURLを生成
+            file_url = blob.public_url
+            
+            logger.info(f"✅ バイナリデータGCSアップロード成功: {blob_name}")
+            logger.info(f"🔗 パブリックURL: {file_url}")
+            return file_url
+            
+        except Exception as e:
+            logger.error(f"❌ バイナリデータGCSアップロードエラー: {e}")
+            raise Exception(f"Google Cloud Storageアップロード失敗: {str(e)}")
 
 
-# サービスインスタンスを作成
+# シングルトンインスタンス
 gcs_upload_service = GCSUploadService()
