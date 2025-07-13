@@ -153,6 +153,22 @@ export const updateCarSettings = async (
       }
     });
 
+    // 削除フラグ処理
+    const deleteFlags = [
+      'delete_logo_mark_image',
+      'delete_original_number_image', 
+      'delete_car_photo_front',
+      'delete_car_photo_side',
+      'delete_car_photo_rear',
+      'delete_car_photo_diagonal',
+    ] as const;
+
+    deleteFlags.forEach((flag) => {
+      if (data[flag]) {
+        formData.append(flag, 'true');
+      }
+    });
+
     const response = await axios.put<CarSettingsApiResponse<CarSettings>>(
       `${API_BASE}/${id}/`,
       formData,

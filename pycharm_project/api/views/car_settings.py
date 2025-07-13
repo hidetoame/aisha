@@ -118,6 +118,33 @@ class CarSettingsListCreateView(APIView):
                                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
                             )
                 
+                # 画像削除処理
+                delete_fields = {
+                    'delete_logo_mark_image': 'logo_mark_image_url',
+                    'delete_original_number_image': 'original_number_image_url',
+                    'delete_car_photo_front': 'car_photo_front_url',
+                    'delete_car_photo_side': 'car_photo_side_url',
+                    'delete_car_photo_rear': 'car_photo_rear_url',
+                    'delete_car_photo_diagonal': 'car_photo_diagonal_url',
+                }
+                
+                for delete_field, url_field in delete_fields.items():
+                    if delete_field in data and data[delete_field] == 'true':
+                        try:
+                            # 既存画像があれば削除
+                            existing_url = getattr(car_settings, url_field, None)
+                            if existing_url:
+                                gcs_upload_service.delete_car_setting_image(existing_url)
+                            # URLフィールドをクリア
+                            setattr(car_settings, url_field, None)
+                            
+                        except Exception as e:
+                            logger.error(f"画像削除エラー ({delete_field}): {e}")
+                            return Response(
+                                {'error': f'画像削除に失敗しました: {delete_field}'},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                            )
+                
                 car_settings.save()
                 
                 # レスポンス用シリアライザー
@@ -211,6 +238,33 @@ class CarSettingsDetailView(APIView):
                             logger.error(f"画像アップロードエラー ({field_name}): {e}")
                             return Response(
                                 {'error': f'画像アップロードに失敗しました: {field_name}'},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                            )
+                
+                # 画像削除処理（POSTメソッドと同じ処理）
+                delete_fields = {
+                    'delete_logo_mark_image': 'logo_mark_image_url',
+                    'delete_original_number_image': 'original_number_image_url',
+                    'delete_car_photo_front': 'car_photo_front_url',
+                    'delete_car_photo_side': 'car_photo_side_url',
+                    'delete_car_photo_rear': 'car_photo_rear_url',
+                    'delete_car_photo_diagonal': 'car_photo_diagonal_url',
+                }
+                
+                for delete_field, url_field in delete_fields.items():
+                    if delete_field in data and data[delete_field] == 'true':
+                        try:
+                            # 既存画像があれば削除
+                            existing_url = getattr(car_settings, url_field, None)
+                            if existing_url:
+                                gcs_upload_service.delete_car_setting_image(existing_url)
+                            # URLフィールドをクリア
+                            setattr(car_settings, url_field, None)
+                            
+                        except Exception as e:
+                            logger.error(f"画像削除エラー ({delete_field}): {e}")
+                            return Response(
+                                {'error': f'画像削除に失敗しました: {delete_field}'},
                                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
                             )
                 

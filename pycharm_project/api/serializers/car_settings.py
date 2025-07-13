@@ -58,6 +58,14 @@ class CarSettingsCreateUpdateSerializer(serializers.Serializer):
     car_photo_rear = serializers.ImageField(required=False)
     car_photo_diagonal = serializers.ImageField(required=False)
     
+    # 削除フラグ
+    delete_logo_mark_image = serializers.BooleanField(required=False, default=False)
+    delete_original_number_image = serializers.BooleanField(required=False, default=False)
+    delete_car_photo_front = serializers.BooleanField(required=False, default=False)
+    delete_car_photo_side = serializers.BooleanField(required=False, default=False)
+    delete_car_photo_rear = serializers.BooleanField(required=False, default=False)
+    delete_car_photo_diagonal = serializers.BooleanField(required=False, default=False)
+    
     def validate(self, data):
         """バリデーション"""
         user_id = data.get('user_id')

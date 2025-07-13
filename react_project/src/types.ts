@@ -258,6 +258,13 @@ export interface CarSettingsCreateUpdateRequest {
   car_photo_side?: File;
   car_photo_rear?: File;
   car_photo_diagonal?: File;
+  // 削除フラグ
+  delete_logo_mark_image?: boolean;
+  delete_original_number_image?: boolean;
+  delete_car_photo_front?: boolean;
+  delete_car_photo_side?: boolean;
+  delete_car_photo_rear?: boolean;
+  delete_car_photo_diagonal?: boolean;
 }
 
 export interface CarSettingsApiResponse<T = any> {

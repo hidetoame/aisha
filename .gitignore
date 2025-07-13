@@ -165,3 +165,16 @@ Thumbs.db
 *.backup
 *.old
 *.orig
+# =====================================
+# GCP/AWS認証ファイル
+# =====================================
+service-account.json
+gcs-credentials.json
+**/gcs-credentials.json
+**/service-account.json
+
+# =====================================
+# テストファイル
+# =====================================
+test_*.py
+check_*.py

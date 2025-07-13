@@ -14,9 +14,11 @@ import {
   CheckCircleIcon as SaveIcon,
 } from '../components/icons/HeroIcons';
 import { getCarInfo } from '../services/api/car-info';
-import { 
-  fetchCarSettings, 
+import {
+  fetchCarSettings,
   createOrUpdateCarSettings,
+  updateCarSettings,
+  deleteCarSettings,
 } from '../services/api/car-settings';
 import { useToast } from '../contexts/ToastContext';
 
@@ -152,7 +154,7 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
               originalNumberImageUrl: carSettings.original_number_image_url || undefined,
             },
             referenceRegistration: {
-              favoriteCarName: carSettings.car_name || '',
+              favoriteCarName: carSettings.car_name && carSettings.car_name.trim() !== '' ? carSettings.car_name : '',
               carPhotos: (Object.keys(carPhotoAngleLabels) as CarPhotoAngle[]).map(
                 (angle) => {
                   let imageUrl: string | undefined;
@@ -204,7 +206,7 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
    const logoMarkImageUploadRef = useRef<ImageUploadRef>(null);
    const originalNumberImageUploadRef = useRef<ImageUploadRef>(null);
    const carPhotoUploadRefs = useRef<
-     Record<CarPhotoAngle, React.RefObject<ImageUploadRef>>
+     Record<CarPhotoAngle, React.RefObject<ImageUploadRef | null>>
    >({
      front: React.createRef(),
      side: React.createRef(),
@@ -214,32 +216,10 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
    });
 
   useEffect(() => {
-    const initialSettings = JSON.parse(
-      JSON.stringify(
-        currentUser.personalSettings || getDefaultPersonalUserSettings(),
-      ),
-    );
-
-    // Ensure carPhotos array is correctly initialized and has labels
-    const defaultCarPhotos =
-      getDefaultPersonalUserSettings().referenceRegistration.carPhotos;
-    const currentCarPhotos =
-      initialSettings.referenceRegistration.carPhotos || [];
-
-    const newCarPhotos = defaultCarPhotos.map((defaultPhoto) => {
-      const existingPhoto = currentCarPhotos.find(
-        (p: CarReferencePhoto) => p.viewAngle === defaultPhoto.viewAngle,
-      );
-      return {
-        ...defaultPhoto, // Start with default structure (includes label)
-        ...(existingPhoto || {}), // Override with existing data if present
-        label:
-          carPhotoAngleLabels[defaultPhoto.viewAngle] || defaultPhoto.viewAngle, // Ensure label is correct
-      };
-    });
-    initialSettings.referenceRegistration.carPhotos = newCarPhotos;
+    // 愛車設定画面では personalSettings を使わず、常にデフォルト状態から開始
+    const initialSettings = getDefaultPersonalUserSettings();
     setSettings(initialSettings);
-  }, [currentUser.personalSettings]);
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -270,6 +250,8 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
     field: 'logoMarkImageUrl' | 'originalNumberImageUrl' | CarPhotoAngle,
     file: File | null,
   ) => {
+    console.log('🖼️ handleImageUpload called:', { section, field, file: file?.name || 'null' });
+    
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -383,6 +365,131 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
           return rest;
         });
       }
+
+      // 即座にサーバーから削除
+      console.log('🗑️ 画像削除条件チェック:', { 
+        currentCarSettings: !!currentCarSettings, 
+        selectedCar: !!selectedCar,
+        currentCarSettingsId: currentCarSettings?.id,
+        selectedCarId: selectedCar?.car_id 
+      });
+      
+      if (currentCarSettings && selectedCar) {
+        console.log('✅ 削除条件満たしているため、handleImmediateDeleteを呼び出します');
+        handleImmediateDelete(field);
+      } else {
+        console.log('❌ 削除条件を満たしていません - サーバー削除をスキップ');
+      }
+    }
+  };
+
+  const handleImmediateDelete = async (field: 'logoMarkImageUrl' | 'originalNumberImageUrl' | CarPhotoAngle) => {
+    console.log('🚀 handleImmediateDelete 開始:', { field });
+    
+    if (!selectedCar || !currentUser.id || !currentCarSettings) {
+      console.log('❌ handleImmediateDelete: 必要な条件が不足', {
+        selectedCar: !!selectedCar,
+        userId: !!currentUser.id,
+        currentCarSettings: !!currentCarSettings
+      });
+      return;
+    }
+
+    console.log('📋 削除対象の情報:', {
+      carSettingsId: currentCarSettings.id,
+      userId: currentUser.id,
+      carId: selectedCar.car_id,
+      field
+    });
+
+    try {
+      const updateData: Partial<CarSettingsCreateUpdateRequest> = {
+        user_id: currentUser.id,
+        car_id: selectedCar.car_id,
+      };
+      
+      // 削除フラグを設定
+      switch (field) {
+        case 'logoMarkImageUrl':
+          updateData.delete_logo_mark_image = true;
+          break;
+        case 'originalNumberImageUrl':
+          updateData.delete_original_number_image = true;
+          break;
+        case 'front':
+          updateData.delete_car_photo_front = true;
+          break;
+        case 'side':
+          updateData.delete_car_photo_side = true;
+          break;
+        case 'rear':
+          updateData.delete_car_photo_rear = true;
+          break;
+        case 'front_angled_7_3':
+          updateData.delete_car_photo_diagonal = true;
+          break;
+      }
+
+      console.log('📤 API削除リクエスト送信:', updateData);
+      const response = await updateCarSettings(currentCarSettings.id, updateData);
+      console.log('📥 API削除レスポンス:', response);
+      
+      if (response) {
+        console.log('✅ サーバー削除成功 - CarSettingsを再読み込み');
+        // サーバー削除成功 → CarSettingsを再読み込み
+        const carSettingsData = await fetchCarSettings(currentUser.id, selectedCar.car_id);
+        console.log('🔄 再読み込み結果:', carSettingsData);
+        if (carSettingsData.length > 0) {
+          setCurrentCarSettings(carSettingsData[0]);
+        }
+        showToast('success', '画像を削除しました');
+      } else {
+        console.log('❌ サーバー削除失敗');
+        showToast('error', '画像の削除に失敗しました');
+      }
+    } catch (error) {
+      console.error('画像削除エラー:', error);
+      showToast('error', '画像の削除に失敗しました');
+    }
+  };
+
+  const handleDeleteAllCarSettings = async () => {
+    if (!selectedCar || !currentUser.id || !currentCarSettings) {
+      showToast('error', '削除対象の愛車設定が見つかりません');
+      return;
+    }
+
+    const carName = formatCarName(selectedCar);
+    const confirmMessage = `愛車「${carName}」の設定を完全に削除しますか？\n\nこの操作は元に戻すことができません。\n- 保存されたすべての画像\n- ナンバープレートの設定\n- 愛車名前の設定\n\nすべてが削除されます。`;
+    
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      const success = await deleteCarSettings(currentCarSettings.id, (error: unknown) => {
+        console.error('愛車設定削除エラー:', error);
+      });
+
+      if (success) {
+        // 削除成功 → 状態をリセット
+        setCurrentCarSettings(null);
+        setUploadedFiles({});
+        
+        // PersonalUserSettingsも初期化
+        setSettings(getDefaultPersonalUserSettings());
+        
+        showToast('success', `愛車「${carName}」の設定を削除しました`);
+      } else {
+        showToast('error', '愛車設定の削除に失敗しました');
+      }
+    } catch (error) {
+      console.error('愛車設定削除処理エラー:', error);
+      showToast('error', '愛車設定の削除に失敗しました');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -439,6 +546,35 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
     return photo?.imageUrl;
   };
 
+  const getCarSettingsImageUrl = (angle: CarPhotoAngle): string | undefined => {
+    if (!currentCarSettings) {
+      console.log('📷 getCarSettingsImageUrl: currentCarSettingsがnull');
+      return undefined;
+    }
+    
+    let imageUrl: string | undefined;
+    switch (angle) {
+      case 'front':
+        imageUrl = currentCarSettings.car_photo_front_url || undefined;
+        break;
+      case 'side':
+        imageUrl = currentCarSettings.car_photo_side_url || undefined;
+        break;
+      case 'rear':
+        imageUrl = currentCarSettings.car_photo_rear_url || undefined;
+        break;
+      case 'front_angled_7_3':
+      case 'rear_angled_7_3':
+        imageUrl = currentCarSettings.car_photo_diagonal_url || undefined;
+        break;
+      default:
+        imageUrl = undefined;
+    }
+    
+    console.log(`📷 getCarSettingsImageUrl(${angle}):`, imageUrl);
+    return imageUrl;
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
       <form
@@ -466,7 +602,7 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
                     愛車
                   </label>
                   <div className="text-lg text-white">
-                    {selectedCar ? formatCarName(selectedCar) : 'BMW Z4'}
+                    {selectedCar ? formatCarName(selectedCar) : '車両を選択してください'}
                   </div>
                 </div>
                 {/* 愛車のサムネイル画像 */}
@@ -521,6 +657,7 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
             <ImageUpload
               ref={logoMarkImageUploadRef}
               label="ロゴマーク画像"
+              initialPreviewUrl={currentCarSettings?.logo_mark_image_url || undefined}
               onImageSelect={(file) =>
                 handleImageUpload('numberManagement', 'logoMarkImageUrl', file)
               }
@@ -528,6 +665,7 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
             <ImageUpload
               ref={originalNumberImageUploadRef}
               label="オリジナルナンバー画像"
+              initialPreviewUrl={currentCarSettings?.original_number_image_url || undefined}
               onImageSelect={(file) =>
                 handleImageUpload(
                   'numberManagement',
@@ -557,7 +695,7 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
                 value={settings.referenceRegistration.favoriteCarName || ''}
                 onChange={handleInputChange}
                 className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-gray-200 placeholder-gray-500 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="例: マイ・ロードスター"
+                placeholder="車両名"
               />
             </div>
             <h4 className="text-md font-medium text-gray-300 pt-2">
@@ -569,6 +707,7 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
                   key={photoSlot.viewAngle}
                   ref={carPhotoUploadRefs.current[photoSlot.viewAngle]}
                   label={photoSlot.label}
+                  initialPreviewUrl={getCarSettingsImageUrl(photoSlot.viewAngle)}
                   onImageSelect={(file) =>
                     handleImageUpload(
                       'referenceRegistration',
@@ -582,21 +721,52 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
           </section>
         </div>
 
-        <div className="mt-6 pt-4 border-t border-gray-700 flex justify-end space-x-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-6 py-2.5 bg-gray-600 hover:bg-gray-500 text-gray-200 font-medium rounded-lg transition"
-          >
-            キャンセル
-          </button>
-          <button
-            type="submit"
-            className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition flex items-center"
-          >
-            <SaveIcon className="w-5 h-5 mr-2" />
-            保存
-          </button>
+        <div className="mt-6 pt-4 border-t border-gray-700 flex justify-between items-center">
+          {/* 左側：削除ボタン（設定が存在する場合のみ表示） */}
+          <div>
+            {currentCarSettings && selectedCar && (
+              <button
+                type="button"
+                onClick={handleDeleteAllCarSettings}
+                disabled={isLoading}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-800 disabled:opacity-50 text-white font-medium rounded-lg transition flex items-center"
+              >
+                <svg 
+                  className="w-4 h-4 mr-2" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" 
+                  />
+                </svg>
+                {isLoading ? '削除中...' : '設定を削除'}
+              </button>
+            )}
+          </div>
+          
+          {/* 右側：キャンセル・保存ボタン */}
+          <div className="flex space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-2.5 bg-gray-600 hover:bg-gray-500 text-gray-200 font-medium rounded-lg transition"
+            >
+              キャンセル
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 disabled:opacity-50 text-white font-medium rounded-lg transition flex items-center"
+            >
+              <SaveIcon className="w-5 h-5 mr-2" />
+              {isLoading ? '保存中...' : '保存'}
+            </button>
+          </div>
         </div>
       </form>
 

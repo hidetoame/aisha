@@ -182,3 +182,8 @@ GCS_CUSTOM_DOMAIN = f'{GCS_BUCKET_NAME}.storage.googleapis.com'
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = f'https://{GCS_CUSTOM_DOMAIN}/{GCS_LOCATION}/'
+
+# Stripe Settings
+STRIPE_PUBLISHABLE_KEY = env('STRIPE_PUBLISHABLE_KEY', default='')
+STRIPE_SECRET_KEY = env('STRIPE_SECRET_KEY', default='')
+STRIPE_WEBHOOK_SECRET = env('STRIPE_WEBHOOK_SECRET', default='')

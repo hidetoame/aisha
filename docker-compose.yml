@@ -4,50 +4,50 @@ services:
       context: ./pycharm_project
       dockerfile: Dockerfile
       platforms:
-        - linux/amd64  # M1 Mac対応
+        - linux/amd64
     ports:
       - "7999:8000"
     volumes:
-      - ./pycharm_project:/app  # 開発時のみコード即時反映
+      - ./pycharm_project:/app
     env_file:
-      - ${ENV_FILE}  # 起動時に指定
+      - .env
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /app/gcs-credentials.json
     depends_on:
       - db
     command: >
       sh -c "python manage.py migrate &&
              python manage.py collectstatic --noinput &&
-             ${DJANGO_CMD}"
+             python manage.py runserver 0.0.0.0:8000"
 
   db:
     image: postgres:15
     ports:
-      - "${POSTGRES_HOST_PORT}:5432"
+      - "5431:5432"
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: dev_db
+      POSTGRES_USER: dev_user
+      POSTGRES_PASSWORD: dev_pass
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
   react:
     build:
       context: ./react_project
-      target: ${REACT_BUILD_STAGE}  # ← build対象ステージを切り替え
+      target: dev
       args:
-        NODE_ENV: ${NODE_ENV}
-        AISHA_API_BASE: ${AISHA_API_BASE}
-        MOCK_API_BASE: ${MOCK_API_BASE}
+        NODE_ENV: development
+        AISHA_API_BASE: http://localhost:7999/api
+        MOCK_API_BASE: http://localhost:4000/api
     environment:
-      NODE_ENV: ${NODE_ENV}
-      AISHA_API_BASE: ${AISHA_API_BASE}
-      MOCK_API_BASE: ${MOCK_API_BASE}
+      NODE_ENV: development
+      AISHA_API_BASE: http://localhost:7999/api
+      MOCK_API_BASE: http://localhost:4000/api
     ports:
-      - "${REACT_PORT}:${REACT_PORT}"
-#    volumes:  # エラーになるのでホットリロードできないかもしれないがコメントアウトする
-#      - ${REACT_VOLUME:-./dummy}  # 未定義/空の場合にエラーにせずデフォルトを指定する書き方
+      - "5173:5173"
     env_file:
-      - ${ENV_FILE}
-    command: ${REACT_CMD}
+      - .env
+    command: npm run dev
 
 volumes:
   postgres_data:

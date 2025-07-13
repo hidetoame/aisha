@@ -1,5 +1,6 @@
 import json
 import uuid
+import os
 from datetime import timedelta
 from django.conf import settings
 from google.cloud import storage
@@ -13,10 +14,29 @@ class GCSUploadService:
     """Google Cloud Storageファイルアップロードサービス"""
     
     def __init__(self):
-        """GCSクライアントを初期化"""
+        """GCSUploadServiceのインスタンスを作成（遅延初期化）"""
+        self.client = None
+        self.bucket = None
+        self.bucket_name = None
+        self._initialized = False
+    
+    def _ensure_initialized(self):
+        """GCS接続の初期化（必要時のみ実行）"""
+        if self._initialized:
+            return
+            
         try:
-            # サービスアカウントキーの認証情報を取得
-            if settings.GCS_CREDENTIALS_JSON:
+            credentials = None
+            
+            # 方法1: GOOGLE_APPLICATION_CREDENTIALS環境変数を優先使用
+            google_app_creds = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
+            if google_app_creds and os.path.exists(google_app_creds):
+                logger.info(f"GOOGLE_APPLICATION_CREDENTIALS使用: {google_app_creds}")
+                credentials = service_account.Credentials.from_service_account_file(google_app_creds)
+            
+            # 方法2: Django設定のGCS_CREDENTIALS_JSONをフォールバック
+            elif settings.GCS_CREDENTIALS_JSON:
+                logger.info("GCS_CREDENTIALS_JSON使用")
                 if settings.GCS_CREDENTIALS_JSON.startswith('{'):
                     # JSON文字列として解析
                     credentials_info = json.loads(settings.GCS_CREDENTIALS_JSON)
@@ -24,25 +44,32 @@ class GCSUploadService:
                 else:
                     # ファイルパスとして解析
                     credentials = service_account.Credentials.from_service_account_file(settings.GCS_CREDENTIALS_JSON)
-                
+            
+            # GCSクライアントの作成
+            if credentials:
                 self.client = storage.Client(
                     project=settings.GCS_PROJECT_ID,
                     credentials=credentials
                 )
+                logger.info("GCSクライアント作成成功（認証情報使用）")
             else:
-                # デフォルト認証（環境変数 GOOGLE_APPLICATION_CREDENTIALS を使用）
+                # デフォルト認証（ADC: Application Default Credentials）
                 self.client = storage.Client(project=settings.GCS_PROJECT_ID)
+                logger.info("GCSクライアント作成成功（デフォルト認証）")
             
             self.bucket_name = settings.GCS_BUCKET_NAME
             self.bucket = self.client.bucket(self.bucket_name)
             
+            # バケットの存在確認
+            if self.bucket.exists():
+                logger.info(f"GCSバケット接続成功: {self.bucket_name}")
+                self._initialized = True
+            else:
+                raise Exception(f"バケット '{self.bucket_name}' が存在しません")
+            
         except Exception as e:
             logger.error(f"GCS初期化エラー: {e}")
-            # GCS設定が無い場合でもサーバー起動を継続
-            self.client = None
-            self.bucket = None
-            self.bucket_name = None
-            logger.warning("GCS設定が無効です。画像アップロード機能は利用できません。")
+            raise Exception(f"Google Cloud Storage初期化失敗: {str(e)}")
         
     def upload_car_setting_image(self, file, user_id: str, car_id: str, image_type: str) -> str:
         """
@@ -55,15 +82,13 @@ class GCSUploadService:
             image_type: 画像タイプ (logo_mark, original_number, car_photo_front, etc.)
             
         Returns:
-            str: GCSのファイルURL
+            str: GCSのパブリックURL
             
         Raises:
             Exception: アップロードに失敗した場合
         """
+        self._ensure_initialized()
         try:
-            if self.client is None or self.bucket is None:
-                raise Exception("GCS設定が無効です。画像アップロード機能は利用できません。")
-            
             # ファイル拡張子を取得
             file_extension = self._get_file_extension(file.name)
             
@@ -83,13 +108,14 @@ class GCSUploadService:
             # アップロード実行
             blob.upload_from_file(file)
             
-            # パブリック読み取り権限を設定
+            # パブリック読み取り権限を設定（ACLベースで動作）
             blob.make_public()
             
             # パブリックURLを生成
             file_url = blob.public_url
             
-            logger.info(f"GCSアップロード成功: {file_url}")
+            logger.info(f"GCSアップロード成功: {blob_name}")
+            logger.info(f"パブリックURL: {file_url}")
             return file_url
             
         except Exception as e:
@@ -106,19 +132,23 @@ class GCSUploadService:
         Returns:
             bool: 削除成功かどうか
         """
+        self._ensure_initialized()
         try:
-            if self.client is None or self.bucket is None:
-                logger.warning("GCS設定が無効です。画像削除をスキップします。")
-                return False
-            
             # URLからブロブ名を抽出
-            # 例: https://aisha-car-images.storage.googleapis.com/car-settings/...
-            #  -> car-settings/...
-            if settings.GCS_CUSTOM_DOMAIN in image_url:
+            # 例: https://storage.googleapis.com/aisha-car-images/car-settings/...
+            if "storage.googleapis.com" in image_url:
+                # URLを解析してブロブ名を抽出
+                url_parts = image_url.split(f"{self.bucket_name}/")
+                if len(url_parts) > 1:
+                    blob_name = url_parts[1]
+                else:
+                    logger.error(f"URLからブロブ名を抽出できません: {image_url}")
+                    return False
+            elif settings.GCS_CUSTOM_DOMAIN in image_url:
                 blob_name = image_url.replace(f"https://{settings.GCS_CUSTOM_DOMAIN}/", "")
             else:
-                # fallback: 標準的なGCSのURL形式
-                blob_name = image_url.split(f"{self.bucket_name}/")[-1]
+                logger.error(f"未対応のURL形式: {image_url}")
+                return False
             
             # GCSから削除
             blob = self.bucket.blob(blob_name)
@@ -145,10 +175,8 @@ class GCSUploadService:
         Returns:
             str: 署名付きURL
         """
+        self._ensure_initialized()
         try:
-            if self.client is None or self.bucket is None:
-                raise Exception("GCS設定が無効です。署名付きURL生成機能は利用できません。")
-            
             blob = self.bucket.blob(blob_name)
             
             signed_url = blob.generate_signed_url(
@@ -182,4 +210,4 @@ class GCSUploadService:
 
 
 # サービスインスタンスを作成
-gcs_upload_service = GCSUploadService() 
+gcs_upload_service = GCSUploadService()

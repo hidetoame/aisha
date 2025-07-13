@@ -14,6 +14,7 @@ interface ImageUploadProps {
   onImageSelect: (file: File | null) => void;
   label?: string;
   uploadedFile?: File | null;
+  initialPreviewUrl?: string;
 }
 
 export interface ImageUploadRef {
@@ -21,14 +22,17 @@ export interface ImageUploadRef {
 }
 
 export const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
-  ({ onImageSelect, label = '画像アップロード (任意)', uploadedFile }, ref) => {
+  ({ onImageSelect, label = '画像アップロード (任意)', uploadedFile, initialPreviewUrl }, ref) => {
     const [file, setFile] = useState<File | null>(null);
     const [fileName, setFileName] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const previewUrl = useMemo(() => {
-      return file ? URL.createObjectURL(file) : null;
-    }, [file]);
+      if (file) {
+        return URL.createObjectURL(file);
+      }
+      return initialPreviewUrl || null;
+    }, [file, initialPreviewUrl]);
 
     useEffect(() => {
       if (uploadedFile) {
@@ -61,6 +65,15 @@ export const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
       [onImageSelect],
     );
 
+    const handleDelete = useCallback(() => {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      setFile(null);
+      setFileName(null);
+      onImageSelect(null);
+    }, [onImageSelect]);
+
     useImperativeHandle(ref, () => ({
       reset: () => {
         if (fileInputRef.current) {
@@ -79,11 +92,21 @@ export const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
         <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-600 border-dashed rounded-md hover:border-indigo-500 transition-colors">
           <div className="space-y-1 text-center">
             {previewUrl ? (
-              <img
-                src={previewUrl}
-                alt="プレビュー"
-                className="mx-auto h-32 w-auto rounded-md object-contain"
-              />
+              <div className="relative">
+                <img
+                  src={previewUrl}
+                  alt="プレビュー"
+                  className="mx-auto h-32 w-auto rounded-md object-contain"
+                />
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold transition-colors"
+                  title="画像を削除"
+                >
+                  ×
+                </button>
+              </div>
             ) : (
               <PhotoIcon className="mx-auto h-12 w-12 text-gray-500" />
             )}

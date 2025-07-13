@@ -4,7 +4,7 @@ WORKDIR /app
 
 # 依存関係のみ先にコピーしてインストール
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 # アプリ全体を上書き（ただし node_modules は除外されている）
 COPY . .
