@@ -172,3 +172,13 @@ LOGGING = {
         },
     },
 }
+
+# Google Cloud Storage Settings
+GCS_PROJECT_ID = env('GCS_PROJECT_ID', default='')
+GCS_BUCKET_NAME = env('GCS_BUCKET_NAME', default='aisha-car-images')
+GCS_CREDENTIALS_JSON = env('GCS_CREDENTIALS_JSON', default='')  # JSON文字列またはファイルパス
+GCS_LOCATION = 'car-settings'
+GCS_CUSTOM_DOMAIN = f'{GCS_BUCKET_NAME}.storage.googleapis.com'
+
+# Static files (CSS, JavaScript, Images)
+STATIC_URL = f'https://{GCS_CUSTOM_DOMAIN}/{GCS_LOCATION}/'

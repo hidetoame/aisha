@@ -1,6 +1,7 @@
 export type ToastType = 'success' | 'error' | 'info';
 
 export interface User {
+  id: string;
   name: string;
   personalSettings?: PersonalUserSettings; // Added
 }
@@ -199,6 +200,19 @@ export interface NumberManagementSettings {
 
 export type CarPhotoAngle = 'front' | 'side' | 'rear' | 'front_angled_7_3' | 'rear_angled_7_3';
 
+// MyGarage API から取得する愛車情報
+export interface CarInfo {
+  car_id: string;
+  car_brand_n: string;  // 日本語ブランド名
+  car_brand_en: string; // 英語ブランド名
+  car_model_n: string;  // 日本語モデル名
+  car_model_en: string; // 英語モデル名
+  car_period_s: string; // 開始期間
+  car_period_e: string; // 終了期間
+  car_nickname: string | null; // ニックネーム
+  car_image_url: string; // 車両画像URL
+}
+
 export interface CarReferencePhoto {
   viewAngle: CarPhotoAngle;
   label: string; // User-facing label e.g., "フロント正面"
@@ -215,6 +229,44 @@ export interface PersonalUserSettings {
   referenceRegistration: ReferenceRegistrationSettings;
 }
 // --- END: Personal Settings Types ---
+
+// --- START: Car Settings API Types ---
+export interface CarSettings {
+  id: number;
+  user_id: string;
+  car_id: string;
+  license_plate_text?: string | null;
+  logo_mark_image_url?: string | null;
+  original_number_image_url?: string | null;
+  car_name?: string | null;
+  car_photo_front_url?: string | null;
+  car_photo_side_url?: string | null;
+  car_photo_rear_url?: string | null;
+  car_photo_diagonal_url?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CarSettingsCreateUpdateRequest {
+  user_id: string;
+  car_id: string;
+  license_plate_text?: string;
+  logo_mark_image?: File;
+  original_number_image?: File;
+  car_name?: string;
+  car_photo_front?: File;
+  car_photo_side?: File;
+  car_photo_rear?: File;
+  car_photo_diagonal?: File;
+}
+
+export interface CarSettingsApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  message?: string;
+  error?: any;
+}
+// --- END: Car Settings API Types ---
 
 
 export class RateLimitError extends Error {

@@ -6,7 +6,7 @@ services:
       platforms:
         - linux/amd64  # M1 Mac対応
     ports:
-      - "${DJANGO_HOST_PORT}:8000"
+      - "7999:8000"
     volumes:
       - ./pycharm_project:/app  # 開発時のみコード即時反映
     env_file:

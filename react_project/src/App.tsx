@@ -106,6 +106,7 @@ const App: React.FC = () => {
         const myGarageUser = await validateMyGarageToken();
         if (myGarageUser) {
           const aishaUser: User = {
+            id: myGarageUser.id,
             name: myGarageUser.name,
             personalSettings: myGarageUser.personalSettings || {
               numberManagement: {},
@@ -212,6 +213,7 @@ const App: React.FC = () => {
         
         // MyGarageユーザーをAISHAのUser型に変換
         const aishaUser: User = {
+          id: myGarageUser.id, // MyGarageから取得したユーザーID
           name: myGarageUser.name, // ← ここに取得したユーザー名を表示
           personalSettings: myGarageUser.personalSettings || {
             numberManagement: {},
@@ -245,6 +247,7 @@ const App: React.FC = () => {
     
     // MyGarage APIを使わずに直接ログイン状態にする
     const demoUser: User = {
+      id: 'demo_user',
       name: 'デモユーザー',
       personalSettings: {
         numberManagement: {},
@@ -518,7 +521,7 @@ const App: React.FC = () => {
           ...prevUser!,
           personalSettings: settings,
         }));
-        showToast('success', '個人設定を保存しました。');
+        showToast('success', '愛車設定を保存しました。');
         setShowPersonalSettingsModal(false);
       }
     },

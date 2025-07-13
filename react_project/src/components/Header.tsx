@@ -143,10 +143,10 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   onClick={onPersonalSettingsClick}
                   className="text-sm text-gray-300 hover:text-indigo-400 transition-colors duration-150 flex items-center bg-gray-700 hover:bg-gray-600 px-2 md:px-3 py-1.5 rounded-lg"
-                  title="個人設定"
+                  title="愛車設定"
                 >
                   <AdjustmentsVerticalIcon className="w-5 h-5 md:mr-1.5" />{' '}
-                  <span className="hidden md:inline">個人設定</span>
+                  <span className="hidden md:inline">愛車設定</span>
                 </button>
               )}
               {/* 7. Logout Button */}
@@ -252,7 +252,7 @@ export const Header: React.FC<HeaderProps> = ({
                       className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-indigo-600 hover:text-white flex items-center"
                     >
                       <AdjustmentsVerticalIcon className="w-5 h-5 mr-2" />{' '}
-                      個人設定
+                      愛車設定
                     </button>
                   )}
                   {/* Logout Button (Moved up) */}

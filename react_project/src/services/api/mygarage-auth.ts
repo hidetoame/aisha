@@ -146,12 +146,23 @@ export const myGarageLogin = async (username: string, password: string): Promise
       
       // AISHAアプリ用のユーザーオブジェクトに変換
       const aishaUser: MyGarageUser = {
-        id: data.data.id?.toString() || 'unknown', // numberをstringに変換
+        id: data.data.created_by?.toString() || 'unknown', // MyGarageの実際のユーザーIDを使用
         username: data.data.email || 'unknown', // MyGarage APIではemailをusernameとして使用
         name: data.data.name || 'MyGarageユーザー', // これがログイン後に表示される名前
         email: data.data.email || '',
         credits: 100, // デフォルトクレジット（今後APIから取得予定）
-        personalSettings: {}, // デフォルト設定
+        personalSettings: {
+          numberManagement: {},
+          referenceRegistration: {
+            carPhotos: [
+              { viewAngle: 'front', label: 'フロント正面' },
+              { viewAngle: 'side', label: 'サイド' },
+              { viewAngle: 'rear', label: 'リア' },
+              { viewAngle: 'front_angled_7_3', label: 'フロント斜め' },
+              { viewAngle: 'rear_angled_7_3', label: 'リア斜め' }
+            ]
+          }
+        },
       };
 
       console.log('Successfully created AISHA user:', aishaUser);
@@ -209,7 +220,18 @@ const handleTestLogin = async (username: string, password: string): Promise<MyGa
       name: user.name,
       email: user.email,
       credits: 100,
-      personalSettings: {},
+      personalSettings: {
+        numberManagement: {},
+        referenceRegistration: {
+          carPhotos: [
+            { viewAngle: 'front', label: 'フロント正面' },
+            { viewAngle: 'side', label: 'サイド' },
+            { viewAngle: 'rear', label: 'リア' },
+            { viewAngle: 'front_angled_7_3', label: 'フロント斜め' },
+            { viewAngle: 'rear_angled_7_3', label: 'リア斜め' }
+          ]
+        }
+      },
     };
   }
   
@@ -266,12 +288,23 @@ export const validateMyGarageToken = async (): Promise<MyGarageUser | null> => {
       
       if (token) {
         const aishaUser: MyGarageUser = {
-          id: data.data.id?.toString() || 'unknown',
+          id: data.data.created_by?.toString() || 'unknown',
           username: data.data.email || 'unknown',
           name: data.data.name || 'MyGarageユーザー',
           email: data.data.email || '',
           credits: 100, // デフォルトクレジット（今後APIから取得予定）
-          personalSettings: {},
+          personalSettings: {
+            numberManagement: {},
+            referenceRegistration: {
+              carPhotos: [
+                { viewAngle: 'front', label: 'フロント正面' },
+                { viewAngle: 'side', label: 'サイド' },
+                { viewAngle: 'rear', label: 'リア' },
+                { viewAngle: 'front_angled_7_3', label: 'フロント斜め' },
+                { viewAngle: 'rear_angled_7_3', label: 'リア斜め' }
+              ]
+            }
+          },
         };
 
         return aishaUser;
