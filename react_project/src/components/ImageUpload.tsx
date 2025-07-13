@@ -15,6 +15,7 @@ interface ImageUploadProps {
   label?: string;
   uploadedFile?: File | null;
   initialPreviewUrl?: string;
+  showDeleteButton?: boolean; // ×ボタンを表示するかどうか
 }
 
 export interface ImageUploadRef {
@@ -22,7 +23,7 @@ export interface ImageUploadRef {
 }
 
 export const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
-  ({ onImageSelect, label = '画像アップロード (任意)', uploadedFile, initialPreviewUrl }, ref) => {
+  ({ onImageSelect, label = '画像アップロード (任意)', uploadedFile, initialPreviewUrl, showDeleteButton = false }, ref) => {
     const [file, setFile] = useState<File | null>(null);
     const [fileName, setFileName] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -98,14 +99,16 @@ export const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
                   alt="プレビュー"
                   className="mx-auto h-32 w-auto rounded-md object-contain"
                 />
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  className="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold transition-colors"
-                  title="画像を削除"
-                >
-                  ×
-                </button>
+                {showDeleteButton && (
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    className="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold transition-colors"
+                    title="画像を削除"
+                  >
+                    ×
+                  </button>
+                )}
               </div>
             ) : (
               <PhotoIcon className="mx-auto h-12 w-12 text-gray-500" />

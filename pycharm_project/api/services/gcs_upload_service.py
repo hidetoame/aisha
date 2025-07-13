@@ -134,34 +134,52 @@ class GCSUploadService:
         """
         self._ensure_initialized()
         try:
+            logger.info(f"🗑️ GCS画像削除開始: {image_url}")
+            
             # URLからブロブ名を抽出
+            blob_name = None
+            
             # 例: https://storage.googleapis.com/aisha-car-images/car-settings/...
             if "storage.googleapis.com" in image_url:
+                logger.info("📍 storage.googleapis.com形式のURLを解析中...")
                 # URLを解析してブロブ名を抽出
                 url_parts = image_url.split(f"{self.bucket_name}/")
+                logger.info(f"🔍 URL分割結果: {url_parts}")
                 if len(url_parts) > 1:
                     blob_name = url_parts[1]
+                    logger.info(f"✅ ブロブ名抽出成功: {blob_name}")
                 else:
-                    logger.error(f"URLからブロブ名を抽出できません: {image_url}")
+                    logger.error(f"❌ URLからブロブ名を抽出できません: {image_url}")
                     return False
-            elif settings.GCS_CUSTOM_DOMAIN in image_url:
+            elif hasattr(settings, 'GCS_CUSTOM_DOMAIN') and settings.GCS_CUSTOM_DOMAIN in image_url:
+                logger.info("📍 カスタムドメイン形式のURLを解析中...")
                 blob_name = image_url.replace(f"https://{settings.GCS_CUSTOM_DOMAIN}/", "")
+                logger.info(f"✅ ブロブ名抽出成功: {blob_name}")
             else:
-                logger.error(f"未対応のURL形式: {image_url}")
+                logger.error(f"❌ 未対応のURL形式: {image_url}")
+                return False
+            
+            if not blob_name:
+                logger.error("❌ ブロブ名が空です")
                 return False
             
             # GCSから削除
+            logger.info(f"🔄 GCSブロブ取得中: {blob_name}")
             blob = self.bucket.blob(blob_name)
+            
+            logger.info("🔍 ブロブ存在確認中...")
             if blob.exists():
+                logger.info("📁 ブロブが存在します。削除実行中...")
                 blob.delete()
-                logger.info(f"GCS削除成功: {blob_name}")
+                logger.info(f"✅ GCS削除成功: {blob_name}")
                 return True
             else:
-                logger.warning(f"GCS削除対象が存在しません: {blob_name}")
+                logger.warning(f"⚠️ GCS削除対象が存在しません: {blob_name}")
                 return False
             
         except Exception as e:
-            logger.error(f"GCS削除エラー: {e}")
+            logger.error(f"❌ GCS削除エラー: {e}")
+            logger.error(f"❌ エラー詳細: type={type(e)}, args={e.args}")
             return False
     
     def generate_signed_url(self, blob_name: str, expiration_minutes: int = 60) -> str:

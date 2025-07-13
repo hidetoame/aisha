@@ -13,6 +13,7 @@ from api.views.credit_charge import (
     ChargeHistoryView,
     stripe_config
 )
+from api.views.library import LibraryListCreateView, LibraryDetailView, PublicLibraryListView
 
 router = DefaultRouter()
 router.register(r'categories', CategoryViewSet, basename='category')
@@ -32,4 +33,9 @@ urlpatterns += [
     path('users/<str:user_id>/credit-transactions/', CreditTransactionHistoryView.as_view(), name='credit-transactions'),
     path('users/<str:user_id>/charge-history/', ChargeHistoryView.as_view(), name='charge-history'),
     path('stripe/config/', stripe_config, name='stripe-config'),
+    
+    # ライブラリ関連
+    path('library/', LibraryListCreateView.as_view(), name='library-list-create'),
+    path('library/<str:frontend_id>/', LibraryDetailView.as_view(), name='library-detail'),
+    path('library/public/', PublicLibraryListView.as_view(), name='library-public'),
 ]

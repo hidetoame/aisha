@@ -87,7 +87,8 @@ export const MenuExecutionPanel: React.FC<MenuExecutionPanelProps> = ({
     setFormData((prev) => ({
       ...prev,
       image: file,
-      inputType: file ? 'upload' : 'prompt',
+      // 画像をクリアしてもアップロードモードを維持
+      // inputType: file ? 'upload' : 'prompt', // 削除
     }));
   }, []);
 
@@ -292,6 +293,7 @@ export const MenuExecutionPanel: React.FC<MenuExecutionPanelProps> = ({
                     onImageSelect={handleImageSelectedByUploader}
                     label="基準にする愛車写真"
                     uploadedFile={formData.image}
+                    showDeleteButton={false}
                   />
                 </>
               )}

@@ -199,15 +199,27 @@ export const deleteCarSettings = async (
   onError?: (error: unknown) => void,
 ): Promise<boolean> => {
   try {
+    console.log('🚀 deleteCarSettings開始:', id);
+    console.log('📡 API URL:', `${API_BASE}/${id}/`);
+    
     const response = await axios.delete<CarSettingsApiResponse<null>>(`${API_BASE}/${id}/`);
+    
+    console.log('📥 削除APIレスポンス:', {
+      status: response.status,
+      success: response.data.success,
+      message: response.data.message,
+      data: response.data
+    });
 
     if (response.data.success) {
+      console.log('✅ deleteCarSettings成功');
       return true;
     } else {
+      console.log('❌ deleteCarSettings失敗 (API success=false)');
       throw new Error(response.data.error || '愛車設定の削除に失敗しました');
     }
   } catch (err) {
-    console.error('愛車設定削除失敗', err);
+    console.error('❌ 愛車設定削除失敗', err);
     onError?.(err);
     return false;
   }

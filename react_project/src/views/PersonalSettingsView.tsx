@@ -125,7 +125,7 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
     if (currentUser.id) {
       fetchCarInfo();
     }
-  }, [currentUser.id, showToast]);
+  }, [currentUser.id]);
 
   // 選択された愛車のCarSettingsを読み込む
   useEffect(() => {
@@ -201,7 +201,7 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
      };
 
      loadCarSettings();
-   }, [selectedCar, currentUser.id, showToast]);
+   }, [selectedCar, currentUser.id]);
 
    const logoMarkImageUploadRef = useRef<ImageUploadRef>(null);
    const originalNumberImageUploadRef = useRef<ImageUploadRef>(null);
@@ -548,7 +548,7 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
 
   const getCarSettingsImageUrl = (angle: CarPhotoAngle): string | undefined => {
     if (!currentCarSettings) {
-      console.log('📷 getCarSettingsImageUrl: currentCarSettingsがnull');
+      // ログを一度だけ出力するように制御
       return undefined;
     }
     
@@ -571,7 +571,10 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
         imageUrl = undefined;
     }
     
-    console.log(`📷 getCarSettingsImageUrl(${angle}):`, imageUrl);
+    // ログ出力を制御（開発時のみ、かつ画像がある場合のみ）
+    if (process.env.NODE_ENV === 'development' && imageUrl) {
+      console.log(`📷 getCarSettingsImageUrl(${angle}):`, imageUrl);
+    }
     return imageUrl;
   };
 
@@ -658,6 +661,7 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
               ref={logoMarkImageUploadRef}
               label="ロゴマーク画像"
               initialPreviewUrl={currentCarSettings?.logo_mark_image_url || undefined}
+              showDeleteButton={true}
               onImageSelect={(file) =>
                 handleImageUpload('numberManagement', 'logoMarkImageUrl', file)
               }
@@ -666,6 +670,7 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
               ref={originalNumberImageUploadRef}
               label="オリジナルナンバー画像"
               initialPreviewUrl={currentCarSettings?.original_number_image_url || undefined}
+              showDeleteButton={true}
               onImageSelect={(file) =>
                 handleImageUpload(
                   'numberManagement',
@@ -708,6 +713,7 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
                   ref={carPhotoUploadRefs.current[photoSlot.viewAngle]}
                   label={photoSlot.label}
                   initialPreviewUrl={getCarSettingsImageUrl(photoSlot.viewAngle)}
+                  showDeleteButton={true}
                   onImageSelect={(file) =>
                     handleImageUpload(
                       'referenceRegistration',

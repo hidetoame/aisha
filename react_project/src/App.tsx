@@ -37,6 +37,13 @@ import { MenusProvider } from './contexts/MenusContext';
 import { useCredits, useCreditsActions } from './contexts/CreditsContext';
 import { chargeCredits } from './services/api/credits';
 import { myGarageLogin, myGarageLogout, validateMyGarageToken } from './services/api/mygarage-auth';
+import { 
+  fetchLibrary, 
+  saveToLibrary, 
+  updateLibraryEntry, 
+  deleteFromLibrary, 
+  fetchPublicLibrary 
+} from './services/api/library';
 
 const App: React.FC = () => {
   const { showToast } = useToast();
@@ -98,6 +105,34 @@ const App: React.FC = () => {
       if (savedPassword) setInputLoginPassword(savedPassword);
     }
   }, []);
+
+  // ライブラリデータの読み込み
+  useEffect(() => {
+    if (user) {
+      loadLibraryData();
+      loadPublicLibraryData();
+    }
+  }, [user]);
+
+  const loadLibraryData = async () => {
+    if (!user?.id) return;
+    try {
+      const libraryData = await fetchLibrary(user.id);
+      setGenerationHistory(libraryData);
+    } catch (error) {
+      console.error('ライブラリの読み込みに失敗しました:', error);
+      showToast('error', 'ライブラリの読み込みに失敗しました');
+    }
+  };
+
+  const loadPublicLibraryData = async () => {
+    try {
+      const publicData = await fetchPublicLibrary();
+      setAllPublicImages(publicData);
+    } catch (error) {
+      console.error('公開ライブラリの読み込みに失敗しました:', error);
+    }
+  };
 
   useEffect(() => {
     // MyGarageトークン検証でログイン状態復元
@@ -309,31 +344,54 @@ const App: React.FC = () => {
   };
 
   const addToGenerationHistory = useCallback(
-    (image: GeneratedImage) => {
+    async (image: GeneratedImage) => {
+      if (!user?.id) return;
+      
       const imageWithAuthor = { ...image, authorName: user?.name || 'ゲスト' };
-      setGenerationHistory((prev) => [
-        imageWithAuthor,
-        ...prev.filter((img) => img.id !== imageWithAuthor.id),
-      ]);
-      if (imageWithAuthor.isPublic) {
-        setAllPublicImages((prevPublic) => {
-          const existingIndex = prevPublic.findIndex(
-            (pImg) => pImg.id === imageWithAuthor.id,
-          );
-          if (existingIndex > -1) {
-            const updatedPublic = [...prevPublic];
-            updatedPublic[existingIndex] = imageWithAuthor;
-            return updatedPublic;
+      
+      try {
+        // ライブラリAPIに保存
+        const savedImage = await saveToLibrary(user.id, imageWithAuthor);
+        if (savedImage) {
+          // ローカルステートも更新
+          setGenerationHistory((prev) => [
+            savedImage,
+            ...prev.filter((img) => img.id !== savedImage.id),
+          ]);
+          
+          // 公開画像の場合は公開リストも更新
+          if (savedImage.isPublic) {
+            setAllPublicImages((prevPublic) => {
+              const existingIndex = prevPublic.findIndex(
+                (pImg) => pImg.id === savedImage.id,
+              );
+              if (existingIndex > -1) {
+                const updatedPublic = [...prevPublic];
+                updatedPublic[existingIndex] = savedImage;
+                return updatedPublic;
+              }
+              return [savedImage, ...prevPublic];
+            });
+          } else {
+            setAllPublicImages((prevPublic) =>
+              prevPublic.filter((pImg) => pImg.id !== savedImage.id),
+            );
           }
-          return [imageWithAuthor, ...prevPublic];
-        });
-      } else {
-        setAllPublicImages((prevPublic) =>
-          prevPublic.filter((pImg) => pImg.id !== imageWithAuthor.id),
-        );
+          
+          showToast('success', 'ライブラリに保存されました');
+        }
+      } catch (error) {
+        console.error('ライブラリ保存に失敗しました:', error);
+        showToast('error', 'ライブラリへの保存に失敗しました');
+        
+        // エラーの場合はローカルステートのみ更新
+        setGenerationHistory((prev) => [
+          imageWithAuthor,
+          ...prev.filter((img) => img.id !== imageWithAuthor.id),
+        ]);
       }
     },
-    [user],
+    [user, showToast],
   );
 
   const addToGoodsHistory = useCallback((record: GoodsCreationRecord) => {
@@ -392,31 +450,53 @@ const App: React.FC = () => {
   }, []);
 
   const handleRateImageInLibrary = useCallback(
-    (imageId: string, rating: 'good' | 'bad') => {
-      setGenerationHistory((prev) =>
-        prev.map((img) => (img.id === imageId ? { ...img, rating } : img)),
-      );
-      setAllPublicImages((prev) =>
-        prev.map((img) => (img.id === imageId ? { ...img, rating } : img)),
-      );
-      // セッション画像にも反映
-      setGeneratedImages((prev) =>
-        prev.map((img) => (img.id === imageId ? { ...img, rating } : img)),
-      );
+    async (imageId: string, rating: 'good' | 'bad') => {
+      if (!user?.id) return;
+      
+      try {
+        // ライブラリAPIで評価を更新
+        const updatedImage = await updateLibraryEntry(user.id, imageId, { rating });
+        if (updatedImage) {
+          // ローカルステートも更新
+          setGenerationHistory((prev) =>
+            prev.map((img) => (img.id === imageId ? { ...img, rating } : img)),
+          );
+          setAllPublicImages((prev) =>
+            prev.map((img) => (img.id === imageId ? { ...img, rating } : img)),
+          );
+          // セッション画像にも反映
+          setGeneratedImages((prev) =>
+            prev.map((img) => (img.id === imageId ? { ...img, rating } : img)),
+          );
 
-      showToast(
-        'info',
-        `画像を評価しました: ${rating === 'good' ? '良い' : '悪い'}`,
-      );
+          showToast(
+            'info',
+            `画像を評価しました: ${rating === 'good' ? '良い' : '悪い'}`,
+          );
+        }
+      } catch (error) {
+        console.error('評価の更新に失敗しました:', error);
+        showToast('error', '評価の更新に失敗しました');
+      }
     },
-    [],
+    [user, showToast],
   );
 
-  const handleDeleteFromLibrary = useCallback((imageId: string) => {
-    setGenerationHistory((prev) => prev.filter((img) => img.id !== imageId));
-    setAllPublicImages((prev) => prev.filter((img) => img.id !== imageId));
-    showToast('info', `画像をライブラリから削除しました。`);
-  }, []);
+  const handleDeleteFromLibrary = useCallback(async (imageId: string) => {
+    if (!user?.id) return;
+    
+    try {
+      const success = await deleteFromLibrary(user.id, imageId);
+      if (success) {
+        setGenerationHistory((prev) => prev.filter((img) => img.id !== imageId));
+        setAllPublicImages((prev) => prev.filter((img) => img.id !== imageId));
+        showToast('info', `画像をライブラリから削除しました。`);
+      }
+    } catch (error) {
+      console.error('削除に失敗しました:', error);
+      showToast('error', '削除に失敗しました');
+    }
+  }, [user, showToast]);
 
   const handleCreateGoodsForLibrary = useCallback(
     (item: SuzuriItem, image: GeneratedImage) => {
@@ -449,63 +529,65 @@ const App: React.FC = () => {
   );
 
   const handleToggleLibraryImagePublicStatus = useCallback(
-    (imageId: string, isPublic: boolean) => {
-      let updatedImage: GeneratedImage | undefined;
+    async (imageId: string, isPublic: boolean) => {
+      if (!user?.id) return;
+      
+      try {
+        const authorName = isPublic ? user?.name || 'ゲスト' : undefined;
+        const updatedImageFromAPI = await updateLibraryEntry(user.id, imageId, { 
+          isPublic, 
+          authorName 
+        });
+        
+        if (updatedImageFromAPI) {
+          // ローカルステート更新
+          setGenerationHistory((prev) =>
+            prev.map((img) => 
+              img.id === imageId 
+                ? { ...img, isPublic, authorName }
+                : img
+            ),
+          );
 
-      setGenerationHistory((prev) =>
-        prev.map((img) => {
-          if (img.id === imageId) {
-            updatedImage = {
-              ...img,
-              isPublic,
-              authorName: isPublic ? user?.name || 'ゲスト' : undefined,
-            };
-            return updatedImage;
-          }
-          return img;
-        }),
-      );
+          // generatedImages 側も更新
+          setGeneratedImages((prev) =>
+            prev.map((img) =>
+              img.id === imageId
+                ? { ...img, isPublic, authorName }
+                : img,
+            ),
+          );
 
-      // generatedImages 側も更新
-      setGeneratedImages((prev) =>
-        prev.map((img) =>
-          img.id === imageId
-            ? {
-                ...img,
-                isPublic,
-                authorName: isPublic ? user?.name || 'ゲスト' : undefined,
+          // 公開画像リスト更新
+          if (isPublic) {
+            setAllPublicImages((prevPublic) => {
+              const existingIndex = prevPublic.findIndex(
+                (pImg) => pImg.id === imageId,
+              );
+              if (existingIndex > -1) {
+                const newPublicList = [...prevPublic];
+                newPublicList[existingIndex] = { ...updatedImageFromAPI, authorName };
+                return newPublicList;
               }
-            : img,
-        ),
-      );
-
-      // 公開画像リスト更新
-      if (updatedImage) {
-        if (isPublic) {
-          setAllPublicImages((prevPublic) => {
-            const existingIndex = prevPublic.findIndex(
-              (pImg) => pImg.id === imageId,
+              return [{ ...updatedImageFromAPI, authorName }, ...prevPublic];
+            });
+          } else {
+            setAllPublicImages((prevPublic) =>
+              prevPublic.filter((pImg) => pImg.id !== imageId),
             );
-            if (existingIndex > -1) {
-              const newPublicList = [...prevPublic];
-              newPublicList[existingIndex] = updatedImage!;
-              return newPublicList;
-            }
-            return [updatedImage!, ...prevPublic];
-          });
-        } else {
-          setAllPublicImages((prevPublic) =>
-            prevPublic.filter((pImg) => pImg.id !== imageId),
+          }
+
+          showToast(
+            'info',
+            `画像の公開設定を${isPublic ? '公開' : '非公開'}に変更しました。`,
           );
         }
+      } catch (error) {
+        console.error('公開設定の更新に失敗しました:', error);
+        showToast('error', '公開設定の更新に失敗しました');
       }
-
-      showToast(
-        'info',
-        `画像の公開設定を${isPublic ? '公開' : '非公開'}に変更しました。`,
-      );
     },
-    [user],
+    [user, showToast],
   );
 
   const toggleAppViewMode = useCallback(() => {

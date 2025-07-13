@@ -3,5 +3,6 @@ from .menu import Menu
 from .prompt_variable import PromptVariable
 from .car_settings import CarSettings
 from .credit_charge import CreditCharge, UserCredit, CreditTransaction
+from .library import Library
 
-__all__ = ['Category', 'Menu', 'PromptVariable', 'CarSettings', 'CreditCharge', 'UserCredit', 'CreditTransaction']
+__all__ = ['Category', 'Menu', 'PromptVariable', 'CarSettings', 'CreditCharge', 'UserCredit', 'CreditTransaction', 'Library']
