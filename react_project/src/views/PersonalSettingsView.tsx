@@ -19,7 +19,7 @@ const carPhotoAngleLabels: Record<CarPhotoAngle, string> = {
   rear_angled_7_3: '斜め後 7:3',
 };
 
-const getDefaultPersonalUserSettings = (): PersonalUserSettings => ({
+export const getDefaultPersonalUserSettings = (): PersonalUserSettings => ({
   numberManagement: {
     licensePlateText: '',
     logoMarkImageUrl: undefined,

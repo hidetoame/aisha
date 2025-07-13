@@ -36,6 +36,7 @@ import { CategoriesProvider } from './contexts/CategoriesContext';
 import { MenusProvider } from './contexts/MenusContext';
 import { useCredits, useCreditsActions } from './contexts/CreditsContext';
 import { chargeCredits } from './services/api/credits';
+import { myGarageLogin, myGarageLogout, validateMyGarageToken } from './services/api/mygarage-auth';
 
 const App: React.FC = () => {
   const { showToast } = useToast();
@@ -45,8 +46,9 @@ const App: React.FC = () => {
 
   const [isAdminView, setIsAdminView] = useState(false);
   const [user, setUser] = useState<User | null>(null); // Initial state set to null, login provides sample user
-  const [inputLoginUsername, setInputLoginUsername] = useState('demo_user');
-  const [inputLoginPassword, setInputLoginPassword] = useState('demo_pass');
+  const [inputLoginUsername, setInputLoginUsername] = useState('');
+  const [inputLoginPassword, setInputLoginPassword] = useState('');
+  const [saveLoginPassword, setSaveLoginPassword] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [showPersonalSettingsModal, setShowPersonalSettingsModal] =
@@ -84,9 +86,50 @@ const App: React.FC = () => {
   const [currentAppView, setCurrentAppView] =
     useState<AppViewMode>('generator');
 
+  // パスワード保存設定の初期化
   useEffect(() => {
-    // Demo user on initial load
-    // setUser({ name: 'ゲスト', credits: 100, personalSettings: defaultPersonalUserSettings });
+    const savedUsername = localStorage.getItem('mygarage-saved-username');
+    const savedPassword = localStorage.getItem('mygarage-saved-password');
+    const savePasswordSetting = localStorage.getItem('mygarage-save-password');
+    
+    if (savePasswordSetting === 'true') {
+      setSaveLoginPassword(true);
+      if (savedUsername) setInputLoginUsername(savedUsername);
+      if (savedPassword) setInputLoginPassword(savedPassword);
+    }
+  }, []);
+
+  useEffect(() => {
+    // MyGarageトークン検証でログイン状態復元
+    const checkLoginStatus = async () => {
+      try {
+        const myGarageUser = await validateMyGarageToken();
+        if (myGarageUser) {
+          const aishaUser: User = {
+            name: myGarageUser.name,
+            personalSettings: myGarageUser.personalSettings || {
+              numberManagement: {},
+              referenceRegistration: {
+                carPhotos: [
+                  { viewAngle: 'front', label: 'フロント正面' },
+                  { viewAngle: 'side', label: 'サイド' },
+                  { viewAngle: 'rear', label: 'リア' },
+                  { viewAngle: 'front_angled_7_3', label: 'フロント斜め' },
+                  { viewAngle: 'rear_angled_7_3', label: 'リア斜め' }
+                ]
+              }
+            },
+          };
+          setUser(aishaUser);
+          setCurrentAppView('generator');
+        }
+      } catch (error) {
+        console.error('Token validation error:', error);
+        // エラーの場合はゲスト状態のまま
+      }
+    };
+
+    checkLoginStatus();
 
     const initialPublic: GeneratedImage[] = Array.from({ length: 10 }).map(
       (_, i) => {
@@ -153,42 +196,90 @@ const App: React.FC = () => {
 
   const handleLogin = async () => {
     try {
-      const response = await fetch('http://13.114.4.219:4000/api/login/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: inputLoginUsername,
-          password: inputLoginPassword,
-        }),
-      });
-      const data = await response.json();
-
-      if (response.ok) {
-        setUser(data);
+      const myGarageUser = await myGarageLogin(inputLoginUsername, inputLoginPassword);
+      
+      if (myGarageUser) {
+        // パスワード保存設定を処理
+        if (saveLoginPassword) {
+          localStorage.setItem('mygarage-saved-username', inputLoginUsername);
+          localStorage.setItem('mygarage-saved-password', inputLoginPassword);
+          localStorage.setItem('mygarage-save-password', 'true');
+        } else {
+          localStorage.removeItem('mygarage-saved-username');
+          localStorage.removeItem('mygarage-saved-password');
+          localStorage.removeItem('mygarage-save-password');
+        }
+        
+        // MyGarageユーザーをAISHAのUser型に変換
+        const aishaUser: User = {
+          name: myGarageUser.name, // ← ここに取得したユーザー名を表示
+          personalSettings: myGarageUser.personalSettings || {
+            numberManagement: {},
+            referenceRegistration: {
+              carPhotos: [
+                { viewAngle: 'front', label: 'フロント正面' },
+                { viewAngle: 'side', label: 'サイド' },
+                { viewAngle: 'rear', label: 'リア' },
+                { viewAngle: 'front_angled_7_3', label: 'フロント斜め' },
+                { viewAngle: 'rear_angled_7_3', label: 'リア斜め' }
+              ]
+            }
+          },
+        };
+        
+        setUser(aishaUser);
         setShowLoginModal(false);
         setCurrentAppView('generator');
-      } else {
-        showToast('error', 'ログインに失敗しました');
+        showToast('success', `${myGarageUser.name}さん、ログインしました`);
       }
     } catch (error) {
-      showToast('error', 'ログインエラーが発生しました');
+      console.error('Login error:', error);
+      showToast('error', error instanceof Error ? error.message : 'ログインエラーが発生しました');
     }
+  };
+
+  const handleDemoLogin = async () => {
+    // デモユーザーの情報を自動セット
+    setInputLoginUsername('demo_user');
+    setInputLoginPassword('demo_pass');
+    
+    // MyGarage APIを使わずに直接ログイン状態にする
+    const demoUser: User = {
+      name: 'デモユーザー',
+      personalSettings: {
+        numberManagement: {},
+        referenceRegistration: {
+          carPhotos: [
+            { viewAngle: 'front', label: 'フロント正面' },
+            { viewAngle: 'side', label: 'サイド' },
+            { viewAngle: 'rear', label: 'リア' },
+            { viewAngle: 'front_angled_7_3', label: 'フロント斜め' },
+            { viewAngle: 'rear_angled_7_3', label: 'リア斜め' }
+          ]
+        }
+      },
+    };
+    
+    setUser(demoUser);
+    setShowLoginModal(false);
+    setCurrentAppView('generator');
+    showToast('success', 'デモユーザーでログインしました');
   };
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('http://13.114.4.219:4000/api/logout/', {
-        method: 'POST',
-      });
-      if (response.ok) {
-        setUser(null);
-        setIsAdminView(false);
-        setCurrentAppView('timeline');
-      } else {
-        showToast('error', 'ログアウトに失敗しました');
-      }
+      await myGarageLogout();
+      setUser(null);
+      setIsAdminView(false);
+      setCurrentAppView('timeline');
+      showToast('success', 'ログアウトしました');
     } catch (error) {
-      showToast('error', 'ログアウトエラーが発生しました');
+      console.error('Logout error:', error);
+      // エラーでもログアウト状態にする
+      setUser(null);
+      setIsAdminView(false);
+      setCurrentAppView('timeline');
+      showToast('info', 'ログアウトしました');
     }
   };
 
@@ -510,20 +601,20 @@ const App: React.FC = () => {
           <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
             <div className="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-md">
               <h2 className="text-2xl font-semibold mb-6 text-center text-indigo-400">
-                ログイン / 新規登録
+                MyGarage ログイン
               </h2>
               <div className="mb-4">
                 <label
                   htmlFor="username"
                   className="block text-sm font-medium text-gray-300 mb-1"
                 >
-                  ユーザーID (ダミー)
+                  メールアドレス
                 </label>
                 <input
-                  type="text"
+                  type="email"
                   id="username"
                   name="username"
-                  placeholder="demo_user"
+                  placeholder="MyGarageのメールアドレス"
                   className="w-full p-2.5 bg-gray-700 border border-gray-600 rounded-md text-gray-200 placeholder-gray-500 focus:ring-indigo-500 focus:border-indigo-500"
                   value={inputLoginUsername}
                   onChange={(e) => setInputLoginUsername(e.target.value)}
@@ -534,30 +625,59 @@ const App: React.FC = () => {
                   htmlFor="password"
                   className="block text-sm font-medium text-gray-300 mb-1"
                 >
-                  パスワード (ダミー)
+                  パスワード
                 </label>
                 <input
                   type="password"
                   id="password"
                   name="password"
-                  placeholder="demo_pass"
+                  placeholder="MyGarageのパスワード"
                   className="w-full p-2.5 bg-gray-700 border border-gray-600 rounded-md text-gray-200 placeholder-gray-500 focus:ring-indigo-500 focus:border-indigo-500"
                   value={inputLoginPassword}
                   onChange={(e) => setInputLoginPassword(e.target.value)}
                 />
               </div>
+              <div className="mb-4 flex items-center">
+                <input
+                  type="checkbox"
+                  id="savePassword"
+                  checked={saveLoginPassword}
+                  onChange={(e) => setSaveLoginPassword(e.target.checked)}
+                  className="mr-2 h-4 w-4 text-indigo-600 bg-gray-700 border-gray-600 rounded focus:ring-indigo-500"
+                />
+                <label htmlFor="savePassword" className="text-sm text-gray-300">
+                  ログインパスワードを保存する
+                </label>
+              </div>
               <p className="text-gray-400 mb-4 text-center text-xs">
-                モックAPIによる認証が行われます。（demo_user/demo_pass）
+                MyGarageアカウントのメールアドレスでログインします
               </p>
               <button
                 onClick={handleLogin}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition duration-150 ease-in-out"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition duration-150 ease-in-out mb-3"
               >
-                デモユーザーとしてログイン
+                MyGarageでログイン
               </button>
+              
+              <div className="relative mb-3">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-600"></div>
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-gray-800 px-2 text-gray-500">開発用</span>
+                </div>
+              </div>
+              
+              <button
+                onClick={handleDemoLogin}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-150 ease-in-out mb-3"
+              >
+                デモユーザーでログイン
+              </button>
+              
               <button
                 onClick={() => setShowLoginModal(false)}
-                className="mt-4 w-full bg-gray-600 hover:bg-gray-700 text-gray-200 font-bold py-3 px-6 rounded-lg transition duration-150 ease-in-out"
+                className="w-full bg-gray-600 hover:bg-gray-700 text-gray-200 font-bold py-3 px-6 rounded-lg transition duration-150 ease-in-out"
               >
                 閉じる
               </button>

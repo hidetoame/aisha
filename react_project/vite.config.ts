@@ -22,6 +22,7 @@ export default defineConfig(({ mode }) => {
       strictPort: true, // ポート使用不可時に代替ポートを使わない
       watch: {
         usePolling: true, // Mac/WSL環境での変更検知安定化（任意）
+        interval: 1000, // ポーリング間隔を1秒に設定
       },
     },
   };
