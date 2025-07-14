@@ -39,6 +39,18 @@ class LibrarySerializer(serializers.ModelSerializer):
     # フロントエンドのisSavedToLibraryフィールドに対応
     isSavedToLibrary = serializers.BooleanField(source='is_saved_to_library')
     
+    # コメント・いいね数を追加
+    comment_count = serializers.SerializerMethodField()
+    like_count = serializers.SerializerMethodField()
+    
+    def get_comment_count(self, obj):
+        """コメント数を取得"""
+        return obj.get_comment_count()
+    
+    def get_like_count(self, obj):
+        """いいね数を取得"""
+        return obj.get_like_count()
+    
     class Meta:
         model = Library
         fields = [
@@ -52,6 +64,8 @@ class LibrarySerializer(serializers.ModelSerializer):
             'isPublic',  # is_public
             'authorName',  # author_name
             'isSavedToLibrary',  # is_saved_to_library
+            'comment_count',  # コメント数
+            'like_count',  # いいね数
         ]
 
 

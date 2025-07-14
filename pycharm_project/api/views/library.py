@@ -43,7 +43,8 @@ class TimelineListCreateView(ListCreateAPIView):
         if public_only:
             queryset = queryset.filter(is_public=True)
         
-        return queryset.order_by('-timestamp')
+        # prefetch_related でコメント・いいねを効率的に取得（N+1クエリ問題を解決）
+        return queryset.prefetch_related('comments', 'likes').order_by('-timestamp')
     
     def post(self, request, *args, **kwargs):
         """
@@ -143,9 +144,10 @@ class TimelineDetailView(RetrieveUpdateDestroyAPIView):
             return Library.objects.none()
         
         # 自分のタイムラインまたは公開されたタイムラインのみアクセス可能
+        # prefetch_related でコメント・いいねを効率的に取得（N+1クエリ問題を解決）
         return Library.objects.filter(
             Q(user_id=user_id) | Q(is_public=True)
-        )
+        ).prefetch_related('comments', 'likes')
     
     def put(self, request, *args, **kwargs):
         """
@@ -264,9 +266,10 @@ class PublicTimelineListView(APIView):
         """
         try:
             # 公開設定されているタイムラインのみ取得
+            # prefetch_related でコメント・いいねを効率的に取得（N+1クエリ問題を解決）
             public_timeline = Library.objects.filter(
                 is_public=True
-            ).order_by('-timestamp')[:50]  # 最新50件
+            ).prefetch_related('comments', 'likes').order_by('-timestamp')[:50]  # 最新50件
             
             serializer = LibrarySerializer(public_timeline, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)

@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Count
 import uuid
 
 
@@ -62,6 +63,18 @@ class Library(models.Model):
             models.Index(fields=['user_id', 'is_saved_to_library']),
             models.Index(fields=['is_saved_to_library', '-timestamp']),
         ]
+    
+    def get_comment_count(self):
+        """コメント数を取得"""
+        return self.comments.count()
+    
+    def get_like_count(self):
+        """いいね数を取得"""
+        return self.likes.count()
+    
+    def is_liked_by_user(self, user_id):
+        """指定されたユーザーがいいねしているかチェック"""
+        return self.likes.filter(user_id=user_id).exists()
     
     def __str__(self):
         library_status = "ライブラリ保存済み" if self.is_saved_to_library else "タイムラインのみ"

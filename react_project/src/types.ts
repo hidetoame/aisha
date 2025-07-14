@@ -90,6 +90,10 @@ export interface GeneratedImage {
   isPublic: boolean; 
   authorName?: string;
   isSavedToLibrary?: boolean; // ライブラリに明示的に保存されたかどうか
+  comment_count?: number; // コメント数（スネークケース）
+  like_count?: number; // いいね数（スネークケース）
+  commentCount?: number; // コメント数（キャメルケース）
+  likeCount?: number; // いいね数（キャメルケース）
 }
 
 export interface GoodsVariation {
@@ -294,4 +298,15 @@ export class RateLimitError extends Error {
     this.details = details;
     Object.setPrototypeOf(this, RateLimitError.prototype);
   }
+}
+
+// コメント関連の型定義
+export interface Comment {
+  id: string;
+  library_id: string;
+  user_id: string;
+  user_name: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
 }

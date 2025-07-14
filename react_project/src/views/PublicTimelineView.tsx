@@ -1,7 +1,9 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { GeneratedImage, User } from '../types';
-import { PhotoIcon, UserCircleIcon, CalendarDaysIcon, SparklesIcon } from '../components/icons/HeroIcons';
+import { PhotoIcon, UserCircleIcon, CalendarDaysIcon, SparklesIcon, ChatBubbleLeftIcon, HeartIcon } from '../components/icons/HeroIcons';
+import CommentModal from '../components/modals/CommentModal';
+import { commentApiService } from '../services/commentApi';
 
 interface PublicTimelineViewProps {
   publicImages: GeneratedImage[];
@@ -9,6 +11,57 @@ interface PublicTimelineViewProps {
 }
 
 const PublicTimelineView: React.FC<PublicTimelineViewProps> = ({ publicImages, currentUser }) => {
+  const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+  const [images, setImages] = useState<GeneratedImage[]>(publicImages);
+
+  // publicImagesが更新されたときにローカルstateも更新
+  useEffect(() => {
+    setImages(publicImages);
+  }, [publicImages]);
+
+  const handleCommentClick = (image: GeneratedImage) => {
+    setSelectedImage(image);
+    setIsCommentModalOpen(true);
+  };
+
+  const handleCommentUpdate = (imageId: string, newCommentCount: number) => {
+    setImages(prevImages => 
+      prevImages.map(prevImage => 
+        prevImage.id === imageId 
+          ? { ...prevImage, commentCount: newCommentCount }
+          : prevImage
+      )
+    );
+  };
+
+  const handleLikeClick = async (image: GeneratedImage) => {
+    if (!currentUser) {
+      // TODO: ログインを促すモーダル表示
+      console.log('ログインが必要です');
+      return;
+    }
+
+    try {
+      const result = await commentApiService.toggleLike(image.id, {
+        user_id: currentUser.id,
+      });
+      
+      // UIを更新してリアルタイムでカウントを反映
+      setImages(prevImages => 
+        prevImages.map(prevImage => 
+          prevImage.id === image.id 
+            ? { ...prevImage, likeCount: result.like_count }
+            : prevImage
+        )
+      );
+      
+      console.log('Like toggle result:', result);
+    } catch (error) {
+      console.error('Failed to toggle like:', error);
+      // TODO: エラーメッセージを表示
+    }
+  };
   if (publicImages.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 p-8">
@@ -24,7 +77,7 @@ const PublicTimelineView: React.FC<PublicTimelineViewProps> = ({ publicImages, c
     <div className="space-y-6">
        <h1 className="text-3xl font-bold text-indigo-400 mb-8 text-center">公開タイムライン</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {publicImages.map((image) => (
+        {images.map((image) => (
           <div key={image.id} className="bg-gray-800 rounded-lg shadow-xl overflow-hidden flex flex-col">
             <div className="aspect-video bg-gray-700/50 flex items-center justify-center overflow-hidden">
               <img 
@@ -46,9 +99,25 @@ const PublicTimelineView: React.FC<PublicTimelineViewProps> = ({ publicImages, c
                 </p>
               </div>
               <div className="flex flex-wrap items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-700">
-                <div className="flex items-center">
-                  <UserCircleIcon className="w-4 h-4 mr-1" />
-                  <span>{image.authorName || '匿名ユーザー'}</span>
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center">
+                    <UserCircleIcon className="w-4 h-4 mr-1" />
+                    <span>{image.authorName || '匿名ユーザー'}</span>
+                  </div>
+                  <button 
+                    onClick={() => handleCommentClick(image)}
+                    className="flex items-center hover:text-blue-400 transition-colors"
+                  >
+                    <ChatBubbleLeftIcon className="w-4 h-4 mr-1" />
+                    <span>{image.commentCount || 0}</span>
+                  </button>
+                  <button 
+                    onClick={() => handleLikeClick(image)}
+                    className="flex items-center hover:text-red-400 transition-colors"
+                  >
+                    <HeartIcon className="w-4 h-4 mr-1" />
+                    <span>{image.likeCount || 0}</span>
+                  </button>
                 </div>
                 <div className="flex items-center">
                   <CalendarDaysIcon className="w-4 h-4 mr-1" />
@@ -60,6 +129,17 @@ const PublicTimelineView: React.FC<PublicTimelineViewProps> = ({ publicImages, c
           </div>
         ))}
       </div>
+      
+      {/* Comment Modal */}
+      {selectedImage && (
+        <CommentModal
+          isOpen={isCommentModalOpen}
+          onClose={() => setIsCommentModalOpen(false)}
+          image={selectedImage}
+          currentUser={currentUser}
+          onCommentUpdate={handleCommentUpdate}
+        />
+      )}
     </div>
   );
 };

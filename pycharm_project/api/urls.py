@@ -16,6 +16,7 @@ from api.views.credit_charge import (
     stripe_config
 )
 from api.views.library import TimelineListCreateView, TimelineDetailView, PublicTimelineListView
+from api.views.comment import CommentListCreateView, CommentDeleteView, LikeToggleView, LikeStatusView
 from api.views.image_expansion import ImageExpansionView
 from api.views.suzuri import (
     create_merchandise,
@@ -51,6 +52,12 @@ urlpatterns += [
     path('timeline/', TimelineListCreateView.as_view(), name='timeline-list-create'),
     path('timeline/public/', PublicTimelineListView.as_view(), name='timeline-public'),
     path('timeline/<str:frontend_id>/', TimelineDetailView.as_view(), name='timeline-detail'),
+    
+    # コメント・いいね関連（frontend_idベース）
+    path('timeline/<str:frontend_id>/comments/', CommentListCreateView.as_view(), name='comment-list-create'),
+    path('timeline/<str:frontend_id>/comments/<uuid:comment_id>/', CommentDeleteView.as_view(), name='comment-delete'),
+    path('timeline/<str:frontend_id>/like/', LikeToggleView.as_view(), name='like-toggle'),
+    path('timeline/<str:frontend_id>/like/status/', LikeStatusView.as_view(), name='like-status'),
     
     # 画像拡張関連
     path('image-expansion/', ImageExpansionView.as_view(), name='image-expansion'),
