@@ -14,6 +14,7 @@ import {
   QueueListIcon,
   SparklesIcon,
   AdjustmentsVerticalIcon, // Added for Personal Settings
+  ClipboardDocumentListIcon, // Added for Payment History
 } from './icons/HeroIcons';
 import { useCredits } from '@/contexts/CreditsContext';
 
@@ -29,6 +30,7 @@ interface HeaderProps {
   currentAppView?: AppViewMode;
   onToggleAppViewMode?: () => void;
   onPersonalSettingsClick?: () => void; // Added
+  onPaymentHistoryClick?: () => void; // Added for Payment History
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -43,6 +45,7 @@ export const Header: React.FC<HeaderProps> = ({
   currentAppView,
   onToggleAppViewMode,
   onPersonalSettingsClick, // Added
+  onPaymentHistoryClick, // Added for Payment History
 }) => {
   const credits = useCredits();
 
@@ -109,6 +112,17 @@ export const Header: React.FC<HeaderProps> = ({
                 <CreditCardIcon className="w-5 h-5 md:mr-1.5" />{' '}
                 <span className="hidden md:inline">チャージ</span>
               </button>
+              {/* 3.5 Payment History Button */}
+              {user && onPaymentHistoryClick && (
+                <button
+                  onClick={onPaymentHistoryClick}
+                  className="text-sm text-gray-300 hover:text-indigo-400 transition-colors duration-150 flex items-center bg-gray-700 hover:bg-gray-600 px-2 md:px-3 py-1.5 rounded-lg"
+                  title="決済履歴を見る"
+                >
+                  <ClipboardDocumentListIcon className="w-5 h-5 md:mr-1.5" />{' '}
+                  <span className="hidden md:inline">決済履歴</span>
+                </button>
+              )}
               {/* 4. Library Button */}
               <button
                 onClick={onGenerationHistoryClick}
@@ -210,6 +224,15 @@ export const Header: React.FC<HeaderProps> = ({
                   >
                     <CreditCardIcon className="w-5 h-5 mr-2" /> チャージ
                   </button>
+                  {/* 2.5 Payment History Button */}
+                  {user && onPaymentHistoryClick && (
+                    <button
+                      onClick={() => handleMobileMenuAction(onPaymentHistoryClick)}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-indigo-600 hover:text-white flex items-center"
+                    >
+                      <ClipboardDocumentListIcon className="w-5 h-5 mr-2" /> 決済履歴
+                    </button>
+                  )}
                   {/* 3. Library Button */}
                   <button
                     onClick={() =>

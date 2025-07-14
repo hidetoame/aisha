@@ -64,6 +64,7 @@ export const expandImage = async (
     const expandedImage: GeneratedImage = {
       ...expandedImageData,
       timestamp: new Date(expandedImageData.timestamp),
+      isSavedToLibrary: false, // 拡張画像は明示的にライブラリ保存なしに設定
     };
 
     console.log('拡張画像データ:', expandedImage);

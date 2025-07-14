@@ -45,6 +45,8 @@ class CreditChargeCreateView(APIView):
         serializer = CreditChargeRequestSerializer(data=request.data)
         
         if not serializer.is_valid():
+            logger.error(f"❌ Invalid request data: {serializer.errors}")
+            logger.error(f"❌ Request data: {request.data}")
             return Response(
                 {'error': 'Invalid request data', 'details': serializer.errors},
                 status=status.HTTP_400_BAD_REQUEST
@@ -228,6 +230,95 @@ def stripe_config(request):
     return Response({
         'publishable_key': getattr(settings, 'STRIPE_PUBLISHABLE_KEY', '')
     })
+
+
+class CreditConsumeView(APIView):
+    """クレジット消費API"""
+    
+    def post(self, request):
+        """
+        クレジットを消費する
+        
+        Request Body:
+        {
+            "user_id": "12345",
+            "credits": 10
+        }
+        
+        Response:
+        {
+            "success": true,
+            "remaining_balance": 990,
+            "consumed_amount": 10
+        }
+        """
+        user_id = request.data.get('user_id')
+        credits = request.data.get('credits')
+        
+        if not user_id or not credits:
+            return Response(
+                {'error': 'user_id and credits are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            credits = int(credits)
+            if credits <= 0:
+                return Response(
+                    {'error': 'credits must be positive'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except ValueError:
+            return Response(
+                {'error': 'credits must be a valid number'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # ユーザークレジットを取得または作成
+            user_credit, created = UserCredit.objects.get_or_create(
+                user_id=user_id,
+                defaults={'credit_balance': 0}
+            )
+            
+            # 残高チェック
+            if user_credit.credit_balance < credits:
+                return Response(
+                    {
+                        'error': 'Insufficient credits',
+                        'current_balance': user_credit.credit_balance,
+                        'required': credits
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # クレジット消費
+            user_credit.credit_balance -= credits
+            user_credit.save()
+            
+            # 取引履歴に記録
+            CreditTransaction.objects.create(
+                user_id=user_id,
+                transaction_type='consume',
+                amount=-credits,  # 消費なので負の値
+                balance_after=user_credit.credit_balance,
+                description=f'クレジット消費: {credits}クレジット'
+            )
+            
+            logger.info(f"Credits consumed: user_id={user_id}, amount={credits}, remaining={user_credit.credit_balance}")
+            
+            return Response({
+                'success': True,
+                'remaining_balance': user_credit.credit_balance,
+                'consumed_amount': credits
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Credit consumption failed: {e}")
+            return Response(
+                {'error': 'Failed to consume credits', 'message': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class ChargeHistoryView(APIView):

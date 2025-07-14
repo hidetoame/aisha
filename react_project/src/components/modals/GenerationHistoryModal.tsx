@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GeneratedImage, GenerationOptions, SuzuriItem, User } from '@/types';
+import { GeneratedImage, MenuExecutionFormData, SuzuriItem, User } from '@/types';
 import { XMarkIcon, PhotoIcon, EyeIcon } from '@/components/icons/HeroIcons';
 import { LibraryImageDetailView } from '@/views/LibraryImageDetailView';
 
@@ -7,7 +7,7 @@ interface GenerationHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   history: GeneratedImage[];
-  onLoadOptions: (options: GenerationOptions) => void;
+  onLoadOptions: (formData: MenuExecutionFormData, generatedImageUrl?: string) => void;
   onRateImageInLibrary: (imageId: string, rating: 'good' | 'bad') => void;
   onDeleteFromLibrary: (imageId: string) => void;
   onCreateGoodsForLibrary: (item: SuzuriItem, image: GeneratedImage) => void;
@@ -36,6 +36,9 @@ export const GenerationHistoryModal: React.FC<GenerationHistoryModalProps> = ({
 
   if (!isOpen) return null;
 
+  // ライブラリ保存済みの画像のみをフィルター
+  const libraryImages = history.filter(image => image.isSavedToLibrary === true);
+
   const handleImageClick = (image: GeneratedImage) => {
     setSelectedImageDetail(image);
   };
@@ -44,16 +47,15 @@ export const GenerationHistoryModal: React.FC<GenerationHistoryModalProps> = ({
     setSelectedImageDetail(null);
   };
 
-  const handleLoadOptionsAndCloseAll = (options: GenerationOptions) => {
-    onLoadOptions(options);
+  const handleLoadOptionsAndCloseAll = (formData: MenuExecutionFormData, generatedImageUrl?: string) => {
+    onLoadOptions(formData, generatedImageUrl);
     onClose();
     handleCloseDetailView();
   };
 
   const handleExtendAndCloseAll = (image: GeneratedImage) => {
     onExtendImageFromLibrary(image);
-    onClose();
-    handleCloseDetailView();
+    // 詳細ビューは開いたまま、拡張方向選択モーダルを表示
   };
 
   return (
@@ -71,7 +73,7 @@ export const GenerationHistoryModal: React.FC<GenerationHistoryModalProps> = ({
               <XMarkIcon className="w-7 h-7" />
             </button>
           </div>
-          {history.length === 0 ? (
+          {libraryImages.length === 0 ? (
             <div className="flex-grow flex flex-col items-center justify-center text-gray-500">
               <PhotoIcon className="w-20 h-20 mb-4" />
               <p className="text-xl">ライブラリはまだ空です。</p>
@@ -81,7 +83,7 @@ export const GenerationHistoryModal: React.FC<GenerationHistoryModalProps> = ({
             </div>
           ) : (
             <ul className="space-y-3 overflow-y-auto flex-grow custom-scrollbar pr-2">
-              {history.map((image) => (
+              {libraryImages.map((image) => (
                 <li
                   key={image.id}
                   className="bg-gray-700 p-3 rounded-lg shadow hover:bg-gray-600 transition-colors duration-150 flex items-center space-x-4 cursor-pointer"

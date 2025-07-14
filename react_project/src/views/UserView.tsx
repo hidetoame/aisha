@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { MenuExecutionPanel } from '../components/panels/MenuExecutionPanel';
 import { GeneratedImagesPanel } from '../components/panels/GeneratedImagesPanel';
 import { DirectionSelectionModal } from '../components/modals/DirectionSelectionModal';
@@ -10,6 +10,7 @@ import {
   ActionAfterLoadType,
   CreditsRequestParams,
   MenuExecutionFormData,
+  AspectRatio,
 } from '../types';
 import { EXTEND_IMAGE_CREDIT_COST } from '../constants';
 import { useToast } from '@/contexts/ToastContext';
@@ -21,6 +22,7 @@ import {
 import { useCredits, useCreditsActions } from '@/contexts/CreditsContext';
 import { consumeCredits } from '@/services/api/credits';
 import { expandImage, AnchorPosition } from '@/services/api/image-expansion';
+import { deleteFromTimeline } from '@/services/api/library';
 
 interface UserViewProps {
   currentUser: User | null;
@@ -37,6 +39,10 @@ interface UserViewProps {
   setGeneratedImages: React.Dispatch<React.SetStateAction<GeneratedImage[]>>;
   onToggleImagePublicStatus: (imageId: string, isPublic: boolean) => void;
   onRateImage: (imageId: string, rating: 'good' | 'bad') => void;
+  onReloadUserHistory: () => void;
+  isLibraryExtending?: boolean; // ライブラリから拡張中かどうか
+  actionAfterLoad?: ActionAfterLoadType; // ライブラリからの読み込み処理
+  onActionAfterLoadPerformed?: () => void; // 処理完了コールバック
 }
 
 const UserView: React.FC<UserViewProps> = ({
@@ -52,6 +58,10 @@ const UserView: React.FC<UserViewProps> = ({
   setGeneratedImages,
   onToggleImagePublicStatus,
   onRateImage,
+  onReloadUserHistory,
+  isLibraryExtending = false, // デフォルトはfalse
+  actionAfterLoad,
+  onActionAfterLoadPerformed,
 }) => {
   const { showToast } = useToast();
 
@@ -60,6 +70,9 @@ const UserView: React.FC<UserViewProps> = ({
   const { refreshCredits } = useCreditsActions();
 
   const [isLoading, setIsLoading] = useState(false);
+  
+  // 統合されたローディング状態（通常の生成中 または ライブラリからの拡張中）
+  const isGenerating = isLoading || isLibraryExtending;
   
   // 拡張モーダル関連のstate
   const [isDirectionModalOpen, setIsDirectionModalOpen] = useState(false);
@@ -109,10 +122,12 @@ const UserView: React.FC<UserViewProps> = ({
 
       setIsLoading(true);
 
-      const exeResponse = await executeMenu(requestParams, () =>
+      const exeResponse = await executeMenu(requestParams, currentUser.id, () =>
         showToast('error', '画像生成に失敗しました。'),
       );
       if (exeResponse) {
+        console.log('🔍 Raw API Response:', exeResponse); // デバッグログ追加
+        console.log('🔍 Generated Image URL:', exeResponse.generatedImageUrl); // デバッグログ追加
         // GeneratedImageに必要情報を格納
         const newImage: GeneratedImage = {
           id: Date.now().toString(),
@@ -124,6 +139,7 @@ const UserView: React.FC<UserViewProps> = ({
           isPublic: false,
           authorName: currentUser?.name || 'ゲスト',
         };
+        console.log('🔍 Generated Image:', newImage); // デバッグログ追加
         setGeneratedImages((prev) => [newImage, ...prev]);
         
         // タイムラインに保存（生成履歴として、ライブラリフラグ=false）
@@ -132,11 +148,14 @@ const UserView: React.FC<UserViewProps> = ({
         showToast('success', '画像が正常に生成されました。');
 
         // クレジット消費API実行
-        const reqBody: CreditsRequestParams = { credits: cost };
+        const reqBody = { 
+          credits: cost,
+          user_id: currentUser.id 
+        };
         const onError = () =>
           showToast('error', 'クレジット消費に失敗しました（画像生成は成功）');
         await consumeCredits(reqBody, onError);
-        refreshCredits();
+        refreshCredits(currentUser.id);
       }
       setIsLoading(false);
     },
@@ -145,11 +164,13 @@ const UserView: React.FC<UserViewProps> = ({
 
   const applyRegenerateFormDataToMenuExePanel = useCallback(
     async (formData: MenuExecutionFormData, generatedImageUrl?: string) => {
-      // メニューが今も存在するかチェック
-      if (!menus.some((menu) => menu.id === formData.menu?.id)) {
+      // メニューが存在する場合はメニューベース、存在しない場合は画像アップロードベースで処理
+      const hasValidMenu = formData.menu?.id && menus.some((menu) => menu.id === formData.menu?.id);
+      
+      if (!hasValidMenu && !generatedImageUrl) {
         showToast(
           'error',
-          '生成時のメニュー取得に失敗しました。メニューが削除された可能性があります。',
+          '再生成に必要な情報が不足しています。メニューが削除されているか、画像が利用できません。',
         );
         return;
       }
@@ -176,17 +197,41 @@ const UserView: React.FC<UserViewProps> = ({
         }
       }
 
-      const modifiedFormData: MenuExecutionFormData = {
+      // メニューが存在しない場合は画像アップロードモードに切り替え
+      const modifiedFormData: MenuExecutionFormData = hasValidMenu ? {
         ...formData,
         image: generatedImageFile ?? formData.image,
         inputType: generatedImageFile ? 'upload' : formData.inputType,
+      } : {
+        // メニューが存在しない場合は現在のカテゴリ/メニューを保持して画像のみ設定
+        category: menuExePanelFormData.category,
+        menu: menuExePanelFormData.menu,
+        image: generatedImageFile,
+        additionalPromptForMyCar: formData.additionalPromptForMyCar || '',
+        additionalPromptForOthers: formData.additionalPromptForOthers || '',
+        aspectRatio: formData.aspectRatio || AspectRatio.Original,
+        promptVariables: [],
+        inputType: 'upload' as const,
       };
 
       setMenuExePanelFormData(modifiedFormData);
-      showToast('success', '再生成用パラメータをセットしました。');
+      showToast('success', hasValidMenu ? '再生成用パラメータをセットしました。' : '画像アップロードモードで再生成用パラメータをセットしました。');
     },
-    [],
+    [menus, menuExePanelFormData], // menuExePanelFormData を依存配列に追加
   );
+
+  // useEffect で actionAfterLoad の処理を追加
+  useEffect(() => {
+    if (actionAfterLoad && typeof actionAfterLoad === 'object' && actionAfterLoad.type === 'loadFromLibrary') {
+      // ライブラリからの画像読み込み処理を実行
+      applyRegenerateFormDataToMenuExePanel(actionAfterLoad.formData, actionAfterLoad.generatedImageUrl);
+      
+      // 処理完了を通知
+      if (onActionAfterLoadPerformed) {
+        onActionAfterLoadPerformed();
+      }
+    }
+  }, [actionAfterLoad, onActionAfterLoadPerformed, applyRegenerateFormDataToMenuExePanel]);
 
   // const handleExtendImage = useCallback((image: GeneratedImage) => {
   //   if (!commonGenerationChecks(EXTEND_IMAGE_CREDIT_COST)) return;
@@ -219,12 +264,30 @@ const UserView: React.FC<UserViewProps> = ({
     setIsDirectionModalOpen(true);
   }, [currentUser, credits, showToast]);
 
-  const handleDeleteSessionImage = useCallback((imageIdToDelete: string) => {
-    setGeneratedImages((prev) =>
-      prev.filter((img) => img.id !== imageIdToDelete),
-    );
-    showToast('info', 'セッションから画像を削除しました。');
-  }, []);
+  const handleDeleteSessionImage = useCallback(async (imageIdToDelete: string) => {
+    if (!currentUser?.id) return;
+    
+    try {
+      // データベースからも削除
+      const success = await deleteFromTimeline(currentUser.id, imageIdToDelete);
+      if (success) {
+        // フロントエンドのステートからも削除
+        setGeneratedImages((prev) =>
+          prev.filter((img) => img.id !== imageIdToDelete),
+        );
+        
+        // ライブラリデータも更新（削除した画像がライブラリにある場合）
+        onReloadUserHistory();
+        
+        showToast('info', '画像を完全に削除しました。');
+      } else {
+        showToast('error', '画像の削除に失敗しました。');
+      }
+    } catch (error) {
+      console.error('画像削除エラー:', error);
+      showToast('error', '画像の削除中にエラーが発生しました。');
+    }
+  }, [currentUser, onReloadUserHistory, showToast]);
 
   // 拡張モーダルのコールバック関数
   const handleDirectionModalClose = useCallback(() => {
@@ -242,11 +305,14 @@ const UserView: React.FC<UserViewProps> = ({
     
     try {
       // クレジット消費
-      const reqBody: CreditsRequestParams = { credits: EXTEND_IMAGE_CREDIT_COST };
+      const reqBody = { 
+        credits: EXTEND_IMAGE_CREDIT_COST,
+        user_id: currentUser.id 
+      };
       const onError = () =>
         showToast('error', 'クレジット消費に失敗しました（画像拡張は成功）');
       await consumeCredits(reqBody, onError);
-      refreshCredits();
+      refreshCredits(currentUser.id);
       
       // 画像拡張API呼び出し
       const expandedImage = await expandImage(
@@ -260,11 +326,8 @@ const UserView: React.FC<UserViewProps> = ({
       );
 
       if (expandedImage) {
-        // 生成画像リストに追加
+        // 生成画像リストに追加（バックエンドで既にタイムラインに保存済み）
         setGeneratedImages(prev => [expandedImage, ...prev]);
-        
-        // タイムラインに保存（生成履歴として、ライブラリフラグ=false）
-        saveToTimelineOnGeneration(expandedImage);
         
         showToast('success', '画像の拡張が完了しました！');
       }
@@ -320,7 +383,7 @@ const UserView: React.FC<UserViewProps> = ({
       <div className="md:w-1/3 lg:w-1/4 xl:w-2/5 h-full">
         <MenuExecutionPanel
           onGenerateClick={handleGenerateClick}
-          isGenerating={isLoading}
+          isGenerating={isGenerating}
           formData={menuExePanelFormData}
           setFormData={setMenuExePanelFormData}
         />
@@ -330,7 +393,7 @@ const UserView: React.FC<UserViewProps> = ({
         <div className="flex-grow min-h-0">
           <GeneratedImagesPanel
             images={generatedImages}
-            isLoading={isLoading}
+            isLoading={isGenerating}
             currentUser={currentUser}
             applyRegenerateFormDataToMenuExePanel={
               applyRegenerateFormDataToMenuExePanel

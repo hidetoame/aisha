@@ -66,6 +66,7 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
     Record<string, string>
   >({});
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false); // 画像拡大モーダル用
   
   // SUZURI関連のstate
   const [isCreatingMerchandise, setIsCreatingMerchandise] = useState(false);
@@ -75,16 +76,51 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
     error?: string;
   } | null>(null);
 
-  const handleDownloadImage = () => {
-    const link = document.createElement('a');
-    link.href = image.url;
-    const extension = image.url.startsWith('data:image/')
-      ? image.url.substring(image.url.indexOf('/') + 1, image.url.indexOf(';'))
-      : 'jpg';
-    link.download = `aisha_library_image_${image.id || Date.now()}.${extension}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownloadImage = async () => {
+    try {
+      // 外部URLの場合はfetchしてBlobとして取得
+      const response = await fetch(image.url);
+      if (!response.ok) {
+        throw new Error('Failed to fetch image');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // ファイル名を生成
+      const extension = blob.type.includes('png') ? 'png' 
+                      : blob.type.includes('jpeg') || blob.type.includes('jpg') ? 'jpg'
+                      : blob.type.includes('webp') ? 'webp'
+                      : 'jpg';
+      
+      link.download = `aisha_image_${image.id || Date.now()}.${extension}`;
+      
+      // ダウンロードを実行
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Blobの解放
+      window.URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      console.error('Download failed:', error);
+      
+      // フォールバック: 新しいタブで画像を開く
+      const link = document.createElement('a');
+      link.href = image.url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // ユーザーに通知
+      alert('直接ダウンロードに失敗しました。新しいタブで画像を開きました。右クリックで「名前を付けて画像を保存」を選択してください。');
+    }
   };
 
   // 再生成
@@ -120,13 +156,7 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
       
       setMerchandiseResult(result);
       
-      if (result.success && result.product_url) {
-        // 成功時は少し待ってからモーダルを閉じる
-        setTimeout(() => {
-          setShowGoodsModal(false);
-          setMerchandiseResult(null);
-        }, 3000);
-      }
+      // 成功時もモーダルを閉じないで、購入リンクを表示し続ける
       
     } catch (error) {
       console.error('SUZURI merchandise creation failed:', error);
@@ -183,7 +213,9 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
         <img
           src={image.url}
           alt={image.displayPrompt}
-          className="max-w-full max-h-full object-contain rounded-md shadow-lg"
+          className="max-w-full max-h-full object-contain rounded-md shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
+          onClick={() => setShowImageModal(true)}
+          title="クリックして拡大表示"
         />
       </div>
 
@@ -352,16 +384,61 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
                       : 'bg-red-900/30 border border-red-500/30'
                   }`}>
                     {merchandiseResult.success ? (
-                      <div>
-                        <p className="text-green-300 font-medium mb-2">✅ グッズ作成完了！</p>
-                        <a
-                          href={merchandiseResult.productUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition-colors"
-                        >
-                          SUZURIで購入する
-                        </a>
+                      <div className="space-y-3">
+                        <p className="text-green-300 font-medium">✅ グッズ作成完了！</p>
+                        <div className="flex flex-col gap-2">
+                          <a
+                            href={merchandiseResult.productUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition-colors"
+                          >
+                            🛒 SUZURIで購入する（新しいタブ）
+                          </a>
+                          <button
+                            onClick={() => {
+                              // iframe購入モーダルを表示
+                              if (!merchandiseResult.productUrl) return;
+                              
+                              const iframe = document.createElement('iframe');
+                              iframe.src = merchandiseResult.productUrl;
+                              iframe.style.width = '100%';
+                              iframe.style.height = '600px';
+                              iframe.style.border = 'none';
+                              iframe.style.borderRadius = '8px';
+                              
+                              const modal = document.createElement('div');
+                              modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[70] p-4';
+                              modal.onclick = (e) => {
+                                if (e.target === modal) {
+                                  document.body.removeChild(modal);
+                                }
+                              };
+                              
+                              const content = document.createElement('div');
+                              content.className = 'bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden relative';
+                              
+                              const header = document.createElement('div');
+                              header.className = 'bg-gray-100 p-4 border-b flex justify-between items-center';
+                              header.innerHTML = `
+                                <h3 class="text-lg font-semibold text-gray-800">SUZURI で購入</h3>
+                                <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700 p-1">
+                                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                  </svg>
+                                </button>
+                              `;
+                              
+                              content.appendChild(header);
+                              content.appendChild(iframe);
+                              modal.appendChild(content);
+                              document.body.appendChild(modal);
+                            }}
+                            className="inline-flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
+                          >
+                            🖼️ アプリ内で購入
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <p className="text-red-300">❌ {merchandiseResult.error}</p>
@@ -546,6 +623,34 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
           image={image}
           currentUser={currentUser}
         />
+      )}
+      
+      {/* 画像拡大モーダル */}
+      {showImageModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-[80] p-4"
+          onClick={() => setShowImageModal(false)}
+        >
+          <div className="relative max-w-[95vw] max-h-[95vh] flex items-center justify-center">
+            <button
+              onClick={() => setShowImageModal(false)}
+              className="absolute top-2 right-2 text-white bg-black/50 hover:bg-black/70 p-2 rounded-full z-10 transition-colors"
+              aria-label="拡大表示を閉じる"
+            >
+              <CloseIconMini className="w-6 h-6" />
+            </button>
+            <img
+              src={image.url}
+              alt={image.displayPrompt}
+              className="max-w-full max-h-full object-contain shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <div className="absolute bottom-4 left-4 right-4 bg-black/70 text-white p-3 rounded-lg">
+              <p className="text-sm font-medium">{image.menuName || 'カスタム生成'}</p>
+              <p className="text-xs text-gray-300 mt-1">{image.displayPrompt}</p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

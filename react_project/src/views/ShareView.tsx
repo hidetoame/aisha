@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { SharePageParams } from '../types';
 import { APP_NAME } from '../constants';
 import { XMarkIcon, UserCircleIcon, CalendarDaysIcon, DocumentTextIcon, SparklesIcon } from '../components/icons/HeroIcons';
@@ -11,6 +11,46 @@ interface ShareViewProps {
 }
 
 export const ShareView: React.FC<ShareViewProps> = ({ params, onClose }) => {
+  useEffect(() => {
+    // Twitter Cards と OGP メタタグを設定
+    const setMetaTag = (property: string, content: string) => {
+      let meta = document.querySelector(`meta[property="${property}"]`) || 
+                  document.querySelector(`meta[name="${property}"]`);
+      if (!meta) {
+        meta = document.createElement('meta');
+        if (property.startsWith('og:') || property.startsWith('twitter:')) {
+          meta.setAttribute('property', property);
+        } else {
+          meta.setAttribute('name', property);
+        }
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute('content', content);
+    };
+
+    // 基本的なOGPタグ
+    setMetaTag('og:title', `${APP_NAME} - ${params.sharedByUser}さんの生成画像`);
+    setMetaTag('og:description', params.sharedPrompt || '画像生成アプリで作成された画像をシェア');
+    setMetaTag('og:image', params.sharedImageUrl);
+    setMetaTag('og:url', window.location.href);
+    setMetaTag('og:type', 'website');
+
+    // Twitter Cards
+    setMetaTag('twitter:card', 'summary_large_image');
+    setMetaTag('twitter:title', `${APP_NAME} - ${params.sharedByUser}さんの生成画像`);
+    setMetaTag('twitter:description', params.sharedPrompt || '画像生成アプリで作成された画像をシェア');
+    setMetaTag('twitter:image', params.sharedImageUrl);
+
+    // ページタイトルも設定
+    document.title = `${APP_NAME} - ${params.sharedByUser}さんの生成画像`;
+
+    // クリーンアップ関数
+    return () => {
+      // ページを離れる時にメタタグをリセット
+      document.title = APP_NAME;
+    };
+  }, [params]);
+
   return (
     <div className="fixed inset-0 bg-gray-900 text-gray-100 flex flex-col items-center justify-center p-4 z-[100]">
       <div className="bg-gray-800 shadow-2xl rounded-lg w-full max-w-2xl p-6 md:p-8 relative overflow-y-auto max-h-[95vh] custom-scrollbar">

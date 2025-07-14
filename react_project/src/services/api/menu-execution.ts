@@ -24,12 +24,18 @@ export const convertFormDataToRequestParams = (formData: MenuExecutionFormData):
 
 export const executeMenu = async (
   params: MenuExecutionRequestParams,
+  userId?: string,
   onError?: (error: unknown) => void,
 ): Promise<MenuExecutionResponseParams | null> => {
   const formData = new FormData();
 
   // 対象のparamsからmenuIdとimageを除外して処理（menuIdはURLに使うため・画像は別処理が必要なため）
   const { menuId, image, ...rest } = params;
+
+  // user_idを追加
+  if (userId) {
+    formData.append('user_id', userId);
+  }
 
   // すべてのparamsのkeyをスネークケースに変換してFormDataに追加
   if (image instanceof File) {
@@ -56,7 +62,10 @@ export const executeMenu = async (
         },
       },
     );
-    return keysToCamelCase(response.data);
+    console.log('🔍 Raw API Response:', response.data); // デバッグログ追加
+    const camelCaseData = keysToCamelCase(response.data);
+    console.log('🔍 Camel Case Data:', camelCaseData); // デバッグログ追加
+    return camelCaseData;
   } catch (err) {
     console.error('画像生成API実行失敗', err);
     onError?.(err);

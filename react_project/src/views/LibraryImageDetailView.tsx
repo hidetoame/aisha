@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { GeneratedImage, GenerationOptions, SuzuriItem, User } from '../types';
+import { GeneratedImage, MenuExecutionFormData, SuzuriItem, User, AspectRatio } from '../types';
 import { GOODS_OPTIONS, EXTEND_IMAGE_CREDIT_COST } from '../constants';
 import {
   XMarkIcon as CloseIcon,
@@ -20,7 +20,7 @@ import { useCredits } from '@/contexts/CreditsContext';
 interface LibraryImageDetailViewProps {
   image: GeneratedImage;
   onClose: () => void;
-  onLoadOptions: (options: GenerationOptions) => void;
+  onLoadOptions: (formData: MenuExecutionFormData, generatedImageUrl?: string) => void;
   onRateImage: (imageId: string, rating: 'good' | 'bad') => void;
   onDeleteImage: (imageId: string) => void;
   onCreateGoods: (item: SuzuriItem, image: GeneratedImage) => void;
@@ -44,6 +44,7 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
 
   const [showGoodsModal, setShowGoodsModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false); // 画像拡大モーダル用
   const [isCurrentlyPublic, setIsCurrentlyPublic] = useState(image.isPublic);
   const [currentRating, setCurrentRating] = useState<
     'good' | 'bad' | undefined
@@ -53,16 +54,51 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
     setCurrentRating(image.rating);
   }, [image.rating]);
 
-  const handleDownloadImage = () => {
-    const link = document.createElement('a');
-    link.href = image.url;
-    const extension = image.url.startsWith('data:image/')
-      ? image.url.substring(image.url.indexOf('/') + 1, image.url.indexOf(';'))
-      : 'jpg';
-    link.download = `aisha_library_image_${image.id || Date.now()}.${extension}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownloadImage = async () => {
+    try {
+      // 外部URLの場合はfetchしてBlobとして取得
+      const response = await fetch(image.url);
+      if (!response.ok) {
+        throw new Error('Failed to fetch image');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // ファイル名を生成
+      const extension = blob.type.includes('png') ? 'png' 
+                      : blob.type.includes('jpeg') || blob.type.includes('jpg') ? 'jpg'
+                      : blob.type.includes('webp') ? 'webp'
+                      : 'jpg';
+      
+      link.download = `aisha_library_image_${image.id || Date.now()}.${extension}`;
+      
+      // ダウンロードを実行
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Blobの解放
+      window.URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      console.error('Download failed:', error);
+      
+      // フォールバック: 新しいタブで画像を開く
+      const link = document.createElement('a');
+      link.href = image.url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // ユーザーに通知
+      alert('直接ダウンロードに失敗しました。新しいタブで画像を開きました。右クリックで「名前を付けて画像を保存」を選択してください。');
+    }
   };
 
   const ActionButton: React.FC<{
@@ -85,19 +121,32 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
   );
 
   const handleGenerateWithThisImage = () => {
-    const newOptions: GenerationOptions = {
-      ...image.fullOptions,
-      uploadedCarImageDataUrl: image.url,
-      uploadedCarImageFile: undefined,
-      originalUploadedImageDataUrl: image.url,
+    console.log('🔄 この画像で生成ボタンがクリックされました');
+    
+    // 現在の画像を使用してライブラリから生成パネルに画像をセット
+    // applyRegenerateFormDataToMenuExePanel と同様の処理を行う
+    const formData = image.usedFormData || {
+      category: null,
+      menu: null,
+      image: null,
+      additionalPromptForMyCar: '',
+      additionalPromptForOthers: '',
+      aspectRatio: AspectRatio.Original,
+      promptVariables: [],
+      inputType: 'upload' as const,
     };
-    onLoadOptions(newOptions);
+    
+    console.log('この画像で生成: formData =', formData);
+    console.log('画像URL =', image.url);
+    
+    // 画像URLを渡してapplyRegenerateFormDataToMenuExePanelと同じ処理を実行
+    onLoadOptions(formData, image.url);
     onClose();
   };
 
   const handleExtendGeneration = () => {
     onExtendImage(image);
-    onClose();
+    // onClose(); // 拡張方向選択モーダルを開くので詳細モーダルは閉じない
   };
 
   const handleDeleteFromLibrary = () => {
@@ -139,7 +188,9 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
             <img
               src={image.url}
               alt={image.displayPrompt || 'Generated library image'}
-              className="max-w-full max-h-full object-contain"
+              className="max-w-full max-h-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
+              onClick={() => setShowImageModal(true)}
+              title="クリックして拡大表示"
             />
           </div>
 
@@ -323,6 +374,34 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
           image={image}
           currentUser={currentUser}
         />
+      )}
+      
+      {/* 画像拡大モーダル */}
+      {showImageModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-[80] p-4"
+          onClick={() => setShowImageModal(false)}
+        >
+          <div className="relative max-w-[95vw] max-h-[95vh] flex items-center justify-center">
+            <button
+              onClick={() => setShowImageModal(false)}
+              className="absolute top-2 right-2 text-white bg-black/50 hover:bg-black/70 p-2 rounded-full z-10 transition-colors"
+              aria-label="拡大表示を閉じる"
+            >
+              <CloseIcon className="w-6 h-6" />
+            </button>
+            <img
+              src={image.url}
+              alt={image.displayPrompt || 'Generated library image'}
+              className="max-w-full max-h-full object-contain shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <div className="absolute bottom-4 left-4 right-4 bg-black/70 text-white p-3 rounded-lg">
+              <p className="text-sm font-medium">{image.menuName || 'カスタム生成'}</p>
+              <p className="text-xs text-gray-300 mt-1">{image.displayPrompt}</p>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

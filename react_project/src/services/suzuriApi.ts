@@ -15,6 +15,46 @@ export interface SuzuriMerchandiseResponse {
   error?: string;
 }
 
+export interface SuzuriPurchaseIntentRequest {
+  product_id: string;
+  quantity: number;
+  size?: string;
+  color?: string;
+  user_id: string;
+}
+
+export interface SuzuriPurchaseIntentResponse {
+  success: boolean;
+  payment_intent_id?: string;
+  client_secret?: string;
+  amount?: number;
+  product_info?: {
+    name: string;
+    price: number;
+    quantity: number;
+    size?: string;
+    color?: string;
+  };
+  error?: string;
+}
+
+export interface SuzuriPurchaseConfirmRequest {
+  payment_intent_id: string;
+  shipping_address: {
+    name: string;
+    postal_code: string;
+    address: string;
+  };
+}
+
+export interface SuzuriPurchaseConfirmResponse {
+  success: boolean;
+  order_id?: string;
+  message?: string;
+  estimated_delivery?: string;
+  error?: string;
+}
+
 export interface SuzuriApiItem {
   id: number;
   name: string;
@@ -89,6 +129,26 @@ export class SuzuriApiClient {
    */
   async getProductDetail(productId: number) {
     return this.makeRequest(`/suzuri/products/${productId}/`);
+  }
+
+  /**
+   * 購入意図を作成（Stripe PaymentIntent）
+   */
+  async createPurchaseIntent(data: SuzuriPurchaseIntentRequest): Promise<SuzuriPurchaseIntentResponse> {
+    return this.makeRequest<SuzuriPurchaseIntentResponse>('/suzuri/purchase/intent/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * 購入を確認
+   */
+  async confirmPurchase(data: SuzuriPurchaseConfirmRequest): Promise<SuzuriPurchaseConfirmResponse> {
+    return this.makeRequest<SuzuriPurchaseConfirmResponse>('/suzuri/purchase/confirm/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 }
 

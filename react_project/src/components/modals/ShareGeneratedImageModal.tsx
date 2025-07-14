@@ -21,16 +21,73 @@ interface ShareGeneratedImageModalProps {
 export const ShareGeneratedImageModal: React.FC<
   ShareGeneratedImageModalProps
 > = ({ isOpen, onClose, image, currentUser }) => {
+  const [publicImageUrl, setPublicImageUrl] = React.useState<string>(image.url);
+  const [isUploading, setIsUploading] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    console.log('🔍 Share Modal - Image URL:', image.url); // デバッグログ追加
+    console.log('🔍 Share Modal - Is Localhost?:', image.url && (image.url.includes('localhost') || image.url.includes('127.0.0.1'))); // デバッグログ追加
+    
+    // ローカルホストURLの場合、GCSにアップロード
+    const uploadImageIfNeeded = async () => {
+      if (image.url && (image.url.includes('localhost') || image.url.includes('127.0.0.1'))) {
+        console.log('🔍 Share Modal - Starting upload for localhost URL:', image.url); // デバッグログ追加
+        setIsUploading(true);
+        try {
+          const apiBase = import.meta.env.VITE_AISHA_API_BASE || 'http://localhost:7999/api';
+          const response = await fetch(`${apiBase}/images/upload/`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              image_url: image.url,
+              user_id: currentUser?.id || 'anonymous',
+            }),
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('🔍 Share Modal - Upload successful:', data.public_url); // デバッグログ追加
+            setPublicImageUrl(data.public_url);
+          } else {
+            const errorText = await response.text();
+            console.error('画像アップロード失敗:', response.status, response.statusText, errorText);
+            // アップロードに失敗してもローカルURLで続行
+            console.log('🔍 Share Modal - Upload failed, using original URL:', image.url);
+          }
+        } catch (error) {
+          console.error('画像アップロードエラー:', error);
+          // アップロードに失敗してもローカルURLで続行
+          console.log('🔍 Share Modal - Upload error, using original URL:', image.url);
+        } finally {
+          setIsUploading(false);
+        }
+      } else {
+        console.log('🔍 Share Modal - No upload needed, using existing URL:', image.url); // デバッグログ追加
+      }
+    };
+
+    if (isOpen) {
+      uploadImageIfNeeded();
+    }
+  }, [isOpen, image.url, currentUser?.id]);
+
   if (!isOpen) return null;
 
-  const shareBaseUrl = window.location.origin + window.location.pathname;
+  const shareBaseUrl = import.meta.env.VITE_AISHA_SHARE_BASE_URL || window.location.origin + window.location.pathname;
   const promptSummary =
     image.displayPrompt.length > 150
       ? image.displayPrompt.substring(0, 147) + '...'
       : image.displayPrompt;
-  const sharePageUrl = `${shareBaseUrl}?share=true&user=${encodeURIComponent(currentUser?.name || image.authorName || 'ゲスト')}&date=${encodeURIComponent(new Date(image.timestamp).toISOString())}&image=${encodeURIComponent(image.url)}&prompt=${encodeURIComponent(promptSummary)}&menu=${encodeURIComponent(image.menuName || 'カスタム')}`;
+  const sharePageUrl = `${shareBaseUrl}?share=true&user=${encodeURIComponent(currentUser?.name || image.authorName || 'ゲスト')}&date=${encodeURIComponent(new Date(image.timestamp).toISOString())}&image=${encodeURIComponent(publicImageUrl)}&prompt=${encodeURIComponent(promptSummary)}&menu=${encodeURIComponent(image.menuName || 'カスタム')}`;
 
   const handleSocialShare = (platformName: string) => {
+    if (isUploading) {
+      alert('画像をアップロード中です。しばらくお待ちください。');
+      return;
+    }
+
     let url = '';
     const text = encodeURIComponent(
       `${APP_NAME}で画像を生成しました！ ${image.menuName || ''} #マイガレージAISHA`,
@@ -38,20 +95,36 @@ export const ShareGeneratedImageModal: React.FC<
 
     switch (platformName) {
       case 'X':
+        // X (Twitter) ではURLとテキストをシェア、画像はOGPで自動表示
         url = `https://twitter.com/intent/tweet?url=${encodeURIComponent(sharePageUrl)}&text=${text}`;
         break;
       case 'Facebook':
         url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(sharePageUrl)}&quote=${text}`;
         break;
       case 'Instagram':
-        alert(
-          'Instagramアプリを開き、ダウンロードした画像を投稿してください。\n画像URL: ' +
-            image.url +
-            '\n(Webからの直接投稿はサポートされていません)',
-        );
-        navigator.clipboard
-          .writeText(`プロンプト: ${image.displayPrompt}\n#マイガレージAISHA`)
-          .catch((err) => console.error('テキストのコピーに失敗: ', err));
+        // Instagramの場合は画像をダウンロードしてクリップボードにプロンプトをコピー
+        if (publicImageUrl) {
+          // 画像をダウンロード
+          const link = document.createElement('a');
+          link.href = publicImageUrl;
+          link.download = `aisha-generated-image-${Date.now()}.jpg`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          // プロンプトをクリップボードにコピー
+          navigator.clipboard
+            .writeText(`プロンプト: ${image.displayPrompt}\n#マイガレージAISHA`)
+            .then(() => {
+              alert('画像をダウンロードし、プロンプトをクリップボードにコピーしました！\nInstagramアプリで画像を投稿してください。');
+            })
+            .catch((err) => {
+              console.error('テキストのコピーに失敗: ', err);
+              alert('画像をダウンロードしました！\nInstagramアプリで投稿してください。');
+            });
+        } else {
+          alert('画像が利用できません。');
+        }
         return;
       case 'Copy URL':
         navigator.clipboard
@@ -91,19 +164,30 @@ export const ShareGeneratedImageModal: React.FC<
           </div>
         </div>
 
-        {image.url ? (
+        {publicImageUrl ? (
           <div className="mb-5 rounded-lg overflow-hidden shadow-lg bg-gray-700/40">
             <img
-              src={image.url}
+              src={publicImageUrl}
               alt={image.menuName || '生成された画像'}
               className="w-full h-auto max-h-[45vh] object-contain"
             />
+            {isUploading && (
+              <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                <div className="text-white text-sm">画像をアップロード中...</div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="mb-5 p-8 text-center bg-gray-700/40 rounded-lg">
-            <p className="text-lg text-red-400">
-              画像プレビューが利用できません。
-            </p>
+            {isUploading ? (
+              <p className="text-lg text-blue-400">
+                画像をアップロード中...
+              </p>
+            ) : (
+              <p className="text-lg text-red-400">
+                画像プレビューが利用できません。
+              </p>
+            )}
           </div>
         )}
 

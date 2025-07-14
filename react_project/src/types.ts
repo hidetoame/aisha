@@ -84,7 +84,7 @@ export interface GeneratedImage {
   displayPrompt: string; 
   menuName?: string;
   usedFormData: MenuExecutionFormData;
-  // fullOptions: GenerationOptions; 
+  fullOptions: GenerationOptions; // コメントアウトを解除
   timestamp: Date;
   rating?: 'good' | 'bad';
   isPublic: boolean; 
@@ -189,7 +189,14 @@ export interface SharePageParams {
   sharedMenuName?: string;
 }
 
-export type ActionAfterLoadType = 'extend' | null;
+export type ActionAfterLoadType = 
+  | 'extend' 
+  | { 
+      type: 'loadFromLibrary'; 
+      formData: MenuExecutionFormData; 
+      generatedImageUrl?: string; 
+    } 
+  | null;
 export type AppViewMode = 'generator' | 'timeline'; 
 
 // --- START: Personal Settings Types ---

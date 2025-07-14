@@ -5,6 +5,8 @@ import PublicTimelineView from './views/PublicTimelineView';
 import { Header } from './components/Header';
 import { GenerationHistoryModal } from './components/modals/GenerationHistoryModal';
 import { GoodsCreationHistoryModal } from './components/modals/GoodsCreationHistoryModal';
+import { PaymentHistoryModal } from './components/modals/PaymentHistoryModal'; // Added
+import { DirectionSelectionModal } from './components/modals/DirectionSelectionModal';
 import PersonalSettingsView from './views/PersonalSettingsView'; // Added
 import { ToastNotification } from './components/ToastNotification'; // Added
 import { ShareView } from './views/ShareView';
@@ -19,6 +21,7 @@ import {
   ActionAfterLoadType,
   AppViewMode,
   AspectRatio,
+  AnchorPosition,
   PersonalUserSettings,
   CreditsRequestParams,
   CreditsOperationResponseParams,
@@ -35,7 +38,7 @@ import { useToast } from './contexts/ToastContext';
 import { CategoriesProvider } from './contexts/CategoriesContext';
 import { MenusProvider } from './contexts/MenusContext';
 import { useCredits, useCreditsActions } from './contexts/CreditsContext';
-import { chargeCredits } from './services/api/credits';
+import { chargeCredits, consumeCredits } from './services/api/credits';
 import { myGarageLogin, myGarageLogout, validateMyGarageToken } from './services/api/mygarage-auth';
 import { 
   fetchTimeline, 
@@ -44,6 +47,7 @@ import {
   deleteFromTimeline, 
   fetchPublicTimeline 
 } from './services/api/library';
+import { expandImage } from './services/api/image-expansion';
 
 const App: React.FC = () => {
   const { showToast } = useToast();
@@ -70,6 +74,7 @@ const App: React.FC = () => {
   const [showGenerationHistoryModal, setShowGenerationHistoryModal] =
     useState(false);
   const [showGoodsHistoryModal, setShowGoodsHistoryModal] = useState(false);
+  const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState(false); // Added
   // 「生成用パネルに読み込ませたい入力パラメータ（menuId, prompt, 画像ファイルなど）」をAppレベルで一時的に保持している変数
   const [menuExePanelFormData, setMenuExePanelFormData] =
     useState<MenuExecutionFormData>({
@@ -90,8 +95,15 @@ const App: React.FC = () => {
     useState<ActionAfterLoadType>(null);
 
   const [allPublicImages, setAllPublicImages] = useState<GeneratedImage[]>([]);
+  
+  // ライブラリから拡張時のローディング状態
+  const [isLibraryExtending, setIsLibraryExtending] = useState(false);
   const [currentAppView, setCurrentAppView] =
     useState<AppViewMode>('generator');
+
+  // 拡張方向選択モーダル関連のstate
+  const [isDirectionModalOpen, setIsDirectionModalOpen] = useState(false);
+  const [imageToExpand, setImageToExpand] = useState<GeneratedImage | null>(null);
 
   // パスワード保存設定の初期化
   useEffect(() => {
@@ -111,18 +123,31 @@ const App: React.FC = () => {
     if (user) {
       loadLibraryData();
       loadPublicLibraryData();
+      loadUserGenerationHistory(); // ユーザーの全生成履歴を読み込み
     }
   }, [user]);
 
   const loadLibraryData = async () => {
     if (!user?.id) return;
     try {
-      // ライブラリ保存済みの画像のみを取得
+      // ライブラリ保存済みの画像のみ取得
       const libraryData = await fetchTimeline(user.id, true);
       setGenerationHistory(libraryData);
     } catch (error) {
       console.error('ライブラリの読み込みに失敗しました:', error);
       showToast('error', 'ライブラリの読み込みに失敗しました');
+    }
+  };
+
+  const loadUserGenerationHistory = async () => {
+    if (!user?.id) return;
+    try {
+      // ユーザーの全ての生成履歴を取得（右側パネル表示用）
+      const allUserImages = await fetchTimeline(user.id, false);
+      setGeneratedImages(allUserImages);
+    } catch (error) {
+      console.error('生成履歴の読み込みに失敗しました:', error);
+      showToast('error', '生成履歴の読み込みに失敗しました');
     }
   };
 
@@ -223,7 +248,7 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (user) refreshCredits();
+    if (user) refreshCredits(user.id);
   }, [user]);
 
   const toggleView = useCallback(() => {
@@ -340,7 +365,7 @@ const App: React.FC = () => {
       showToast('success', 'クレジットチャージに成功しました');
     }
 
-    refreshCredits();
+    refreshCredits(user.id);
     setShowPlanModal(false); // 最後にモーダルを閉じる
   };
 
@@ -486,9 +511,13 @@ const App: React.FC = () => {
   );
 
   const handleLoadOptionsFromHistory = useCallback(
-    (options: GenerationOptions) => {
-      setOptionsToLoadInPanel(options);
-      setActionAfterLoad(null);
+    (formData: MenuExecutionFormData, generatedImageUrl?: string) => {
+      // ライブラリからの画像読み込み要求をactionAfterLoadとして設定
+      setActionAfterLoad({
+        type: 'loadFromLibrary',
+        formData,
+        generatedImageUrl,
+      });
       setShowGenerationHistoryModal(false);
       setCurrentAppView('generator');
     },
@@ -505,23 +534,70 @@ const App: React.FC = () => {
         return;
       }
 
-      const extendOptions: GenerationOptions = {
-        ...imageFromLibrary.fullOptions,
-        finalPromptForService: `拡張: ${imageFromLibrary.displayPrompt}`,
-        creditCostForService: EXTEND_IMAGE_CREDIT_COST,
-        uploadedCarImageDataUrl: imageFromLibrary.url,
-        uploadedCarImageFile: undefined,
-        originalUploadedImageDataUrl:
-          imageFromLibrary.fullOptions.originalUploadedImageDataUrl ||
-          imageFromLibrary.sourceImageUrl,
-      };
-      setOptionsToLoadInPanel(extendOptions);
-      setActionAfterLoad('extend');
-      setShowGenerationHistoryModal(false);
-      setCurrentAppView('generator');
+      // 拡張方向選択モーダルを開く（ライブラリの詳細ビューは保持したまま）
+      setImageToExpand(imageFromLibrary);
+      setIsDirectionModalOpen(true);
+      // ライブラリモーダルとビューはそのまま保持
     },
-    [user],
+    [user, credits, showToast],
   );
+
+  // 拡張方向選択モーダルのコールバック関数
+  const handleDirectionModalClose = useCallback(() => {
+    setIsDirectionModalOpen(false);
+    setImageToExpand(null);
+  }, []);
+
+  const handleDirectionModalConfirm = useCallback(async (anchorPosition: AnchorPosition) => {
+    if (!imageToExpand || !user) {
+      showToast('error', '画像拡張の準備ができていません。');
+      return;
+    }
+
+    // 拡張処理開始：ライブラリモーダルを閉じてジェネレータービューに切り替え
+    setShowGenerationHistoryModal(false);
+    setCurrentAppView('generator');
+    setIsLibraryExtending(true); // ローディング開始
+
+    try {
+      // クレジット消費
+      const reqBody = { 
+        credits: EXTEND_IMAGE_CREDIT_COST,
+        user_id: user.id 
+      };
+      const onError = () =>
+        showToast('error', 'クレジット消費に失敗しました（画像拡張は成功）');
+      await consumeCredits(reqBody, onError);
+      refreshCredits(user.id);
+      
+      // 画像拡張API呼び出し
+      const expandedImage = await expandImage(
+        imageToExpand.id,
+        anchorPosition,
+        user.id,
+        (error) => {
+          console.error('画像拡張エラー:', error);
+          showToast('error', error instanceof Error ? error.message : '画像拡張に失敗しました');
+        }
+      );
+
+      if (expandedImage) {
+        // 生成履歴に追加（バックエンドで既にタイムラインに保存済み）
+        setGenerationHistory(prev => [expandedImage, ...prev]);
+        // ジェネレータービューの生成画像リストにも追加
+        setGeneratedImages(prev => [expandedImage, ...prev]);
+        
+        showToast('success', '画像の拡張が完了しました！');
+        // 既にジェネレータービューに切り替え済み
+      }
+    } catch (error) {
+      console.error('画像拡張処理エラー:', error);
+      showToast('error', '画像拡張処理中にエラーが発生しました');
+    } finally {
+      handleDirectionModalClose();
+      setIsLibraryExtending(false); // ローディング終了
+    }
+  }, [imageToExpand, user, refreshCredits, showToast, setGenerationHistory, handleDirectionModalClose]);
 
   const handleActionAfterLoadPerformed = useCallback(() => {
     setActionAfterLoad(null);
@@ -688,6 +764,11 @@ const App: React.FC = () => {
     [user],
   );
 
+  // 決済履歴モーダルのハンドラー
+  const handlePaymentHistoryClick = useCallback(() => {
+    setShowPaymentHistoryModal(true);
+  }, []);
+
   if (shareParams && shareParams.sharedImageUrl) {
     return (
       <ShareView
@@ -732,6 +813,10 @@ const App: React.FC = () => {
         setGeneratedImages={setGeneratedImages}
         onToggleImagePublicStatus={handleToggleLibraryImagePublicStatus}
         onRateImage={handleRateImageInLibrary}
+        onReloadUserHistory={loadUserGenerationHistory}
+        isLibraryExtending={isLibraryExtending} // ライブラリ拡張中の状態を渡す
+        actionAfterLoad={actionAfterLoad} // ライブラリからの読み込み処理を渡す
+        onActionAfterLoadPerformed={handleActionAfterLoadPerformed} // 処理完了コールバック
       />
     );
   };
@@ -752,7 +837,8 @@ const App: React.FC = () => {
           onToggleAppViewMode={user ? toggleAppViewMode : undefined}
           onPersonalSettingsClick={
             user ? () => setShowPersonalSettingsModal(true) : undefined
-          } // Added
+          }
+          onPaymentHistoryClick={handlePaymentHistoryClick}
         />
         <main className="flex-grow container mx-auto px-4 py-8">
           <CategoriesProvider>
@@ -852,6 +938,7 @@ const App: React.FC = () => {
           isOpen={showPlanModal}
           onClose={() => setShowPlanModal(false)}
           onSelectPlan={handleSelectPlan}
+          currentUser={user}
         />
         <GenerationHistoryModal
           isOpen={showGenerationHistoryModal}
@@ -871,6 +958,21 @@ const App: React.FC = () => {
           isOpen={showGoodsHistoryModal}
           onClose={() => setShowGoodsHistoryModal(false)}
           history={goodsCreationHistory}
+        />
+        
+        {/* 決済履歴モーダル */}
+        <PaymentHistoryModal
+          isOpen={showPaymentHistoryModal}
+          onClose={() => setShowPaymentHistoryModal(false)}
+          currentUser={user}
+        />
+        
+        {/* 拡張方向選択モーダル */}
+        <DirectionSelectionModal
+          isOpen={isDirectionModalOpen}
+          onClose={handleDirectionModalClose}
+          onConfirm={handleDirectionModalConfirm}
+          imageName={imageToExpand?.displayPrompt || '画像'}
         />
         {user &&
           showPersonalSettingsModal && ( // Added PersonalSettingsView modal

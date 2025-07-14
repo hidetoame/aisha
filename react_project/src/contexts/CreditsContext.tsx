@@ -4,7 +4,7 @@ import { useToast } from './ToastContext';
 
 interface CreditsContextValue {
   credits: number;
-  refresh: () => void;
+  refresh: (userId?: string) => void;
 }
 
 const CreditsContext = createContext<CreditsContextValue | null>(null);
@@ -31,22 +31,33 @@ export const CreditsProvider = ({
 
   const { showToast } = useToast();
 
-  const load = () => {
-    fetchCredits(() => {
+  const load = (userId?: string) => {
+    console.log('🔍 CreditsContext.load called with userId:', userId);
+    
+    if (!userId) {
+      console.warn('userId is not available for credits fetch');
+      setCredits(0);
+      return;
+    }
+
+    fetchCredits(userId, () => {
       showToast('error', 'クレジットの取得に失敗しました');
     })
       .then((res) => {
+        console.log('💰 Credits API response:', res);
         // res: { credits: number } を想定し、numberのみを抜き出す
         setCredits(res?.credits ?? 0);
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error('💥 Credits fetch error:', error);
         setCredits(0); // 失敗時は0を設定
       });
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  // useEffect(() => {
+  //   load();
+  // }, []);
+  // 初期化時の自動読み込みは削除 - 明示的にuserIdが渡された時のみ読み込む
 
   return (
     <CreditsContext.Provider value={{ credits, refresh: load }}>
