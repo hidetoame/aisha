@@ -3,6 +3,7 @@ export type ToastType = 'success' | 'error' | 'info';
 export interface User {
   id: string;
   name: string;
+  isAdmin?: boolean; // Added for admin flag
   personalSettings?: PersonalUserSettings; // Added
 }
 

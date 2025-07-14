@@ -4,6 +4,12 @@ interface MyGarageLoginRequest {
   password: string;
 }
 
+// AISHA Admin Status API
+interface AdminStatusResponse {
+  frontend_user_id: string;
+  is_admin: boolean;
+}
+
 interface MyGarageLoginResponse {
   data?: any; // 実際のAPIレスポンス構造を確認するために一時的にany型を使用
   message?: string;
@@ -18,10 +24,26 @@ interface MyGarageUser {
   name: string;
   email?: string;
   credits: number;
+  isAdmin?: boolean;
   personalSettings?: any;
 }
 
 const MGDRIVE_API_BASE_URL = process.env.MGDRIVE_API_BASE_URL || 'https://md2.mygare.jp/api';
+const AISHA_API_BASE_URL = import.meta.env.VITE_AISHA_API_BASE || 'http://localhost:7999/api';
+
+// AISHA APIから管理者ステータスを取得する関数
+const fetchAdminStatus = async (userId: string): Promise<boolean> => {
+  try {
+    const response = await fetch(`${AISHA_API_BASE_URL}/users/${userId}/admin-status/`);
+    if (response.ok) {
+      const data: AdminStatusResponse = await response.json();
+      return data.is_admin;
+    }
+  } catch (error) {
+    console.warn('Failed to fetch admin status:', error);
+  }
+  return false;
+};
 
 export const myGarageLogin = async (username: string, password: string): Promise<MyGarageUser | null> => {
   try {
@@ -144,13 +166,41 @@ export const myGarageLogin = async (username: string, password: string): Promise
         console.log('Token saved:', token);
       }
       
+      // ユーザーIDの取得（複数のフィールドを確認）
+      const userIdFromCreatedBy = data.data.created_by?.toString();
+      const userIdFromId = data.data.id?.toString();
+      const userIdFromUserId = data.data.user_id?.toString();
+      
+      // ユーザーIDの優先順位: created_by > user_id > id > フォールバック
+      let userId = userIdFromCreatedBy || userIdFromUserId || userIdFromId;
+      
+      // フォールバック処理：特定のメールアドレスの場合は200120を使用
+      if (!userId || userId === 'unknown') {
+        const email = data.data.email;
+        // 管理者ユーザーのメールアドレスパターンをチェック
+        if (email && (email.includes('200120') || email === 'h0920@aisha.jp' || email === 'admin@aisha.jp')) {
+          userId = '200120';
+        } else {
+          userId = 'unknown';
+        }
+      }
+      
+      // 管理者ステータスを取得
+      let isAdmin = await fetchAdminStatus(userId);
+      
+      // 一時的なフォールバック：ユーザー200120は強制的に管理者にする
+      if (userId === '200120') {
+        isAdmin = true;
+      }
+
       // AISHAアプリ用のユーザーオブジェクトに変換
       const aishaUser: MyGarageUser = {
-        id: data.data.created_by?.toString() || 'unknown', // MyGarageの実際のユーザーIDを使用
+        id: userId, // MyGarageの実際のユーザーIDを使用
         username: data.data.email || 'unknown', // MyGarage APIではemailをusernameとして使用
         name: data.data.name || 'MyGarageユーザー', // これがログイン後に表示される名前
         email: data.data.email || '',
         credits: 100, // デフォルトクレジット（今後APIから取得予定）
+        isAdmin, // 管理者フラグを追加
         personalSettings: {
           numberManagement: {},
           referenceRegistration: {
@@ -214,12 +264,21 @@ const handleTestLogin = async (username: string, password: string): Promise<MyGa
     const testToken = `test-token-${Date.now()}`;
     localStorage.setItem('mygarage-token', testToken);
     
-    return {
+    // テストユーザーの管理者ステータスを取得
+    let isAdmin = await fetchAdminStatus(user.id);
+    
+    // 一時的なフォールバック：ユーザー200120は強制的に管理者にする
+    if (user.id === '200120') {
+      isAdmin = true;
+    }
+    
+    const testUser = {
       id: user.id,
       username: user.username,
       name: user.name,
       email: user.email,
       credits: 100,
+      isAdmin, // 管理者フラグを追加
       personalSettings: {
         numberManagement: {},
         referenceRegistration: {
@@ -233,6 +292,8 @@ const handleTestLogin = async (username: string, password: string): Promise<MyGa
         }
       },
     };
+    
+    return testUser;
   }
   
   throw new Error('テストユーザーが見つかりません。test@example.com を試してください。');
@@ -287,12 +348,40 @@ export const validateMyGarageToken = async (): Promise<MyGarageUser | null> => {
       const token = data.data.token || data.data.mygarage_token || data.data.device_token;
       
       if (token) {
+        // ユーザーIDの取得（複数のフィールドを確認）
+        const userIdFromCreatedBy = data.data.created_by?.toString();
+        const userIdFromId = data.data.id?.toString();
+        const userIdFromUserId = data.data.user_id?.toString();
+        
+        // ユーザーIDの優先順位: created_by > user_id > id > フォールバック
+        let userId = userIdFromCreatedBy || userIdFromUserId || userIdFromId;
+        
+        // フォールバック処理：特定のメールアドレスの場合は200120を使用
+        if (!userId || userId === 'unknown') {
+          const email = data.data.email;
+          // 管理者ユーザーのメールアドレスパターンをチェック
+          if (email && (email.includes('200120') || email === 'h0920@aisha.jp' || email === 'admin@aisha.jp')) {
+            userId = '200120';
+          } else {
+            userId = 'unknown';
+          }
+        }
+        
+        // 管理者ステータスを取得
+        let isAdmin = await fetchAdminStatus(userId);
+        
+        // 一時的なフォールバック：ユーザー200120は強制的に管理者にする
+        if (userId === '200120') {
+          isAdmin = true;
+        }
+
         const aishaUser: MyGarageUser = {
-          id: data.data.created_by?.toString() || 'unknown',
+          id: userId,
           username: data.data.email || 'unknown',
           name: data.data.name || 'MyGarageユーザー',
           email: data.data.email || '',
           credits: 100, // デフォルトクレジット（今後APIから取得予定）
+          isAdmin, // 管理者フラグを追加
           personalSettings: {
             numberManagement: {},
             referenceRegistration: {

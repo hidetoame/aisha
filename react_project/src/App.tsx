@@ -167,6 +167,7 @@ const App: React.FC = () => {
           const aishaUser: User = {
             id: myGarageUser.id,
             name: myGarageUser.name,
+            isAdmin: myGarageUser.isAdmin, // 🔧 管理者フラグを追加！
             personalSettings: myGarageUser.personalSettings || {
               numberManagement: {},
               referenceRegistration: {
@@ -178,8 +179,9 @@ const App: React.FC = () => {
                   { viewAngle: 'rear_angled_7_3', label: 'リア斜め' }
                 ]
               }
-            },
+            }
           };
+          
           setUser(aishaUser);
           setCurrentAppView('generator');
         }
@@ -242,6 +244,7 @@ const App: React.FC = () => {
         const aishaUser: User = {
           id: myGarageUser.id, // MyGarageから取得したユーザーID
           name: myGarageUser.name, // ← ここに取得したユーザー名を表示
+          isAdmin: myGarageUser.isAdmin, // 🔧 管理者フラグを追加！
           personalSettings: myGarageUser.personalSettings || {
             numberManagement: {},
             referenceRegistration: {
@@ -253,7 +256,7 @@ const App: React.FC = () => {
                 { viewAngle: 'rear_angled_7_3', label: 'リア斜め' }
               ]
             }
-          },
+          }
         };
         
         setUser(aishaUser);

@@ -247,20 +247,12 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
       </div>
 
       <div className="space-y-2.5">
-        {image.menuName && (
-          <p className="text-xs font-semibold text-indigo-300 px-1">
-            メニュー: {image.menuName}
-          </p>
-        )}
-        <p
-          className="text-xs text-gray-400 italic truncate px-1"
-          title={image.displayPrompt}
-        >
-          詳細: {image.displayPrompt || 'カスタムプロンプトなし'}
-        </p>
 
         <div className="flex items-center justify-between px-1 mt-1.5">
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-3">
+            <span className="text-xs font-semibold text-indigo-300">
+              メニュー: {image.menuName || 'カスタム'}
+            </span>
             <button
               onClick={() => onRate(image.id, 'good')}
               title="良い"
@@ -695,7 +687,7 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
             />
             <div className="absolute bottom-4 left-4 right-4 bg-black/70 text-white p-3 rounded-lg">
               <p className="text-sm font-medium">{image.menuName || 'カスタム生成'}</p>
-              <p className="text-xs text-gray-300 mt-1">{image.displayPrompt}</p>
+              {/* <p className="text-xs text-gray-300 mt-1">{image.displayPrompt}</p> */}
             </div>
           </div>
         </div>

@@ -32,7 +32,6 @@ export const SNS_OPTIONS = [
     urlPrefix: 'https://www.facebook.com/sharer/sharer.php?u=',
     icon: 'FacebookIcon',
   },
-  { name: 'Instagram', icon: 'InstagramIcon' }, // No direct web intent for sharing image+text
   { name: 'Copy URL', icon: 'LinkIcon' }, // For copying share page URL
 ];
 

@@ -101,31 +101,6 @@ export const ShareGeneratedImageModal: React.FC<
       case 'Facebook':
         url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(sharePageUrl)}&quote=${text}`;
         break;
-      case 'Instagram':
-        // Instagramの場合は画像をダウンロードしてクリップボードにプロンプトをコピー
-        if (publicImageUrl) {
-          // 画像をダウンロード
-          const link = document.createElement('a');
-          link.href = publicImageUrl;
-          link.download = `aisha-generated-image-${Date.now()}.jpg`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          
-          // プロンプトをクリップボードにコピー
-          navigator.clipboard
-            .writeText(`プロンプト: ${image.displayPrompt}\n#マイガレージAISHA`)
-            .then(() => {
-              alert('画像をダウンロードし、プロンプトをクリップボードにコピーしました！\nInstagramアプリで画像を投稿してください。');
-            })
-            .catch((err) => {
-              console.error('テキストのコピーに失敗: ', err);
-              alert('画像をダウンロードしました！\nInstagramアプリで投稿してください。');
-            });
-        } else {
-          alert('画像が利用できません。');
-        }
-        return;
       case 'Copy URL':
         navigator.clipboard
           .writeText(sharePageUrl)
@@ -201,20 +176,6 @@ export const ShareGeneratedImageModal: React.FC<
               </div>
             </div>
           )}
-          {image.displayPrompt && (
-            <div className="flex items-start">
-              <SharePromptIcon className="w-4 h-4 mr-2 mt-0.5 text-indigo-400 flex-shrink-0" />
-              <div>
-                <span className="font-medium text-gray-300">詳細:</span>
-                <p
-                  className="text-gray-200 ml-1 inline break-words"
-                  title={image.displayPrompt}
-                >
-                  {promptSummary}
-                </p>
-              </div>
-            </div>
-          )}
           <div className="flex items-center">
             <ShareUserIcon className="w-4 h-4 mr-2 text-indigo-400 flex-shrink-0" />
             <span className="font-medium text-gray-300">ユーザー:</span>
@@ -232,7 +193,7 @@ export const ShareGeneratedImageModal: React.FC<
         </div>
 
         <p className="text-sm text-gray-300 mb-3">共有方法を選択:</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-3 gap-2.5">
           {SNS_OPTIONS.map((opt) => (
             <button
               key={opt.name}
@@ -243,9 +204,6 @@ export const ShareGeneratedImageModal: React.FC<
               {opt.name === 'Facebook' && (
                 <FacebookIcon className="w-5 h-5 mb-0.5" />
               )}
-              {opt.name === 'Instagram' && (
-                <InstagramIcon className="w-5 h-5 mb-0.5" />
-              )}
               {opt.name === 'Copy URL' && (
                 <LinkIcon className="w-5 h-5 mb-0.5" />
               )}
@@ -253,9 +211,6 @@ export const ShareGeneratedImageModal: React.FC<
             </button>
           ))}
         </div>
-        <p className="text-xs text-gray-500 mt-4 text-center">
-          Instagramへの投稿は、画像をダウンロード後、アプリから手動で行ってください。
-        </p>
       </div>
     </div>
   );

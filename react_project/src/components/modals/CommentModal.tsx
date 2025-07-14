@@ -134,10 +134,7 @@ const CommentModal: React.FC<CommentModalProps> = ({ isOpen, onClose, image, cur
           ) : (
             <>
               {comments.map((comment) => (
-                <div key={comment.id} className="flex space-x-3">
-                  <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white text-xs font-semibold">
-                    {comment.user_name.charAt(0)}
-                  </div>
+                <div key={comment.id} className="flex">
                   <div className="flex-1 min-w-0">
                     <div className="bg-gray-700 rounded-lg p-3">
                       <div className="flex items-center space-x-2 mb-1">

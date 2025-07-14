@@ -8,7 +8,6 @@ import {
   CheckIcon,
   ExclamationTriangleIcon,
   SparklesIcon,
-  HeartIcon,
   StarIcon,
   ArrowLeftIcon,
   EyeIcon,
@@ -620,8 +619,7 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
             {step === 'select' ? (
               <>
                 <div className="flex items-center space-x-1 text-gray-500">
-                  <HeartIcon className="w-4 h-4" />
-                  <span className="text-sm">AI × SUZURI</span>
+                  <span className="text-sm">AISHA × SUZURI</span>
                 </div>
                 <button
                   onClick={handleClose}

@@ -26,6 +26,13 @@ from api.views.suzuri import (
     create_purchase_intent,
     confirm_purchase
 )
+from api.views.user_admin import (
+    get_user_profile,
+    check_admin_status,
+    set_admin_status,
+    list_admin_users,
+    link_frontend_user
+)
 
 router = DefaultRouter()
 router.register(r'categories', CategoryViewSet, basename='category')
@@ -69,4 +76,11 @@ urlpatterns += [
     path('suzuri/products/<int:product_id>/', get_product_detail, name='suzuri-get-product-detail'),
     path('suzuri/purchase/intent/', create_purchase_intent, name='suzuri-create-purchase-intent'),
     path('suzuri/purchase/confirm/', confirm_purchase, name='suzuri-confirm-purchase'),
+    
+    # ユーザー管理関連
+    path('users/<str:frontend_user_id>/profile/', get_user_profile, name='user-profile'),
+    path('users/<str:frontend_user_id>/admin-status/', check_admin_status, name='check-admin-status'),
+    path('users/<str:frontend_user_id>/admin-status/set/', set_admin_status, name='set-admin-status'),
+    path('users/admin/', list_admin_users, name='list-admin-users'),
+    path('users/<int:user_id>/link-frontend/', link_frontend_user, name='link-frontend-user'),
 ]

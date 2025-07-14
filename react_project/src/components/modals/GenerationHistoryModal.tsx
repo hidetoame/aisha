@@ -109,12 +109,6 @@ export const GenerationHistoryModal: React.FC<GenerationHistoryModalProps> = ({
                         </span>
                       )}
                     </p>
-                    <p
-                      className="text-xs text-gray-400 truncate"
-                      title={image.displayPrompt}
-                    >
-                      詳細: {image.displayPrompt || '情報なし'}
-                    </p>
                     <p className="text-xs text-gray-500 mt-1">
                       日時:{' '}
                       {new Date(image.timestamp).toLocaleDateString('ja-JP', {

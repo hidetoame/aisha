@@ -200,9 +200,6 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
               <h3 className="text-lg font-semibold text-indigo-300 mb-1">
                 {image.menuName || 'カスタム生成'}
               </h3>
-              <p className="text-sm text-gray-400 mb-1 leading-tight">
-                {image.displayPrompt}
-              </p>
               <p className="text-xs text-gray-500">
                 保存日: {new Date(image.timestamp).toLocaleString('ja-JP')}
               </p>
@@ -348,7 +345,6 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
             />
             <div className="absolute bottom-4 left-4 right-4 bg-black/70 text-white p-3 rounded-lg">
               <p className="text-sm font-medium">{image.menuName || 'カスタム生成'}</p>
-              <p className="text-xs text-gray-300 mt-1">{image.displayPrompt}</p>
             </div>
           </div>
         </div>

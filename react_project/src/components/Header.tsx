@@ -46,6 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const credits = useCredits();
 
+
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -84,6 +85,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* <img src="https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/6d/23/22/6d2322a2-79d0-4009-6663-b46e08de5283/AppIcon-1x_U007epad-0-9-0-0-0-0-85-220-0.png/1200x600wa.png" alt="AISHA ロゴ" className="h-10 w-10 rounded-md mr-3 object-contain" /> */}
           <h1 className="text-xl sm:text-2xl font-bold text-indigo-400 tracking-tight">
             {APP_NAME}
+            <span className="text-sm font-normal text-gray-400 ml-2">(β版)</span>
           </h1>
         </div>
 
@@ -129,17 +131,8 @@ export const Header: React.FC<HeaderProps> = ({
                   <span className="hidden md:inline">{appViewButtonText}</span>
                 </button>
               )}
-              {/* 6. Goods History Button */}
-              <button
-                onClick={onGoodsHistoryClick}
-                className="text-sm text-gray-300 hover:text-indigo-400 transition-colors duration-150 flex items-center bg-gray-700 hover:bg-gray-600 px-2 md:px-3 py-1.5 rounded-lg"
-                title="グッズ作成履歴を見る"
-              >
-                <BuildingStorefrontIcon className="w-5 h-5 md:mr-1.5" />{' '}
-                <span className="hidden md:inline">グッズ履歴</span>
-              </button>
-              {/* Personal Settings Button - Desktop - Moved */}
-              {onPersonalSettingsClick && !isAdminView && (
+              {/* Personal Settings Button - Desktop - 管理者のみ表示 */}
+              {onPersonalSettingsClick && !isAdminView && user?.isAdmin && (
                 <button
                   onClick={onPersonalSettingsClick}
                   className="text-sm text-gray-300 hover:text-indigo-400 transition-colors duration-150 flex items-center bg-gray-700 hover:bg-gray-600 px-2 md:px-3 py-1.5 rounded-lg"
@@ -167,17 +160,19 @@ export const Header: React.FC<HeaderProps> = ({
               <LoginIcon className="w-5 h-5 mr-2" /> ログイン
             </button>
           )}
-          <button
-            onClick={onToggleAdminView}
-            title={isAdminView ? 'ユーザービューへ切替' : '管理者ビューへ切替'}
-            className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-indigo-400 transition-colors duration-150"
-          >
-            {isAdminView ? (
-              <ViewListIcon className="w-6 h-6" />
-            ) : (
-              <CogIcon className="w-6 h-6" />
-            )}
-          </button>
+          {user?.isAdmin && (
+            <button
+              onClick={onToggleAdminView}
+              title={isAdminView ? 'ユーザービューへ切替' : '管理者ビューへ切替'}
+              className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-indigo-400 transition-colors duration-150"
+            >
+              {isAdminView ? (
+                <ViewListIcon className="w-6 h-6" />
+              ) : (
+                <CogIcon className="w-6 h-6" />
+              )}
+            </button>
+          )}
         </nav>
 
         <div className="md:hidden flex items-center" ref={menuRef}>
@@ -235,16 +230,8 @@ export const Header: React.FC<HeaderProps> = ({
                       {appViewButtonText}
                     </button>
                   )}
-                  {/* 5. Goods History Button */}
-                  <button
-                    onClick={() => handleMobileMenuAction(onGoodsHistoryClick)}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-indigo-600 hover:text-white flex items-center"
-                  >
-                    <BuildingStorefrontIcon className="w-5 h-5 mr-2" />{' '}
-                    グッズ履歴
-                  </button>
-                  {/* Personal Settings Button - Mobile */}
-                  {onPersonalSettingsClick && !isAdminView && (
+                  {/* Personal Settings Button - Mobile - 管理者のみ表示 */}
+                  {onPersonalSettingsClick && !isAdminView && user?.isAdmin && (
                     <button
                       onClick={() =>
                         handleMobileMenuAction(onPersonalSettingsClick)
@@ -263,17 +250,19 @@ export const Header: React.FC<HeaderProps> = ({
                     <LogoutIcon className="w-5 h-5 mr-2" /> ログアウト
                   </button>
                   {/* Admin Toggle Button (Moved down) */}
-                  <button
-                    onClick={() => handleMobileMenuAction(onToggleAdminView)}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-indigo-600 hover:text-white flex items-center border-t border-gray-600 mt-1 pt-2"
-                  >
-                    {isAdminView ? (
-                      <ViewListIcon className="w-5 h-5 mr-2" />
-                    ) : (
-                      <CogIcon className="w-5 h-5 mr-2" />
-                    )}
-                    {isAdminView ? 'ユーザービュー' : '管理者ビュー'}
-                  </button>
+                  {user?.isAdmin && (
+                    <button
+                      onClick={() => handleMobileMenuAction(onToggleAdminView)}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-indigo-600 hover:text-white flex items-center border-t border-gray-600 mt-1 pt-2"
+                    >
+                      {isAdminView ? (
+                        <ViewListIcon className="w-5 h-5 mr-2" />
+                      ) : (
+                        <CogIcon className="w-5 h-5 mr-2" />
+                      )}
+                      {isAdminView ? 'ユーザービュー' : '管理者ビュー'}
+                    </button>
+                  )}
                 </div>
               )}
             </div>

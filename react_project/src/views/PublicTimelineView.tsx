@@ -94,9 +94,6 @@ const PublicTimelineView: React.FC<PublicTimelineViewProps> = ({ publicImages, c
                     <span>{image.menuName}</span>
                   </div>
                 )}
-                <p className="text-sm text-gray-300 leading-relaxed line-clamp-2" title={image.displayPrompt}>
-                  {image.displayPrompt}
-                </p>
               </div>
               <div className="flex flex-wrap items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-700">
                 <div className="flex items-center space-x-3">
