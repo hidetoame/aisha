@@ -12,6 +12,7 @@ export default defineConfig(({ mode }) => {
       'process.env.MOCK_API_BASE': JSON.stringify(env.MOCK_API_BASE),
       // Stripe環境変数を追加
       'import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY': JSON.stringify(env.STRIPE_PUBLISHABLE_KEY),
+      'import.meta.env.VITE_AISHA_API_BASE': JSON.stringify(env.AISHA_API_BASE),
     },
     resolve: {
       alias: {

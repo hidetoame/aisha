@@ -28,22 +28,32 @@ def create_merchandise(request):
     }
     """
     try:
+        # リクエストデータの詳細ログ
+        logger.info(f"🔍 Raw request data: {request.data}")
+        logger.info(f"🔍 Request headers: {dict(request.headers)}")
+        logger.info(f"🔍 Request method: {request.method}")
+        logger.info(f"🔍 Content type: {request.content_type}")
+        
         image_url = request.data.get('image_url')
         car_name = request.data.get('car_name')
         description = request.data.get('description', '')
+        item_type = request.data.get('item_type', 'heavyweight-t-shirt')  # デフォルトはTシャツ
         
         logger.info(f"SUZURI merchandise creation request:")
         logger.info(f"  image_url: {image_url}")
         logger.info(f"  car_name: {car_name}")
         logger.info(f"  description: {description}")
+        logger.info(f"  item_type: {item_type}")
         
         if not image_url:
+            logger.error("❌ 画像URLが未設定")
             return Response(
                 {'error': '画像URLが必要です'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
         if not car_name:
+            logger.error("❌ 車名が未設定")
             return Response(
                 {'error': '車名が必要です'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -55,7 +65,9 @@ def create_merchandise(request):
         # SUZURI API サービスを初期化
         try:
             suzuri_service = SuzuriAPIService()
+            logger.info("✅ SuzuriAPIService 初期化成功")
         except ValueError as e:
+            logger.error(f"❌ SuzuriAPIService 初期化失敗: {str(e)}")
             return Response({
                 'success': False,
                 'error': f'SUZURI APIの設定エラー: {str(e)}',
@@ -63,38 +75,54 @@ def create_merchandise(request):
             }, status=status.HTTP_400_BAD_REQUEST)
         
         # グッズ作成を実行（署名付きURLを使用）
+        logger.info(f"🛠️ グッズ作成開始:")
+        logger.info(f"  📸 Image URL: {public_image_url}")
+        logger.info(f"  🚗 Car Name: {car_name}")
+        logger.info(f"  📝 Description: {description}")
+        
         result = suzuri_service.create_car_merchandise(
             image_url=public_image_url,  # 署名付きURLまたはオリジナルURL
             car_name=car_name,
-            description=description
+            description=description,
+            item_type=item_type  # アイテム種類を渡す
         )
         
-        logger.info(f"SUZURI API called with image_url: {public_image_url}")
+        logger.info(f"🔍 SUZURI service result: {result}")
         
         if result['success']:
-            logger.info(f"SUZURI merchandise creation successful:")
-            logger.info(f"  product_url: {result['product_url']}")
-            logger.info(f"  product_id: {result['product']['id']}")
-            logger.info(f"  product_title: {result['product']['title']}")
+            logger.info(f"✅ SUZURI merchandise creation successful:")
+            logger.info(f"  product_url: {result.get('product_url')}")
+            
+            product = result.get('product', {})
+            logger.info(f"  product_id: {product.get('id')}")
+            logger.info(f"  product_title: {product.get('title')}")
+            logger.info(f"  sample_url: {product.get('sampleUrl')}")
+            logger.info(f"  sample_image_url: {product.get('sampleImageUrl')}")
             
             return Response({
                 'success': True,
                 'message': 'グッズの作成が完了しました',
-                'product_url': result['product_url'],
-                'product_id': result['product']['id'],
-                'product_title': result['product']['title']
+                'product_url': product.get('sampleUrl', result.get('product_url')),  # sampleUrlを優先
+                'product_id': product.get('id'),
+                'product_title': product.get('title'),
+                'sample_image_url': product.get('sampleImageUrl'),  # プレビュー画像URL追加
+                'item_name': result.get('item', {}).get('name'),
+                'material_id': result.get('material', {}).get('id')
             }, status=status.HTTP_201_CREATED)
         else:
-            logger.error(f"SUZURI merchandise creation failed:")
-            logger.error(f"  error: {result['error']}")
+            logger.error(f"❌ SUZURI merchandise creation failed:")
+            logger.error(f"  error: {result.get('error')}")
             
             return Response({
                 'success': False,
-                'error': result['error']
+                'error': result.get('error')
             }, status=status.HTTP_400_BAD_REQUEST)
             
     except Exception as e:
-        logger.error(f"Merchandise creation error: {str(e)}")
+        logger.error(f"💥 Merchandise creation exception: {str(e)}")
+        logger.error(f"💥 Exception type: {type(e)}")
+        import traceback
+        logger.error(f"💥 Traceback: {traceback.format_exc()}")
         return Response(
             {'error': 'グッズ作成中にエラーが発生しました'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR

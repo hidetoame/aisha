@@ -15,6 +15,7 @@ import {
   EyeIcon as ViewIcon, // For public toggle
 } from '@/components/icons/HeroIcons';
 import { ShareGeneratedImageModal } from '@/components/modals/ShareGeneratedImageModal';
+import { SuzuriMerchandiseModal } from '@/components/modals/SuzuriMerchandiseModal';
 import { useCredits } from '@/contexts/CreditsContext';
 
 interface LibraryImageDetailViewProps {
@@ -42,7 +43,7 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
 }) => {
   const credits = useCredits();
 
-  const [showGoodsModal, setShowGoodsModal] = useState(false);
+  const [showSuzuriModal, setShowSuzuriModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false); // 画像拡大モーダル用
   const [isCurrentlyPublic, setIsCurrentlyPublic] = useState(image.isPublic);
@@ -273,7 +274,7 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
                 label="シェア"
               />
               <ActionButton
-                onClick={() => setShowGoodsModal(true)}
+                onClick={() => setShowSuzuriModal(true)}
                 icon={<ShoppingBagIcon className="w-5 h-5" />}
                 label="グッズ"
               />
@@ -307,64 +308,13 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
           </div>
         </div>
 
-        {showGoodsModal && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[80] p-4"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowGoodsModal(false);
-            }}
-          >
-            <div
-              className="bg-gray-850 border-gray-700 p-6 rounded-lg shadow-xl w-full max-w-sm relative"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={() => setShowGoodsModal(false)}
-                className="absolute top-3 right-3 text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-700"
-              >
-                <CloseIcon className="w-6 h-6" />
-              </button>
-              <h3 className="text-xl font-semibold text-indigo-400 mb-4">
-                グッズ作成
-              </h3>
-              <p className="text-sm text-gray-400 mb-1">
-                画像:{' '}
-                <span className="italic truncate">
-                  {image.menuName} - {image.displayPrompt.substring(0, 20)}...
-                </span>
-              </p>
-              <p className="text-sm text-gray-400 mb-4">
-                作成するアイテムを選択 (クレジット消費):
-              </p>
-              <div className="space-y-3 max-h-60 overflow-y-auto custom-scrollbar pr-1">
-                {GOODS_OPTIONS.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      if (credits < item.creditCost) {
-                        alert(
-                          `${item.name}を作成するためのクレジットが不足しています。`,
-                        );
-                        return;
-                      }
-                      onCreateGoods(item, image);
-                      setShowGoodsModal(false);
-                    }}
-                    disabled={credits < item.creditCost}
-                    className="w-full flex justify-between items-center p-3 bg-gray-700 hover:bg-indigo-600 rounded-md transition-colors disabled:opacity-60 disabled:hover:bg-gray-700"
-                  >
-                    <span>{item.name}</span>
-                    <span
-                      className={`text-xs ${credits < item.creditCost ? 'text-red-400' : 'text-indigo-300'}`}
-                    >
-                      {item.creditCost} クレジット
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+        {/* SuzuriMerchandiseModal */}
+        {showSuzuriModal && (
+          <SuzuriMerchandiseModal
+            isOpen={showSuzuriModal}
+            onClose={() => setShowSuzuriModal(false)}
+            image={image}
+          />
         )}
       </div>
       {showShareModal && (

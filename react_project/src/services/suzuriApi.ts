@@ -4,14 +4,24 @@ export interface SuzuriMerchandiseRequest {
   image_url: string;
   car_name: string;
   description?: string;
+  item_type?: string;
 }
 
 export interface SuzuriMerchandiseResponse {
   success: boolean;
   message?: string;
   product_url?: string;
+  productUrl?: string;  // 互換性のため
   product_id?: number;
+  productId?: number;   // 互換性のため
   product_title?: string;
+  productTitle?: string; // 互換性のため
+  sample_image_url?: string;
+  sampleImageUrl?: string; // 互換性のため
+  item_name?: string;
+  itemName?: string;    // 互換性のため
+  material_id?: number;
+  materialId?: number;  // 互換性のため
   error?: string;
 }
 

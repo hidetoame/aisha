@@ -307,14 +307,41 @@ class SuzuriAPIService:
         logger.error("すべての商品作成方法が失敗しました")
         return None
     
-    def create_car_merchandise(self, image_url: str, car_name: str, description: str = "") -> Dict[str, Any]:
+    def _get_item_display_name(self, item_name: str, requested_type: str) -> str:
         """
-        車の画像からグッズを作成する統合メソッド
+        アイテム名から表示用の名前を取得
+        """
+        display_names = {
+            'heavyweight-t-shirt': 'Tシャツ',
+            'heavyweight-hoodie': 'パーカー',
+            'heavyweight-sweat': 'スウェット',
+            'tote-bag': 'トートバッグ',
+            'mug-cup': 'マグカップ',
+            'sticker': 'ステッカー',
+            'tumbler': 'タンブラー',
+            'phone-case': 'スマホケース',
+        }
+        
+        # requested_typeから優先的に表示名を取得
+        if requested_type in display_names:
+            return display_names[requested_type]
+        
+        # item_nameから表示名を取得
+        if item_name in display_names:
+            return display_names[item_name]
+        
+        # マッピングにない場合はそのまま返す
+        return item_name or 'グッズ'
+
+    def create_car_merchandise(self, image_url: str, car_name: str, description: str = "", item_type: str = "heavyweight-t-shirt") -> Dict[str, Any]:
+        """
+        車の画像からグッズを作成する統合メソッド（Zennのベストプラクティスに基づく実装）
         
         Args:
             image_url: 車の画像URL
             car_name: 車の名前
             description: 商品説明
+            item_type: 作成するアイテムの種類（例: heavyweight-t-shirt, heavyweight-hoodie）
             
         Returns:
             作成結果の辞書（成功/失敗、作成された商品情報など）
@@ -330,7 +357,9 @@ class SuzuriAPIService:
                         'title': f"{car_name} Tシャツ",
                         'description': description or f"AISHA で生成された {car_name} の画像を使用したオリジナルTシャツです。",
                         'price': 2500,
-                        'created_at': '2024-01-01T12:00:00Z'
+                        'created_at': '2024-01-01T12:00:00Z',
+                        'sampleUrl': f"https://suzuri.jp/products/demo-{car_name.lower().replace(' ', '-')}",
+                        'sampleImageUrl': image_url
                     },
                     'material': {
                         'id': 67890,
@@ -338,14 +367,14 @@ class SuzuriAPIService:
                         'url': image_url
                     },
                     'item': {
-                        'id': 1,
-                        'name': 'T-Shirt',
+                        'id': 148,
+                        'name': 'heavyweight-t-shirt',
                         'base_price': 2500
                     },
                     'product_url': f"https://suzuri.jp/products/demo-{car_name.lower().replace(' ', '-')}"
                 }
             
-            # 1. アイテム一覧を取得
+            # 1. アイテム一覧を取得して指定されたアイテムを探す
             items = self.get_items()
             if not items:
                 return {'success': False, 'error': 'アイテム一覧の取得に失敗しました'}
@@ -357,112 +386,133 @@ class SuzuriAPIService:
                     'error': f'SUZURI API エラー: {items.get("message", "不明なエラー")}'
                 }
             
-            # Tシャツのアイテムを探す (デバッグログ追加)
-            tshirt_item = None
+            # 指定されたアイテムを探す
+            target_item = None
             logger.info(f"取得したアイテム数: {len(items)}")
+            logger.info(f"検索対象アイテム: {item_type}")
             
             for item in items:
                 item_name = item.get('name', '').lower()
                 logger.info(f"アイテム検索中: ID={item.get('id')}, Name='{item.get('name')}', Lower='{item_name}'")
                 
-                # より幅広い検索条件でTシャツを探す
-                if any(keyword in item_name for keyword in ['t-shirt', 'tshirt', 't_shirt', 'shirt', 'シャツ']):
-                    tshirt_item = item
-                    logger.info(f"✅ Tシャツアイテム発見: {item.get('name')} (ID: {item.get('id')})")
+                # 完全一致または部分一致で検索
+                if item_name == item_type.lower() or item_type.lower() in item_name:
+                    target_item = item
+                    logger.info(f"✅ 対象アイテム発見: {item.get('name')} (ID: {item.get('id')})")
                     break
             
-            # 見つからない場合は最初のアイテムを使用
-            if not tshirt_item and items:
-                tshirt_item = items[0]
-                logger.info(f"Tシャツが見つからないため、最初のアイテムを使用: {tshirt_item.get('name')}")
+            # 指定アイテムが見つからない場合はTシャツにフォールバック
+            if not target_item:
+                logger.warning(f"指定アイテム '{item_type}' が見つかりません。Tシャツを検索します。")
+                for item in items:
+                    item_name = item.get('name', '').lower()
+                    if any(keyword in item_name for keyword in ['t-shirt', 'tshirt', 't_shirt', 'shirt', 'シャツ', 'heavyweight-t', 'heavy-t', 'premium-t']):
+                        target_item = item
+                        logger.info(f"✅ フォールバック: Tシャツアイテム発見: {item.get('name')} (ID: {item.get('id')})")
+                        break
             
-            if not tshirt_item:
+            # 最後の手段として最初のアイテムを使用
+            if not target_item and items:
+                target_item = items[0]
+                logger.info(f"最後の手段として最初のアイテムを使用: {target_item.get('name')}")
+            
+            if not target_item:
                 return {'success': False, 'error': '利用可能なアイテムが見つかりませんでした'}
             
-            # 2. マテリアル（画像）をアップロード
-            material_title = f"{car_name} - 生成画像"
-            material = self.upload_material_from_url(image_url, material_title)
-            
-            if not material:
-                return {'success': False, 'error': 'マテリアルのアップロードに失敗しました'}
-            
-            # エラーレスポンスかどうかを確認
-            if isinstance(material, dict) and material.get('error'):
-                return {
-                    'success': False, 
-                    'error': f'マテリアルアップロード エラー: {material.get("message", "不明なエラー")}'
+            # 2. Zennのベストプラクティスに従って、画像アップロードと商品作成を同時実行
+            try:
+                # 画像をダウンロード
+                response = requests.get(image_url, timeout=30)
+                response.raise_for_status()
+                
+                # ファイル形式を判定
+                content_type = response.headers.get('content-type', 'image/png')
+                if 'image/jpeg' in content_type or 'image/jpg' in content_type:
+                    mime_type = 'image/jpeg'
+                else:
+                    mime_type = 'image/png'
+                
+                # Base64エンコード
+                import base64
+                image_base64 = base64.b64encode(response.content).decode('utf-8')
+                
+                # マテリアルタイトルと商品情報
+                material_title = f"{car_name} - 生成画像"
+                
+                # アイテム種類に応じた商品名を生成
+                item_display_name = self._get_item_display_name(target_item.get('name', ''), item_type)
+                product_title = f"{car_name} {item_display_name}"
+                product_description = description or f"AISHA で生成された {car_name} の画像を使用したオリジナル{item_display_name}です。"
+                
+                # Zennで推奨されているJSON形式でマテリアルと商品を同時作成
+                data = {
+                    'texture': f'data:{mime_type};base64,{image_base64}',
+                    'title': product_title,  # 商品タイトルとして使用
+                    'price': 0,  # 基本価格（SUZURIが自動設定）
+                    'description': product_description,
+                    'products': [
+                        {
+                            'itemId': target_item['id'],
+                            'published': True  # 公開状態で作成
+                        }
+                    ]
                 }
-            
-            # デバッグ: マテリアルレスポンスの構造確認
-            logger.info(f"マテリアルレスポンス構造: {material}")
-            logger.info(f"マテリアル利用可能キー: {list(material.keys()) if isinstance(material, dict) else 'レスポンスが辞書ではありません'}")
-            
-            # マテリアルIDの取得（複数の可能性を試す）
-            material_id = None
-            if isinstance(material, dict):
-                # 一般的なキー名を試す
-                for key in ['id', 'material_id', 'materialId', 'material', 'data']:
-                    if key in material:
-                        if isinstance(material[key], dict) and 'id' in material[key]:
-                            material_id = material[key]['id']
-                            logger.info(f"マテリアルID発見（ネスト）: {key}.id = {material_id}")
-                            break
-                        elif isinstance(material[key], (int, str)):
-                            material_id = material[key]
-                            logger.info(f"マテリアルID発見: {key} = {material_id}")
-                            break
-            
-            if not material_id:
-                logger.error(f"マテリアルIDが見つかりません。レスポンス: {material}")
-                return {'success': False, 'error': 'マテリアルIDの取得に失敗しました'}
-            
-            # 3. 商品を作成
-            product_title = f"{car_name} Tシャツ"
-            product_description = description or f"AISHA で生成された {car_name} の画像を使用したオリジナルTシャツです。"
-            
-            product = self.create_product(
-                material_id=material_id,
-                item_id=tshirt_item['id'],
-                title=product_title,
-                description=product_description
-            )
-            
-            if not product:
-                return {'success': False, 'error': '商品の作成に失敗しました'}
-            
-            # エラーレスポンスかどうかを確認
-            if isinstance(product, dict) and product.get('error'):
-                return {
-                    'success': False, 
-                    'error': f'商品作成 エラー: {product.get("message", "不明なエラー")}'
-                }
-            
-            # デバッグ: 商品レスポンスの構造確認
-            logger.info(f"商品レスポンス構造: {product}")
-            logger.info(f"商品利用可能キー: {list(product.keys()) if isinstance(product, dict) else 'レスポンスが辞書ではありません'}")
-            
-            # 商品IDの取得
-            product_id = None
-            if isinstance(product, dict):
-                for key in ['id', 'product_id', 'productId']:
-                    if key in product:
-                        if isinstance(product[key], dict) and 'id' in product[key]:
-                            product_id = product[key]['id']
-                            break
-                        elif isinstance(product[key], (int, str)):
-                            product_id = product[key]
-                            break
-            
-            # 商品URLの構築
-            product_url = f"https://suzuri.jp/products/{product_id}" if product_id else "https://suzuri.jp/"
-            
-            return {
-                'success': True,
-                'product': product,
-                'material': material,
-                'item': tshirt_item,
-                'product_url': product_url
-            }
+                
+                logger.info(f"🛠️ SUZURI マテリアル+商品同時作成開始:")
+                logger.info(f"  📸 Image size: {len(response.content)} bytes")
+                logger.info(f"  📸 Image MIME: {mime_type}")
+                logger.info(f"  🚗 Product title: {product_title}")
+                logger.info(f"  🎯 Item ID: {target_item['id']} ({target_item.get('name')})")
+                logger.info(f"  🏷️ Item type: {item_type}")
+                
+                result = self._make_request('POST', '/materials', data=data)
+                
+                if result and not result.get('error'):
+                    logger.info(f"✅ マテリアル+商品作成成功")
+                    logger.info(f"📋 レスポンス構造: {list(result.keys()) if isinstance(result, dict) else 'Not a dict'}")
+                    
+                    # レスポンス構造を解析
+                    material_info = result.get('material', result)
+                    products_info = result.get('products', [])
+                    
+                    # 最初の商品情報を取得
+                    product_info = products_info[0] if products_info else None
+                    
+                    if product_info:
+                        # sampleUrlを使って商品詳細ページのURLを取得
+                        product_url = product_info.get('sampleUrl', f"https://suzuri.jp/")
+                        
+                        logger.info(f"🔗 商品URL: {product_url}")
+                        logger.info(f"🖼️ サンプル画像URL: {product_info.get('sampleImageUrl', 'なし')}")
+                        
+                        return {
+                            'success': True,
+                            'product': product_info,
+                            'material': material_info,
+                            'item': target_item,
+                            'product_url': product_url
+                        }
+                    else:
+                        logger.warning("⚠️ マテリアル作成成功だが商品情報が取得できませんでした")
+                        return {
+                            'success': False,
+                            'error': '商品の作成に失敗しました（レスポンスに商品情報が含まれていません）'
+                        }
+                else:
+                    # エラーレスポンスの処理
+                    error_message = result.get('message', '不明なエラー') if result else 'APIレスポンスがありません'
+                    logger.error(f"❌ マテリアル+商品作成失敗: {error_message}")
+                    return {
+                        'success': False,
+                        'error': f'SUZURI APIエラー: {error_message}'
+                    }
+                
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Failed to download image from {image_url}: {str(e)}")
+                return {'success': False, 'error': f'画像のダウンロードに失敗しました: {str(e)}'}
+            except Exception as e:
+                logger.error(f"Material+Product creation failed: {str(e)}")
+                return {'success': False, 'error': f'画像処理中にエラーが発生しました: {str(e)}'}
             
         except Exception as e:
             logger.error(f"SUZURI merchandise creation failed: {str(e)}")

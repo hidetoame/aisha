@@ -23,6 +23,7 @@ import {
   EyeIcon as ViewIcon,
 } from '../icons/HeroIcons';
 import { ShareGeneratedImageModal } from '../modals/ShareGeneratedImageModal';
+import { SuzuriMerchandiseModal } from '../modals/SuzuriMerchandiseModal';
 import { useCredits } from '@/contexts/CreditsContext';
 import { suzuriApiClient } from '@/services/suzuriApi';
 
@@ -59,22 +60,17 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
 }) => {
   const credits = useCredits();
 
-  const [showGoodsModal, setShowGoodsModal] = useState(false);
   const [selectedGoodsItemForModal, setSelectedGoodsItemForModal] =
     useState<SuzuriItem | null>(null);
   const [selectedVariations, setSelectedVariations] = useState<
     Record<string, string>
   >({});
   const [showShareModal, setShowShareModal] = useState(false);
-  const [showImageModal, setShowImageModal] = useState(false); // 画像拡大モーダル用
-  
-  // SUZURI関連のstate
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [showSuzuriModal, setShowSuzuriModal] = useState(false);
+  const [showGoodsModal, setShowGoodsModal] = useState(false);
+  const [merchandiseResult, setMerchandiseResult] = useState<any>(null);
   const [isCreatingMerchandise, setIsCreatingMerchandise] = useState(false);
-  const [merchandiseResult, setMerchandiseResult] = useState<{
-    success: boolean;
-    productUrl?: string;
-    error?: string;
-  } | null>(null);
 
   const handleDownloadImage = async () => {
     try {
@@ -150,101 +146,56 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
   };
 
   const openGoodsModal = () => {
-    setShowGoodsModal(true);
+    setShowSuzuriModal(true);
   };
 
   const handleSelectVariation = (variationId: string, option: string) => {
     setSelectedVariations((prev) => ({ ...prev, [variationId]: option }));
   };
 
+  // SUZURI グッズ作成関数
   const handleCreateSuzuriMerchandise = async () => {
     setIsCreatingMerchandise(true);
-    setMerchandiseResult(null);
-    
     try {
-      // 車の名前を取得（プロンプトから抽出）
-      let carName = 'AISHA生成画像';
-      
-      // displayPromptから車の名前を抽出する処理を改善
-      if (image.displayPrompt) {
-        // 「背景拡張:」などの技術的なプレフィックスを除去
-        let cleanPrompt = image.displayPrompt
-          .replace(/^背景拡張[:：]\s*/g, '')
-          .replace(/^Please take photos of the car[^.]*\./g, '')
-          .replace(/^画像拡張[:：]\s*/g, '')
-          .replace(/^Extension[:：]\s*/g, '');
-        
-        // 車種名のキーワードを探す
-        const carKeywords = [
-          'NISSAN', 'TOYOTA', 'HONDA', 'MAZDA', 'SUBARU', 'MITSUBISHI',
-          'BMW', 'MERCEDES', 'AUDI', 'VOLKSWAGEN', 'PORSCHE',
-          'FERRARI', 'LAMBORGHINI', 'MASERATI',
-          'FORD', 'CHEVROLET', 'DODGE', 'TESLA',
-          'FAIRLADY', 'SUPRA', 'CIVIC', 'ACCORD', 'SKYLINE', 'GT-R'
-        ];
-        
-        // 車種名を含むかチェック
-        for (const keyword of carKeywords) {
-          if (cleanPrompt.toUpperCase().includes(keyword)) {
-            // キーワード周辺のテキストを抽出
-            const index = cleanPrompt.toUpperCase().indexOf(keyword);
-            const start = Math.max(0, index - 10);
-            const end = Math.min(cleanPrompt.length, index + keyword.length + 20);
-            carName = cleanPrompt.slice(start, end).trim();
-            break;
-          }
-        }
-        
-        // 車種名が見つからない場合は、最初の50文字を使用
-        if (carName === 'AISHA生成画像' && cleanPrompt.trim()) {
-          carName = cleanPrompt.slice(0, 50).trim() || 'AISHA生成画像';
-        }
-      }
-      
-      const requestData = {
+      const response = await suzuriApiClient.createMerchandise({
         image_url: image.url,
-        car_name: carName,
-        description: `AISHA で生成された車の画像から作成されたグッズです。\n\n生成プロンプト: ${image.displayPrompt}`
-      };
-      
-      console.log('SUZURI リクエストデータ:', requestData);
-      console.log('画像URL:', image.url);
-      console.log('車の名前:', carName);
-      
-      const result = await suzuriApiClient.createMerchandise(requestData);
-      
-      setMerchandiseResult(result);
-      
-      // 成功時もモーダルを閉じないで、購入リンクを表示し続ける
-      
-    } catch (error) {
+        car_name: image.displayPrompt || 'AI生成画像',
+        description: `AI生成された画像から作成されたTシャツです。\n\n生成プロンプト: ${image.displayPrompt}`,
+        item_type: 'heavyweight-t-shirt',
+      });
+      setMerchandiseResult(response);
+    } catch (error: any) {
       console.error('SUZURI merchandise creation failed:', error);
-      
-      // エラーメッセージを詳細に表示
-      let errorMessage = 'グッズ作成中にエラーが発生しました';
-      
-      if (error instanceof Error) {
-        if (error.message.includes('SUZURI_API_TOKEN')) {
-          errorMessage = 'SUZURI APIの設定が必要です。管理者に問い合わせてください。';
-        } else if (error.message.includes('400')) {
-          errorMessage = '画像情報に問題があります。別の画像でお試しください。';
-        } else if (error.message.includes('401')) {
-          errorMessage = 'SUZURI APIの認証に失敗しました。';
-        } else if (error.message.includes('500')) {
-          errorMessage = 'サーバーエラーが発生しました。しばらく待ってから再試行してください。';
-        } else {
-          errorMessage = `エラー: ${error.message}`;
-        }
-      }
-      
       setMerchandiseResult({
         success: false,
-        error: errorMessage
+        error: error.message || 'グッズ作成中にエラーが発生しました',
       });
     } finally {
       setIsCreatingMerchandise(false);
     }
   };
+
+  const handleCreateSuzuriMerchandiseWithItem = async (itemType: string, itemName: string) => {
+    setIsCreatingMerchandise(true);
+    try {
+      const response = await suzuriApiClient.createMerchandise({
+        image_url: image.url,
+        car_name: image.displayPrompt || 'AI生成画像',
+        description: `AI生成された画像から作成された${itemName}です。\n\n生成プロンプト: ${image.displayPrompt}`,
+        item_type: itemType,
+      });
+      setMerchandiseResult(response);
+    } catch (error: any) {
+      console.error('SUZURI merchandise creation failed:', error);
+      setMerchandiseResult({
+        success: false,
+        error: error.message || 'グッズ作成中にエラーが発生しました',
+      });
+    } finally {
+      setIsCreatingMerchandise(false);
+    }
+  };
+
 
   const handleCreateGoodsClick = (item: SuzuriItem) => {
     if (item.variations && item.variations.length > 0) {
@@ -256,9 +207,8 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
       }
     }
     
-    // 従来のモック機能は残しつつ、SUZURI機能も追加
+    // 従来のモック機能
     onCreateGoods(item, image, selectedVariations);
-    setShowGoodsModal(false);
     setSelectedGoodsItemForModal(null);
     setSelectedVariations({});
   };
@@ -421,9 +371,17 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
         </div>
       </div>
 
-      {showGoodsModal && (
+      {/* SUZURI グッズ作成モーダル */}
+      <SuzuriMerchandiseModal
+        isOpen={showSuzuriModal}
+        onClose={() => setShowSuzuriModal(false)}
+        image={image}
+      />
+
+      {/* グッズ作成モーダル（従来のモック機能）*/}
+      {showGoodsModal && selectedGoodsItemForModal && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60] p-4"
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
           onClick={() => {
             setShowGoodsModal(false);
             setSelectedGoodsItemForModal(null);
@@ -431,7 +389,7 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
           }}
         >
           <div
-            className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg relative flex flex-col max-h-[80vh]"
+            className="bg-gray-800 border border-gray-700 rounded-3xl p-6 w-full max-w-lg relative flex flex-col max-h-[80vh]"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -467,59 +425,67 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
                   }`}>
                     {merchandiseResult.success ? (
                       <div className="space-y-3">
-                        <p className="text-green-300 font-medium">✅ グッズ作成完了！</p>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-2xl">🎉</span>
+                          <p className="text-green-300 font-medium">グッズ作成完了！</p>
+                        </div>
+                        
+                        {/* プレビュー画像表示 */}
+                        {merchandiseResult.sample_image_url && (
+                          <div className="flex justify-center mb-3">
+                            <div className="relative group">
+                              <img
+                                src={merchandiseResult.sample_image_url}
+                                alt="作成されたグッズのプレビュー"
+                                className="max-w-[200px] h-auto rounded-md border border-gray-600 shadow-lg group-hover:shadow-xl transition-shadow cursor-pointer"
+                                onClick={() => {
+                                  // 画像拡大モーダル
+                                  const modal = document.createElement('div');
+                                  modal.className = 'fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[80] p-4';
+                                  modal.onclick = () => document.body.removeChild(modal);
+                                  
+                                  const img = document.createElement('img');
+                                  img.src = merchandiseResult.sample_image_url!;
+                                  img.className = 'max-w-[90vw] max-h-[90vh] object-contain';
+                                  img.onclick = (e) => e.stopPropagation();
+                                  
+                                  modal.appendChild(img);
+                                  document.body.appendChild(modal);
+                                }}
+                              />
+                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded-md flex items-center justify-center">
+                                <span className="text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-50 px-2 py-1 rounded">
+                                  クリックで拡大
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
                         <div className="flex flex-col gap-2">
                           <a
-                            href={merchandiseResult.productUrl}
+                            href={merchandiseResult.product_url || merchandiseResult.productUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center justify-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition-colors"
                           >
-                            🛒 SUZURIで購入する（新しいタブ）
+                            🛒 SUZURIで購入する
                           </a>
-                          <button
-                            onClick={() => {
-                              // iframe購入モーダルを表示
-                              if (!merchandiseResult.productUrl) return;
-                              
-                              const iframe = document.createElement('iframe');
-                              iframe.src = merchandiseResult.productUrl;
-                              iframe.style.width = '100%';
-                              iframe.style.height = '600px';
-                              iframe.style.border = 'none';
-                              iframe.style.borderRadius = '8px';
-                              
-                              const modal = document.createElement('div');
-                              modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[70] p-4';
-                              modal.onclick = (e) => {
-                                if (e.target === modal) {
-                                  document.body.removeChild(modal);
-                                }
-                              };
-                              
-                              const content = document.createElement('div');
-                              content.className = 'bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden relative';
-                              
-                              const header = document.createElement('div');
-                              header.className = 'bg-gray-100 p-4 border-b flex justify-between items-center';
-                              header.innerHTML = `
-                                <h3 class="text-lg font-semibold text-gray-800">SUZURI で購入</h3>
-                                <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700 p-1">
-                                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                  </svg>
-                                </button>
-                              `;
-                              
-                              content.appendChild(header);
-                              content.appendChild(iframe);
-                              modal.appendChild(content);
-                              document.body.appendChild(modal);
-                            }}
-                            className="inline-flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
-                          >
-                            🖼️ アプリ内で購入
-                          </button>
+                          
+                          {/* 商品情報の詳細表示 */}
+                          {(merchandiseResult.product_title || merchandiseResult.item_name) && (
+                            <div className="mt-2 p-2 bg-gray-800/50 rounded text-xs text-gray-300">
+                              {merchandiseResult.product_title && (
+                                <p><strong>商品名:</strong> {merchandiseResult.product_title}</p>
+                              )}
+                              {merchandiseResult.item_name && (
+                                <p><strong>アイテム:</strong> {merchandiseResult.item_name}</p>
+                              )}
+                              {merchandiseResult.product_id && (
+                                <p><strong>商品ID:</strong> {merchandiseResult.product_id}</p>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ) : (
