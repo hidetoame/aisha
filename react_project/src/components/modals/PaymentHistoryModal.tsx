@@ -30,13 +30,17 @@ export const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
   const itemsPerPage = 10;
 
   useEffect(() => {
-    if (isOpen && currentUser) {
+    console.log('🔍 PaymentHistoryModal useEffect:', { isOpen, currentUser });
+    if (isOpen && currentUser?.id) {
       fetchPaymentHistoryData(1);
     }
   }, [isOpen, currentUser]);
 
   const fetchPaymentHistoryData = async (page: number = 1) => {
-    if (!currentUser) return;
+    if (!currentUser?.id) {
+      console.log('🔍 No currentUser or currentUser.id:', currentUser);
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -54,7 +58,10 @@ export const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
       );
       
       if (response) {
-        setPaymentHistory(response.results || []);
+        console.log('🔍 Payment history response:', response);
+        const results = response.results || [];
+        console.log('🔍 First history item:', results[0]);
+        setPaymentHistory(results);
         setTotalCount(response.count || 0);
         setCurrentPage(page);
       }
@@ -67,14 +74,26 @@ export const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('ja-JP', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    try {
+      if (!dateString) {
+        return '日時不明';
+      }
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid date string:', dateString);
+        return '無効な日時';
+      }
+      return date.toLocaleString('ja-JP', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch (error) {
+      console.error('Date formatting error:', error, 'dateString:', dateString);
+      return '日時エラー';
+    }
   };
 
   const getStatusText = (status: string) => {
@@ -111,6 +130,9 @@ export const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
 
   if (!isOpen) return null;
 
+  // デバッグログ
+  console.log('🔍 PaymentHistoryModal render:', { currentUser, userId: currentUser?.id });
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
@@ -128,7 +150,17 @@ export const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
 
         {!currentUser ? (
           <div className="text-center py-8">
-            <p className="text-gray-400">ログインが必要です</p>
+            <p className="text-gray-400">ユーザー情報が取得できません</p>
+            <p className="text-gray-500 text-sm mt-2">
+              ログインしてから再度お試しください
+            </p>
+          </div>
+        ) : !currentUser.id ? (
+          <div className="text-center py-8">
+            <p className="text-gray-400">ユーザーIDが取得できません</p>
+            <p className="text-gray-500 text-sm mt-2">
+              ユーザー情報: {JSON.stringify(currentUser)}
+            </p>
           </div>
         ) : loading ? (
           <div className="flex items-center justify-center py-8">
@@ -163,11 +195,11 @@ export const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
                       <div>
                         <p className="text-sm text-gray-400 mb-1">決済日時</p>
                         <p className="text-gray-200 text-sm">
-                          {formatDate(entry.created_at)}
+                          {formatDate(entry.created_at || entry.createdAt)}
                         </p>
                         {entry.completed_at && entry.completed_at !== entry.created_at && (
                           <p className="text-xs text-gray-500">
-                            完了: {formatDate(entry.completed_at)}
+                            完了: {formatDate(entry.completed_at || entry.completedAt)}
                           </p>
                         )}
                       </div>
@@ -175,21 +207,21 @@ export const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
                       <div>
                         <p className="text-sm text-gray-400 mb-1">金額</p>
                         <p className="text-gray-200 font-semibold">
-                          ¥{entry.charge_amount.toLocaleString()}
+                          ¥{(entry.charge_amount || entry.chargeAmount || 0).toLocaleString()}
                         </p>
                       </div>
                       
                       <div>
                         <p className="text-sm text-gray-400 mb-1">追加クレジット</p>
                         <p className="text-indigo-400 font-semibold">
-                          +{entry.credit_amount.toLocaleString()} クレジット
+                          +{(entry.credit_amount || entry.creditAmount || 0).toLocaleString()} クレジット
                         </p>
                       </div>
                       
                       <div>
                         <p className="text-sm text-gray-400 mb-1">ステータス</p>
-                        <p className={`font-semibold ${getStatusColor(entry.payment_status)}`}>
-                          {getStatusText(entry.payment_status)}
+                        <p className={`font-semibold ${getStatusColor(entry.payment_status || entry.paymentStatus || 'unknown')}`}>
+                          {getStatusText(entry.payment_status || entry.paymentStatus || 'unknown')}
                         </p>
                       </div>
                     </div>

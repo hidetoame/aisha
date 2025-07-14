@@ -123,6 +123,23 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
     }
   };
 
+  // 元画像がローカルキャッシュに存在するかチェック
+  const hasOriginalImageCache = () => {
+    // Fileオブジェクトとして元画像が存在するかチェック
+    return image.usedFormData?.image instanceof File;
+  };
+
+  // 再生成が可能かチェック（元画像のキャッシュまたは生成画像の利用可能性）
+  const canRegenerate = () => {
+    // 元画像のキャッシュがある場合は確実に再生成可能
+    if (hasOriginalImageCache()) {
+      return true;
+    }
+    
+    // 元画像のキャッシュがない場合でも、生成画像を使った再生成は可能
+    return !!image.url;
+  };
+
   // 再生成
   const handleSetParamsWithInputImage = () => {
     applyRegenerateFormDataToMenuExePanel(image.usedFormData);
@@ -146,13 +163,55 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
     
     try {
       // 車の名前を取得（プロンプトから抽出）
-      const carName = image.displayPrompt.slice(0, 50) || 'AISHA生成画像';
+      let carName = 'AISHA生成画像';
       
-      const result = await suzuriApiClient.createMerchandise({
+      // displayPromptから車の名前を抽出する処理を改善
+      if (image.displayPrompt) {
+        // 「背景拡張:」などの技術的なプレフィックスを除去
+        let cleanPrompt = image.displayPrompt
+          .replace(/^背景拡張[:：]\s*/g, '')
+          .replace(/^Please take photos of the car[^.]*\./g, '')
+          .replace(/^画像拡張[:：]\s*/g, '')
+          .replace(/^Extension[:：]\s*/g, '');
+        
+        // 車種名のキーワードを探す
+        const carKeywords = [
+          'NISSAN', 'TOYOTA', 'HONDA', 'MAZDA', 'SUBARU', 'MITSUBISHI',
+          'BMW', 'MERCEDES', 'AUDI', 'VOLKSWAGEN', 'PORSCHE',
+          'FERRARI', 'LAMBORGHINI', 'MASERATI',
+          'FORD', 'CHEVROLET', 'DODGE', 'TESLA',
+          'FAIRLADY', 'SUPRA', 'CIVIC', 'ACCORD', 'SKYLINE', 'GT-R'
+        ];
+        
+        // 車種名を含むかチェック
+        for (const keyword of carKeywords) {
+          if (cleanPrompt.toUpperCase().includes(keyword)) {
+            // キーワード周辺のテキストを抽出
+            const index = cleanPrompt.toUpperCase().indexOf(keyword);
+            const start = Math.max(0, index - 10);
+            const end = Math.min(cleanPrompt.length, index + keyword.length + 20);
+            carName = cleanPrompt.slice(start, end).trim();
+            break;
+          }
+        }
+        
+        // 車種名が見つからない場合は、最初の50文字を使用
+        if (carName === 'AISHA生成画像' && cleanPrompt.trim()) {
+          carName = cleanPrompt.slice(0, 50).trim() || 'AISHA生成画像';
+        }
+      }
+      
+      const requestData = {
         image_url: image.url,
         car_name: carName,
         description: `AISHA で生成された車の画像から作成されたグッズです。\n\n生成プロンプト: ${image.displayPrompt}`
-      });
+      };
+      
+      console.log('SUZURI リクエストデータ:', requestData);
+      console.log('画像URL:', image.url);
+      console.log('車の名前:', carName);
+      
+      const result = await suzuriApiClient.createMerchandise(requestData);
       
       setMerchandiseResult(result);
       
@@ -160,9 +219,27 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
       
     } catch (error) {
       console.error('SUZURI merchandise creation failed:', error);
+      
+      // エラーメッセージを詳細に表示
+      let errorMessage = 'グッズ作成中にエラーが発生しました';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('SUZURI_API_TOKEN')) {
+          errorMessage = 'SUZURI APIの設定が必要です。管理者に問い合わせてください。';
+        } else if (error.message.includes('400')) {
+          errorMessage = '画像情報に問題があります。別の画像でお試しください。';
+        } else if (error.message.includes('401')) {
+          errorMessage = 'SUZURI APIの認証に失敗しました。';
+        } else if (error.message.includes('500')) {
+          errorMessage = 'サーバーエラーが発生しました。しばらく待ってから再試行してください。';
+        } else {
+          errorMessage = `エラー: ${error.message}`;
+        }
+      }
+      
       setMerchandiseResult({
         success: false,
-        error: 'グッズ作成中にエラーが発生しました'
+        error: errorMessage
       });
     } finally {
       setIsCreatingMerchandise(false);
@@ -198,7 +275,7 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
       onClick={onClick}
       title={title || label}
       disabled={disabled}
-      className={`flex flex-col items-center justify-center p-1.5 sm:p-2 space-y-0.5 rounded-md bg-gray-700/80 hover:bg-indigo-600 text-gray-300 hover:text-white transition-all duration-150 ease-in-out text-xs disabled:opacity-50 disabled:hover:bg-gray-700 ${className}`}
+      className={`flex flex-col items-center justify-center p-1.5 sm:p-2 space-y-0.5 rounded-md bg-gray-700/80 hover:bg-indigo-600 text-gray-300 hover:text-white transition-all duration-150 ease-in-out text-xs disabled:opacity-50 disabled:hover:bg-gray-700/80 disabled:cursor-not-allowed ${className || ''}`}
     >
       {icon}
       <span className="text-[9px] sm:text-[10px] leading-tight pt-0.5">
@@ -288,7 +365,12 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
             onClick={handleSetParamsWithInputImage}
             icon={<ArrowPathIcon className="w-4 h-4 sm:w-5 sm:h-5" />}
             label="再生成"
-            title="この画像生成時の設定と元画像（あれば）を再利用して生成パネルへセット"
+            title={
+              hasOriginalImageCache()
+                ? "この画像生成時の設定と元画像を再利用して生成パネルへセット"
+                : "元画像が利用できません（ローカルキャッシュなし）"
+            }
+            disabled={!hasOriginalImageCache()}
           />
           <ActionButton
             onClick={handleSetParamsWithGeneratedImage}

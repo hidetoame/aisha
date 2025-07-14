@@ -4,12 +4,14 @@ import { Plan, User } from '@/types';
 import { StripePaymentForm } from './StripePaymentForm';
 import { MockPaymentForm } from './MockPaymentForm';
 import { useToast } from '@/contexts/ToastContext'; // Added
+import { ClipboardDocumentListIcon } from '@/components/icons/HeroIcons'; // Added
 
 interface ChargeOptionsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectPlan: (plan: Plan) => void;
   currentUser: User | null;
+  onPaymentHistoryClick?: () => void; // Added
 }
 
 export const ChargeOptionsModal: React.FC<ChargeOptionsModalProps> = ({
@@ -17,10 +19,21 @@ export const ChargeOptionsModal: React.FC<ChargeOptionsModalProps> = ({
   onClose,
   onSelectPlan,
   currentUser,
+  onPaymentHistoryClick, // Added
 }) => {
   const { showToast } = useToast(); // Added
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
+  
+  // 全てのHooksを最上部で呼び出す
+  const chargeOptions = useChargeOptions()?.filter((option) => option.isActive);
+
+  // 関数定義を上に移動
+  const handleModalClose = () => {
+    setShowPaymentForm(false);
+    setSelectedPlan(null);
+    onClose();
+  };
 
   if (!isOpen) return null;
 
@@ -48,7 +61,6 @@ export const ChargeOptionsModal: React.FC<ChargeOptionsModalProps> = ({
 
   // APIにより取得したデータ
   // 有効なオプションのみ表示
-  const chargeOptions = useChargeOptions()?.filter((option) => option.isActive);
   
   // チャージオプションが取得できない場合は固定プランを使用
   const defaultChargeOptions = [
@@ -119,12 +131,6 @@ export const ChargeOptionsModal: React.FC<ChargeOptionsModalProps> = ({
     setSelectedPlan(null);
   };
 
-  const handleModalClose = () => {
-    setShowPaymentForm(false);
-    setSelectedPlan(null);
-    onClose();
-  };
-
   // 決済フォーム表示中
   if (showPaymentForm && selectedPlan) {
     // 常にStripe決済フォームを表示（APIから正しいキーを取得）
@@ -155,6 +161,20 @@ export const ChargeOptionsModal: React.FC<ChargeOptionsModalProps> = ({
         <h2 className="text-2xl font-semibold mb-6 text-center text-indigo-400">
           クレジットをチャージ
         </h2>
+        
+        {/* 決済履歴ボタン */}
+        {currentUser && onPaymentHistoryClick && (
+          <div className="mb-4">
+            <button
+              onClick={onPaymentHistoryClick}
+              className="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 font-medium py-2 px-4 rounded-lg transition duration-150 ease-in-out flex items-center justify-center"
+            >
+              <ClipboardDocumentListIcon className="w-5 h-5 mr-2" />
+              決済履歴を確認
+            </button>
+          </div>
+        )}
+        
         <div className="space-y-4">
           {displayOptions?.map((option) => (
             <div

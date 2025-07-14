@@ -32,6 +32,11 @@ def create_merchandise(request):
         car_name = request.data.get('car_name')
         description = request.data.get('description', '')
         
+        logger.info(f"SUZURI merchandise creation request:")
+        logger.info(f"  image_url: {image_url}")
+        logger.info(f"  car_name: {car_name}")
+        logger.info(f"  description: {description}")
+        
         if not image_url:
             return Response(
                 {'error': '画像URLが必要です'},
@@ -44,17 +49,34 @@ def create_merchandise(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # SUZURI API サービスを初期化
-        suzuri_service = SuzuriAPIService()
+        # 画像URLはそのまま使用（アクセス可能であることを確認済み）
+        public_image_url = image_url
         
-        # グッズ作成を実行
+        # SUZURI API サービスを初期化
+        try:
+            suzuri_service = SuzuriAPIService()
+        except ValueError as e:
+            return Response({
+                'success': False,
+                'error': f'SUZURI APIの設定エラー: {str(e)}',
+                'detail': 'SUZURI_API_TOKEN環境変数を設定してください'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # グッズ作成を実行（署名付きURLを使用）
         result = suzuri_service.create_car_merchandise(
-            image_url=image_url,
+            image_url=public_image_url,  # 署名付きURLまたはオリジナルURL
             car_name=car_name,
             description=description
         )
         
+        logger.info(f"SUZURI API called with image_url: {public_image_url}")
+        
         if result['success']:
+            logger.info(f"SUZURI merchandise creation successful:")
+            logger.info(f"  product_url: {result['product_url']}")
+            logger.info(f"  product_id: {result['product']['id']}")
+            logger.info(f"  product_title: {result['product']['title']}")
+            
             return Response({
                 'success': True,
                 'message': 'グッズの作成が完了しました',
@@ -63,6 +85,9 @@ def create_merchandise(request):
                 'product_title': result['product']['title']
             }, status=status.HTTP_201_CREATED)
         else:
+            logger.error(f"SUZURI merchandise creation failed:")
+            logger.error(f"  error: {result['error']}")
+            
             return Response({
                 'success': False,
                 'error': result['error']

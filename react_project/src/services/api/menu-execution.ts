@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { camelToSnakeCase, keysToCamelCase } from '@/utils/caseConverter';
+import { resizeImage } from '@/utils/imageResize';
 import {
   MenuExecutionFormData,
   MenuExecutionRequestParams,
@@ -37,10 +38,25 @@ export const executeMenu = async (
     formData.append('user_id', userId);
   }
 
-  // すべてのparamsのkeyをスネークケースに変換してFormDataに追加
+  // 画像がある場合はリサイズしてからFormDataに追加
   if (image instanceof File) {
-    formData.append('image', image, image.name);
+    try {
+      console.log(`🖼️ 元画像サイズをチェック中: ${image.name}`);
+      
+      // 画像をリサイズ（長辺2000px以下に）
+      const resizedImage = await resizeImage(image, 2000, 1.0);
+      
+      formData.append('image', resizedImage, resizedImage.name);
+      console.log(`✅ 画像リサイズ完了: ${resizedImage.name}`);
+    } catch (error) {
+      console.error('❌ 画像リサイズエラー:', error);
+      // リサイズに失敗した場合は元の画像を使用
+      formData.append('image', image, image.name);
+      console.log(`⚠️ 元画像をそのまま使用: ${image.name}`);
+    }
   }
+
+  // すべてのparamsのkeyをスネークケースに変換してFormDataに追加
   Object.entries(rest).forEach(([key, value]) => {
     if (value == null) return;
 

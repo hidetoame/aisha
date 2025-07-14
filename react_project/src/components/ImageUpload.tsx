@@ -9,6 +9,7 @@ import {
   useMemo,
 } from 'react';
 import { PhotoIcon } from './icons/HeroIcons';
+import { getImageDimensions } from '@/utils/imageResize';
 
 interface ImageUploadProps {
   onImageSelect: (file: File | null) => void;
@@ -26,6 +27,8 @@ export const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
   ({ onImageSelect, label = '画像アップロード (任意)', uploadedFile, initialPreviewUrl, showDeleteButton = false }, ref) => {
     const [file, setFile] = useState<File | null>(null);
     const [fileName, setFileName] = useState<string | null>(null);
+    const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
+    const [willBeResized, setWillBeResized] = useState<boolean>(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const previewUrl = useMemo(() => {
@@ -51,15 +54,34 @@ export const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
     }, [previewUrl]);
 
     const handleFileChange = useCallback(
-      (event: ChangeEvent<HTMLInputElement>) => {
+      async (event: ChangeEvent<HTMLInputElement>) => {
         const selectedFile = event.target.files?.[0];
         if (selectedFile) {
           setFile(selectedFile);
           setFileName(selectedFile.name);
+          
+          try {
+            // 画像の実際のサイズを取得
+            const dimensions = await getImageDimensions(selectedFile);
+            setImageDimensions(dimensions);
+            
+            // リサイズが必要かチェック（長辺2000px以上の場合）
+            const longSide = Math.max(dimensions.width, dimensions.height);
+            setWillBeResized(longSide > 2000);
+            
+            console.log(`🖼️ アップロード画像: ${dimensions.width}x${dimensions.height}${longSide > 2000 ? ' (リサイズ予定)' : ''}`);
+          } catch (error) {
+            console.error('画像サイズ取得エラー:', error);
+            setImageDimensions(null);
+            setWillBeResized(false);
+          }
+          
           onImageSelect(selectedFile);
         } else {
           setFile(null);
           setFileName(null);
+          setImageDimensions(null);
+          setWillBeResized(false);
           onImageSelect(null);
         }
       },
@@ -72,6 +94,8 @@ export const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
       }
       setFile(null);
       setFileName(null);
+      setImageDimensions(null);
+      setWillBeResized(false);
       onImageSelect(null);
     }, [onImageSelect]);
 
@@ -82,6 +106,8 @@ export const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
         }
         setFile(null);
         setFileName(null);
+        setImageDimensions(null);
+        setWillBeResized(false);
       },
     }));
 
@@ -132,7 +158,19 @@ export const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
               <p className="pl-1">またはドラッグ＆ドロップ</p>
             </div>
             {fileName ? (
-              <p className="text-xs text-gray-400 mt-1">{fileName}</p>
+              <div className="text-xs text-gray-400 mt-1 space-y-1">
+                <p>{fileName}</p>
+                {imageDimensions && (
+                  <p className="text-xs text-gray-500">
+                    サイズ: {imageDimensions.width} × {imageDimensions.height}
+                  </p>
+                )}
+                {willBeResized && (
+                  <p className="text-xs text-yellow-400">
+                    ⚠️ 大きな画像のため、生成時に自動リサイズされます
+                  </p>
+                )}
+              </div>
             ) : (
               <p className="text-xs text-gray-500">PNG, JPG, GIF 最大10MB</p>
             )}
@@ -143,6 +181,8 @@ export const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
                   if (fileInputRef.current) fileInputRef.current.value = '';
                   setFile(null);
                   setFileName(null);
+                  setImageDimensions(null);
+                  setWillBeResized(false);
                   onImageSelect(null);
                 }}
                 className="mt-2 text-xs text-red-400 hover:text-red-300"

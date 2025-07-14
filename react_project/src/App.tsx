@@ -23,8 +23,6 @@ import {
   AspectRatio,
   AnchorPosition,
   PersonalUserSettings,
-  CreditsRequestParams,
-  CreditsOperationResponseParams,
   MenuExecutionFormData,
 } from './types';
 import {
@@ -38,7 +36,7 @@ import { useToast } from './contexts/ToastContext';
 import { CategoriesProvider } from './contexts/CategoriesContext';
 import { MenusProvider } from './contexts/MenusContext';
 import { useCredits, useCreditsActions } from './contexts/CreditsContext';
-import { chargeCredits, consumeCredits } from './services/api/credits';
+import { consumeCredits } from './services/api/credits';
 import { myGarageLogin, myGarageLogout, validateMyGarageToken } from './services/api/mygarage-auth';
 import { 
   fetchTimeline, 
@@ -192,41 +190,9 @@ const App: React.FC = () => {
     };
 
     checkLoginStatus();
-
-    const initialPublic: GeneratedImage[] = Array.from({ length: 10 }).map(
-      (_, i) => {
-        const uniqueSeed = `public_sample_${i + 1}_${Date.now()}`;
-        const randomAspectRatio =
-          i % 2 === 0 ? AspectRatio.Landscape_16_9 : AspectRatio.Square_1_1;
-        return {
-          id: `public_${i + 1}`,
-          url: `https://picsum.photos/seed/${uniqueSeed}/${randomAspectRatio === AspectRatio.Landscape_16_9 ? 640 : 512}/${randomAspectRatio === AspectRatio.Landscape_16_9 ? 360 : 512}`,
-          displayPrompt: `サンプル画像 ${i + 1}: ${i % 3 === 0 ? '美しい風景' : i % 3 === 1 ? '未来的な車' : '抽象的なアート'}`,
-          menuName:
-            i % 4 === 0
-              ? 'トミカ風'
-              : i % 4 === 1
-                ? 'アニメ風'
-                : i % 4 === 2
-                  ? '海の見える駐車場'
-                  : 'スタジオ',
-          fullOptions: {
-            ...DEFAULT_GENERATION_OPTIONS,
-            selectedMenuId: `menu_sample_${i}`,
-            finalPromptForService: `Sample prompt for image ${i + 1}`,
-            creditCostForService: 10,
-            aspectRatio: randomAspectRatio,
-          },
-          timestamp: new Date(Date.now() - i * 1000 * 60 * 60 * 24),
-          isPublic: true,
-          authorName: `ユーザー${String.fromCharCode(65 + i)}`,
-          sourceImageUrl: `https://picsum.photos/seed/${uniqueSeed}_source/300/200`,
-          originalUploadedImageDataUrl: `https://picsum.photos/seed/${uniqueSeed}_orig_source/300/200`,
-          rating: i % 5 === 0 ? 'good' : undefined,
-        };
-      },
-    );
-    setAllPublicImages(initialPublic);
+    
+    // 初回の公開タイムラインを読み込み
+    loadPublicLibraryData();
   }, []);
 
   useEffect(() => {
@@ -354,17 +320,8 @@ const App: React.FC = () => {
       return;
     }
 
-    const reqBody: CreditsRequestParams = { credits: plan.credits };
-    const onError = () =>
-      showToast('error', 'クレジットチャージに失敗しました');
-    const response: CreditsOperationResponseParams | null = await chargeCredits(
-      reqBody,
-      onError,
-    );
-    if (response) {
-      showToast('success', 'クレジットチャージに成功しました');
-    }
-
+    // Stripe決済は既にChargeOptionsModal内で完了しているため、
+    // ここではクレジット残高の更新のみ行う
     refreshCredits(user.id);
     setShowPlanModal(false); // 最後にモーダルを閉じる
   };
@@ -766,8 +723,10 @@ const App: React.FC = () => {
 
   // 決済履歴モーダルのハンドラー
   const handlePaymentHistoryClick = useCallback(() => {
+    console.log('🔍 handlePaymentHistoryClick called');
+    console.log('🔍 Current user:', user);
     setShowPaymentHistoryModal(true);
-  }, []);
+  }, [user]);
 
   if (shareParams && shareParams.sharedImageUrl) {
     return (
@@ -838,7 +797,6 @@ const App: React.FC = () => {
           onPersonalSettingsClick={
             user ? () => setShowPersonalSettingsModal(true) : undefined
           }
-          onPaymentHistoryClick={handlePaymentHistoryClick}
         />
         <main className="flex-grow container mx-auto px-4 py-8">
           <CategoriesProvider>
@@ -939,6 +897,7 @@ const App: React.FC = () => {
           onClose={() => setShowPlanModal(false)}
           onSelectPlan={handleSelectPlan}
           currentUser={user}
+          onPaymentHistoryClick={handlePaymentHistoryClick}
         />
         <GenerationHistoryModal
           isOpen={showGenerationHistoryModal}

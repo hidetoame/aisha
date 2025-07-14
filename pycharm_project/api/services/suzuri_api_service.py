@@ -16,8 +16,17 @@ class SuzuriAPIService:
     def __init__(self):
         self.api_token = os.getenv('SUZURI_API_TOKEN')
         self.base_url = os.getenv('SUZURI_API_BASE_URL', 'https://suzuri.jp/api/v1')
+        
+        # デモモードかどうかを確認
+        self.demo_mode = os.getenv('SUZURI_DEMO_MODE', 'false').lower() == 'true'
+        
+        # APIトークンの存在確認（デモモードでない場合）
+        if not self.demo_mode and not self.api_token:
+            logger.error("SUZURI_API_TOKEN環境変数が設定されていません")
+            raise ValueError("SUZURI_API_TOKEN環境変数が設定されていません")
+        
         self.headers = {
-            'Authorization': f'Bearer {self.api_token}',
+            'Authorization': f'Bearer {self.api_token or "demo_token"}',
             'Content-Type': 'application/json',
             'User-Agent': 'AISHA-CarImageGenerator/1.0'
         }
@@ -63,8 +72,28 @@ class SuzuriAPIService:
                 
                 return result
             else:
-                logger.error(f"SUZURI API Error: {response.status_code} - {response.text}")
-                return None
+                error_detail = response.text
+                logger.error(f"SUZURI API Error: {response.status_code} - {error_detail}")
+                
+                # エラーの詳細を取得
+                try:
+                    error_json = response.json()
+                    if 'error' in error_json:
+                        error_detail = error_json['error']
+                    elif 'message' in error_json:
+                        error_detail = error_json['message']
+                    elif 'errors' in error_json:
+                        error_detail = str(error_json['errors'])
+                except:
+                    pass
+                
+                # カスタムエラーメッセージを返す
+                return {
+                    'error': True,
+                    'status_code': response.status_code,
+                    'message': error_detail,
+                    'endpoint': url
+                }
                 
         except requests.exceptions.RequestException as e:
             logger.error(f"SUZURI API Request Failed: {str(e)}")
@@ -291,10 +320,42 @@ class SuzuriAPIService:
             作成結果の辞書（成功/失敗、作成された商品情報など）
         """
         try:
+            # デモモードの場合は、デモレスポンスを返す
+            if self.demo_mode:
+                logger.info("デモモードでSUZURIグッズ作成をシミュレート")
+                return {
+                    'success': True,
+                    'product': {
+                        'id': 12345,
+                        'title': f"{car_name} Tシャツ",
+                        'description': description or f"AISHA で生成された {car_name} の画像を使用したオリジナルTシャツです。",
+                        'price': 2500,
+                        'created_at': '2024-01-01T12:00:00Z'
+                    },
+                    'material': {
+                        'id': 67890,
+                        'title': f"{car_name} - 生成画像",
+                        'url': image_url
+                    },
+                    'item': {
+                        'id': 1,
+                        'name': 'T-Shirt',
+                        'base_price': 2500
+                    },
+                    'product_url': f"https://suzuri.jp/products/demo-{car_name.lower().replace(' ', '-')}"
+                }
+            
             # 1. アイテム一覧を取得
             items = self.get_items()
             if not items:
                 return {'success': False, 'error': 'アイテム一覧の取得に失敗しました'}
+            
+            # エラーレスポンスかどうかを確認
+            if isinstance(items, dict) and items.get('error'):
+                return {
+                    'success': False, 
+                    'error': f'SUZURI API エラー: {items.get("message", "不明なエラー")}'
+                }
             
             # Tシャツのアイテムを探す (デバッグログ追加)
             tshirt_item = None
@@ -324,6 +385,13 @@ class SuzuriAPIService:
             
             if not material:
                 return {'success': False, 'error': 'マテリアルのアップロードに失敗しました'}
+            
+            # エラーレスポンスかどうかを確認
+            if isinstance(material, dict) and material.get('error'):
+                return {
+                    'success': False, 
+                    'error': f'マテリアルアップロード エラー: {material.get("message", "不明なエラー")}'
+                }
             
             # デバッグ: マテリアルレスポンスの構造確認
             logger.info(f"マテリアルレスポンス構造: {material}")
@@ -362,6 +430,13 @@ class SuzuriAPIService:
             if not product:
                 return {'success': False, 'error': '商品の作成に失敗しました'}
             
+            # エラーレスポンスかどうかを確認
+            if isinstance(product, dict) and product.get('error'):
+                return {
+                    'success': False, 
+                    'error': f'商品作成 エラー: {product.get("message", "不明なエラー")}'
+                }
+            
             # デバッグ: 商品レスポンスの構造確認
             logger.info(f"商品レスポンス構造: {product}")
             logger.info(f"商品利用可能キー: {list(product.keys()) if isinstance(product, dict) else 'レスポンスが辞書ではありません'}")
@@ -391,7 +466,25 @@ class SuzuriAPIService:
             
         except Exception as e:
             logger.error(f"SUZURI merchandise creation failed: {str(e)}")
-            return {'success': False, 'error': f'グッズ作成中にエラーが発生しました: {str(e)}'}
+            
+            # エラーメッセージを詳細に構築
+            error_message = str(e)
+            if 'requests.exceptions.ConnectionError' in str(type(e)):
+                error_message = 'SUZURI APIに接続できませんでした。ネットワーク接続を確認してください。'
+            elif 'Timeout' in str(type(e)):
+                error_message = 'SUZURI APIのタイムアウトが発生しました。しばらく待ってから再試行してください。'
+            elif '401' in str(e):
+                error_message = 'SUZURI APIの認証に失敗しました。APIトークンを確認してください。'
+            elif '400' in str(e):
+                error_message = 'リクエストの形式が正しくありません。画像URLや車名を確認してください。'
+            elif '403' in str(e):
+                error_message = 'SUZURI APIへのアクセス権限がありません。'
+            elif '404' in str(e):
+                error_message = 'SUZURI APIのエンドポイントが見つかりません。'
+            elif '500' in str(e):
+                error_message = 'SUZURI APIサーバーでエラーが発生しました。'
+            
+            return {'success': False, 'error': error_message}
     
     def get_user_products(self, page: int = 1, per_page: int = 20) -> Optional[Dict]:
         """
