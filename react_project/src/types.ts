@@ -1,10 +1,59 @@
 export type ToastType = 'success' | 'error' | 'info';
 
+// 電話番号ログイン関連の型定義
+export interface PhoneLoginRequest {
+  phoneNumber: string;
+}
+
+export interface PhoneLoginResponse {
+  success: boolean;
+  message?: string;
+  sessionId?: string;
+}
+
+export interface PhoneVerificationRequest {
+  phoneNumber: string;
+  verificationCode: string;
+  sessionId: string;
+}
+
+export interface PhoneVerificationResponse {
+  success: boolean;
+  message?: string;
+  isNewUser?: boolean;
+  userId?: string;
+  token?: string;
+}
+
+export interface PhoneUserRegistrationRequest {
+  phoneNumber: string;
+  nickname: string;
+  sessionId: string;
+}
+
+export interface PhoneUserRegistrationResponse {
+  success: boolean;
+  message?: string;
+  userId: string;
+  token: string;
+}
+
+export interface PhoneUser {
+  id: string;
+  phoneNumber: string;
+  nickname: string;
+  isAdmin?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface User {
   id: string;
   name: string;
   isAdmin?: boolean; // Added for admin flag
   personalSettings?: PersonalUserSettings; // Added
+  loginType?: 'mygarage' | 'phone'; // Added for login type tracking
+  phoneNumber?: string; // Added for phone login users
 }
 
 export interface CreditsRequestParams {

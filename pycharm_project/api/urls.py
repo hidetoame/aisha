@@ -33,6 +33,17 @@ from api.views.user_admin import (
     list_admin_users,
     link_frontend_user
 )
+from api.views.phone_login import (
+    send_sms_verification,
+    verify_sms_code,
+    register_phone_user,
+    validate_phone_token
+)
+from api.views.firebase_auth import (
+    check_user_exists,
+    get_or_create_user_info,
+    validate_firebase_user
+)
 
 router = DefaultRouter()
 router.register(r'categories', CategoryViewSet, basename='category')
@@ -83,4 +94,15 @@ urlpatterns += [
     path('users/<str:frontend_user_id>/admin-status/set/', set_admin_status, name='set-admin-status'),
     path('users/admin/', list_admin_users, name='list-admin-users'),
     path('users/<int:user_id>/link-frontend/', link_frontend_user, name='link-frontend-user'),
+    
+    # 電話番号ログイン関連（カスタム実装）
+    path('phone-login/send-sms/', send_sms_verification, name='phone-login-send-sms'),
+    path('phone-login/verify/', verify_sms_code, name='phone-login-verify'),
+    path('phone-login/register/', register_phone_user, name='phone-login-register'),
+    path('phone-login/validate/', validate_phone_token, name='phone-login-validate'),
+    
+    # Firebase認証関連
+    path('firebase-auth/check-user/', check_user_exists, name='firebase-check-user'),
+    path('firebase-auth/user-info/', get_or_create_user_info, name='firebase-user-info'),
+    path('firebase-auth/validate/', validate_firebase_user, name='firebase-validate'),
 ]

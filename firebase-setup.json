@@ -1,0 +1,19 @@
+{
+  "projectId": "aisha-f9c6c",
+  "projectNumber": "139166899282",
+  "webApp": {
+    "name": "AISHA-Web-App",
+    "apiKey": "AIzaSyAMj_nLlzlwYurQNO-EH0lSGZjlj8BztOI",
+    "authDomain": "aisha-f9c6c.firebaseapp.com",
+    "projectId": "aisha-f9c6c",
+    "storageBucket": "aisha-f9c6c.firebasestorage.app",
+    "messagingSenderId": "139166899282",
+    "appId": "1:139166999282:web:7dc281d297b92b18a8938b",
+    "measurementId": "G-PEKY2T7RXG"
+  },
+  "authProviders": {
+    "phone": true,
+    "email": true,
+    "google": true
+  }
+}
