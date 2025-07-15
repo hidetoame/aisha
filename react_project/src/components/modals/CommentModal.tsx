@@ -83,7 +83,8 @@ const CommentModal: React.FC<CommentModalProps> = ({ isOpen, onClose, image, cur
       setNewComment('');
     } catch (error) {
       console.error('Failed to submit comment:', error);
-      alert(`コメントの投稿に失敗しました: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`コメントの投稿に失敗しました: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
@@ -109,7 +110,7 @@ const CommentModal: React.FC<CommentModalProps> = ({ isOpen, onClose, image, cur
           <div className="flex items-center space-x-3">
             <img 
               src={image.url} 
-              alt={image.displayPrompt}
+              alt={image.menuName || 'AI画像生成'}
               className="w-12 h-12 object-cover rounded-lg"
             />
             <div>

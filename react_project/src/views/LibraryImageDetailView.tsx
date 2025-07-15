@@ -188,7 +188,7 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
           <div className="md:w-2/3 flex-shrink-0 flex items-center justify-center bg-gray-900 rounded-lg overflow-hidden aspect-video md:aspect-auto md:max-h-[calc(90vh-6rem)]">
             <img
               src={image.url}
-              alt={image.displayPrompt || 'Generated library image'}
+              alt={image.menuName || 'AI画像生成'}
               className="max-w-full max-h-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
               onClick={() => setShowImageModal(true)}
               title="クリックして拡大表示"
@@ -339,7 +339,7 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
             </button>
             <img
               src={image.url}
-              alt={image.displayPrompt || 'Generated library image'}
+              alt={image.menuName || 'Generated library image'}
               className="max-w-full max-h-full object-contain shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             />

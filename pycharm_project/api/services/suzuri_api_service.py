@@ -162,7 +162,7 @@ class SuzuriAPIService:
             logger.error(f"Material creation failed: {str(e)}")
             return None
 
-    def upload_material_and_create_product(self, image_url: str, title: str, item_id: int, description: str = "", price: int = 0) -> Optional[Dict]:
+    def upload_material_and_create_product(self, image_url: str, title: str, item_id: int, description: str = "", price: int = 1000) -> Optional[Dict]:
         """
         URL から画像をダウンロードして、マテリアルと商品を同時に作成
         
@@ -171,7 +171,7 @@ class SuzuriAPIService:
             title: マテリアル・商品のタイトル
             item_id: アイテムID（148: Tシャツなど）
             description: 商品説明
-            price: 商品価格（デフォルト0）
+            price: 商品利益額（デフォルト1000円）
         """
         try:
             # 画像をダウンロード
@@ -346,6 +346,17 @@ class SuzuriAPIService:
         Returns:
             作成結果の辞書（成功/失敗、作成された商品情報など）
         """
+        
+        # フロントエンドのitem_typeとSUZURI APIアイテム名のマッピング
+        item_type_mapping = {
+            'heavyweight-t-shirt': ['heavyweight-t-shirt', 't-shirt', 'tshirt', 't_shirt', 'shirt', 'シャツ', 'heavyweight-t', 'heavy-t', 'premium-t'],
+            'heavyweight-hoodie': ['heavyweight-hoodie', 'hoodie', 'parker', 'パーカー', 'parka'],
+            'heavyweight-sweat': ['heavyweight-sweat', 'sweat', 'sweatshirt', 'スウェット'],
+            'tote-bag': ['tote-bag', 'tote', 'bag', 'トートバッグ', 'トート'],
+            'mug-cup': ['mug-cup', 'mug', 'cup', 'magcup', 'マグカップ', 'マグ', 'カップ'],
+            'sticker': ['sticker', 'ステッカー', 'シール'],
+        }
+        
         try:
             # デモモードの場合は、デモレスポンスを返す
             if self.demo_mode:
@@ -356,7 +367,8 @@ class SuzuriAPIService:
                         'id': 12345,
                         'title': f"{car_name} Tシャツ",
                         'description': description or f"AISHA で生成された {car_name} の画像を使用したオリジナルTシャツです。",
-                        'price': 2500,
+                        'price': 3500,  # ベース価格 + 1000円利益
+                        'profit': 1000,  # 利益額
                         'created_at': '2024-01-01T12:00:00Z',
                         'sampleUrl': f"https://suzuri.jp/products/demo-{car_name.lower().replace(' ', '-')}",
                         'sampleImageUrl': image_url
@@ -391,24 +403,36 @@ class SuzuriAPIService:
             logger.info(f"取得したアイテム数: {len(items)}")
             logger.info(f"検索対象アイテム: {item_type}")
             
+            # マッピングテーブルから検索キーワードを取得
+            search_keywords = item_type_mapping.get(item_type, [item_type])
+            logger.info(f"検索キーワード: {search_keywords}")
+            
             for item in items:
                 item_name = item.get('name', '').lower()
                 logger.info(f"アイテム検索中: ID={item.get('id')}, Name='{item.get('name')}', Lower='{item_name}'")
                 
-                # 完全一致または部分一致で検索
-                if item_name == item_type.lower() or item_type.lower() in item_name:
-                    target_item = item
-                    logger.info(f"✅ 対象アイテム発見: {item.get('name')} (ID: {item.get('id')})")
+                # マッピングテーブルのキーワードと照合
+                for keyword in search_keywords:
+                    if item_name == keyword.lower() or keyword.lower() in item_name:
+                        target_item = item
+                        logger.info(f"✅ 対象アイテム発見: {item.get('name')} (ID: {item.get('id')}) - キーワード: {keyword}")
+                        break
+                
+                if target_item:
                     break
             
             # 指定アイテムが見つからない場合はTシャツにフォールバック
             if not target_item:
                 logger.warning(f"指定アイテム '{item_type}' が見つかりません。Tシャツを検索します。")
+                tshirt_keywords = item_type_mapping.get('heavyweight-t-shirt', ['t-shirt'])
                 for item in items:
                     item_name = item.get('name', '').lower()
-                    if any(keyword in item_name for keyword in ['t-shirt', 'tshirt', 't_shirt', 'shirt', 'シャツ', 'heavyweight-t', 'heavy-t', 'premium-t']):
-                        target_item = item
-                        logger.info(f"✅ フォールバック: Tシャツアイテム発見: {item.get('name')} (ID: {item.get('id')})")
+                    for keyword in tshirt_keywords:
+                        if keyword.lower() in item_name:
+                            target_item = item
+                            logger.info(f"✅ フォールバック: Tシャツアイテム発見: {item.get('name')} (ID: {item.get('id')})")
+                            break
+                    if target_item:
                         break
             
             # 最後の手段として最初のアイテムを使用
@@ -448,7 +472,7 @@ class SuzuriAPIService:
                 data = {
                     'texture': f'data:{mime_type};base64,{image_base64}',
                     'title': product_title,  # 商品タイトルとして使用
-                    'price': 0,  # 基本価格（SUZURIが自動設定）
+                    'price': 1000,  # 利益額（1000円）
                     'description': product_description,
                     'products': [
                         {
@@ -464,6 +488,7 @@ class SuzuriAPIService:
                 logger.info(f"  🚗 Product title: {product_title}")
                 logger.info(f"  🎯 Item ID: {target_item['id']} ({target_item.get('name')})")
                 logger.info(f"  🏷️ Item type: {item_type}")
+                logger.info(f"  💰 Profit price: 1000円")
                 
                 result = self._make_request('POST', '/materials', data=data)
                 

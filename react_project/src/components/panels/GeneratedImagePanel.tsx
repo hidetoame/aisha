@@ -239,7 +239,7 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
       <div className="flex-grow flex items-center justify-center mb-3 overflow-hidden rounded-md bg-gray-900/50 aspect-video">
         <img
           src={image.url}
-          alt={image.displayPrompt}
+          alt={image.menuName || 'AI画像生成'}
           className="max-w-full max-h-full object-contain rounded-md shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
           onClick={() => setShowImageModal(true)}
           title="クリックして拡大表示"
@@ -681,7 +681,7 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
             </button>
             <img
               src={image.url}
-              alt={image.displayPrompt}
+              alt={image.menuName || 'AI画像生成'}
               className="max-w-full max-h-full object-contain shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             />

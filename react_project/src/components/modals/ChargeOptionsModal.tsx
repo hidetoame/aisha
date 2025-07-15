@@ -177,18 +177,18 @@ export const ChargeOptionsModal: React.FC<ChargeOptionsModalProps> = ({
         
         <div className="space-y-4">
           {displayOptions?.map((option) => (
-            <div
-              key={option.id}
-              className="p-4 border border-gray-700 rounded-lg bg-gray-700/50"
-            >
-              <h3 className="text-lg font-medium text-indigo-300">
-                {option.creditsAwarded} クレジット
-                {option.creditsBonus && (
-                  <span className="text-sm text-yellow-400 font-semibold ml-2">
-                    (+{option.creditsBonus} お得!)
-                  </span>
-                )}
-              </h3>
+              <div
+                key={option.id}
+                className="p-4 border border-gray-700 rounded-lg bg-gray-700/50"
+              >
+                <h3 className="text-lg font-medium text-indigo-300">
+                  {(option as any).displayInfo || `${option.creditsAwarded} クレジット`}
+                  {(option.creditsBonus || 0) > 0 && (
+                    <span className="text-sm text-yellow-400 font-semibold ml-2">
+                      (+{option.creditsBonus} お得!)
+                    </span>
+                  )}
+                </h3>
               <p className="text-sm text-gray-400 mb-3">
                 ¥{option.priceYen} で購入
               </p>

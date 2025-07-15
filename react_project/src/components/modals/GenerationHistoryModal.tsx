@@ -92,7 +92,7 @@ export const GenerationHistoryModal: React.FC<GenerationHistoryModalProps> = ({
                 >
                   <img
                     src={image.url}
-                    alt={image.displayPrompt.substring(0, 50)}
+                    alt={image.menuName || 'AI画像生成'}
                     className="w-24 h-24 object-cover rounded-md border border-gray-500"
                   />
                   <div className="flex-grow min-w-0">

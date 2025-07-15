@@ -82,7 +82,7 @@ const PublicTimelineView: React.FC<PublicTimelineViewProps> = ({ publicImages, c
             <div className="aspect-video bg-gray-700/50 flex items-center justify-center overflow-hidden">
               <img 
                 src={image.url} 
-                alt={image.displayPrompt} 
+                alt={image.menuName || 'AI画像生成'} 
                 className="w-full h-full object-cover" // Changed to object-cover for better fill
               />
             </div>

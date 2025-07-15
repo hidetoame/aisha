@@ -324,28 +324,31 @@ export const MenuExecutionPanel: React.FC<MenuExecutionPanelProps> = ({
                 <AdjustmentsHorizontalIcon className="w-5 h-5 lg:w-6 lg:h-6 mr-2" />
                 追加共通オプション
               </h3>
-              <div>
-                <label
-                  htmlFor="aspectRatio"
-                  className="block text-xs lg:text-sm font-medium text-gray-300 mb-1"
-                >
-                  画像比率
-                </label>
-                <select
-                  id="aspectRatio"
-                  value={formData.aspectRatio}
-                  onChange={(e) =>
-                    handleAspectRatio(e.target.value as AspectRatio)
-                  }
-                  className="w-full p-2 text-xs lg:text-sm bg-gray-700 border border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-gray-200"
-                >
-                  {AVAILABLE_ASPECT_RATIOS.map((ar) => (
-                    <option key={ar} value={ar}>
-                      {ar}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* 画像比率 - テキスト入力ベースの時のみ表示 */}
+              {formData.inputType === 'prompt' && (
+                <div>
+                  <label
+                    htmlFor="aspectRatio"
+                    className="block text-xs lg:text-sm font-medium text-gray-300 mb-1"
+                  >
+                    画像比率
+                  </label>
+                  <select
+                    id="aspectRatio"
+                    value={formData.aspectRatio}
+                    onChange={(e) =>
+                      handleAspectRatio(e.target.value as AspectRatio)
+                    }
+                    className="w-full p-2 text-xs lg:text-sm bg-gray-700 border border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-gray-200"
+                  >
+                    {AVAILABLE_ASPECT_RATIOS.map((ar) => (
+                      <option key={ar} value={ar}>
+                        {ar}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="mt-3">
                 <label
                   htmlFor="additionalPromptForOthers"

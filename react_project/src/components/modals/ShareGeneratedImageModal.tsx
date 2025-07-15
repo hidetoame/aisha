@@ -143,7 +143,7 @@ export const ShareGeneratedImageModal: React.FC<
           <div className="mb-5 rounded-lg overflow-hidden shadow-lg bg-gray-700/40">
             <img
               src={publicImageUrl}
-              alt={image.menuName || '生成された画像'}
+              alt={image.menuName || 'AI画像生成'}
               className="w-full h-auto max-h-[45vh] object-contain"
             />
             {isUploading && (
