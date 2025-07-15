@@ -47,23 +47,65 @@ export const sendSMSVerification = async (
   containerId: string
 ): Promise<ConfirmationResult> => {
   try {
+    console.log('🚀 SMS送信開始:', { phoneNumber, containerId });
+    
     // 日本の電話番号を国際形式に変換
+    console.log('📞 電話番号を国際形式に変換中...');
     const internationalNumber = convertToInternationalFormat(phoneNumber);
+    console.log('✅ 国際形式変換完了:', internationalNumber);
+    
+    // Firebase認証インスタンスの確認
+    console.log('🔥 Firebase Auth確認:', { 
+      auth: !!auth, 
+      currentUser: auth?.currentUser?.uid || 'なし' 
+    });
     
     // reCAPTCHA verifierを初期化
+    console.log('🔐 reCAPTCHA初期化中...', { containerId });
     const appVerifier = initializeRecaptcha(containerId);
+    console.log('✅ reCAPTCHA初期化完了');
     
-    // SMS送信
+    // reCAPTCHA要素の存在確認
+    const recaptchaElement = document.getElementById(containerId);
+    console.log('🎯 reCAPTCHA要素確認:', { 
+      element: !!recaptchaElement,
+      id: containerId 
+    });
+    
+    // SMS送信実行
+    console.log('📤 Firebase SMS送信実行中...', { 
+      number: internationalNumber,
+      verifier: !!appVerifier 
+    });
+    
     const confirmationResult = await signInWithPhoneNumber(
       auth, 
       internationalNumber, 
       appVerifier
     );
     
-    console.log('SMS送信成功:', internationalNumber);
+    console.log('🎉 SMS送信成功:', {
+      verificationId: confirmationResult.verificationId ? 'あり' : 'なし',
+      number: internationalNumber
+    });
+    
     return confirmationResult;
   } catch (error) {
-    console.error('SMS送信エラー:', error);
+    console.error('💥 SMS送信エラー詳細:', {
+      error,
+      errorCode: (error as any)?.code,
+      errorMessage: (error as any)?.message,
+      phoneNumber,
+      containerId
+    });
+    
+    // Firebase Auth状態も出力
+    console.error('🔥 Firebase Auth状態:', {
+      isInitialized: !!auth,
+      currentUser: auth?.currentUser?.uid || 'なし',
+      app: !!auth?.app
+    });
+    
     throw new Error(getErrorMessage(error));
   }
 };
@@ -126,7 +168,7 @@ export const convertFirebaseUserToAppUser = async (
   
   // バックエンドでユーザー情報を取得/作成
   const API_BASE = import.meta.env.VITE_AISHA_API_BASE || 'http://localhost:7999/api';
-  const response = await fetch(`${API_BASE}/firebase-auth/user-info`, {
+  const response = await fetch(`${API_BASE}/firebase-auth/user-info/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -148,7 +190,6 @@ export const convertFirebaseUserToAppUser = async (
       phoneNumber: firebaseUser.phoneNumber || '',
       isAdmin: false,
       loginType: 'phone' as const,
-      credits: 0, // デフォルト値
     };
   }
   

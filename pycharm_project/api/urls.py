@@ -44,6 +44,12 @@ from api.views.firebase_auth import (
     get_or_create_user_info,
     validate_firebase_user
 )
+from api.views.unified_credit_views import (
+    get_user_credits,
+    get_credit_history,
+    consume_credits,
+    migrate_phone_user
+)
 
 router = DefaultRouter()
 router.register(r'categories', CategoryViewSet, basename='category')
@@ -105,4 +111,10 @@ urlpatterns += [
     path('firebase-auth/check-user/', check_user_exists, name='firebase-check-user'),
     path('firebase-auth/user-info/', get_or_create_user_info, name='firebase-user-info'),
     path('firebase-auth/validate/', validate_firebase_user, name='firebase-validate'),
+    
+    # 統一クレジットシステム関連
+    path('unified-credits/', get_user_credits, name='unified-credits'),
+    path('unified-credits/history/', get_credit_history, name='unified-credit-history'),
+    path('unified-credits/consume/', consume_credits, name='unified-credit-consume'),
+    path('unified-credits/migrate/', migrate_phone_user, name='unified-credit-migrate'),
 ]

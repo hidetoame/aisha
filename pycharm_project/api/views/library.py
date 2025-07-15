@@ -86,10 +86,19 @@ class TimelineListCreateView(ListCreateAPIView):
                 frontend_id = validated_data.get('frontend_id')
                 
                 if original_image_url and frontend_id:
-                    logger.info(f"🖼️ 画像GCPアップロード開始: user_id={user_id}, frontend_id={frontend_id}")
+                    logger.info(f"🖼️ === ライブラリ画像GCSアップロード開始 ===")
+                    logger.info(f"📤 original_image_url: {original_image_url}")
+                    logger.info(f"👤 user_id: {user_id}")
+                    logger.info(f"🆔 frontend_id: {frontend_id}")
+                    
+                    # 環境変数の状態をログ出力
+                    import os
+                    google_creds = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
+                    logger.info(f"🔑 GOOGLE_APPLICATION_CREDENTIALS: {google_creds}")
                     
                     try:
                         # 画像をGCPにアップロード
+                        logger.info("☁️ GCS Upload Service呼び出し開始...")
                         gcp_image_url = gcs_upload_service.upload_generated_image_from_url(
                             original_image_url, 
                             user_id, 
@@ -98,12 +107,28 @@ class TimelineListCreateView(ListCreateAPIView):
                         
                         # GCPのURLで置き換え
                         validated_data['image_url'] = gcp_image_url
-                        logger.info(f"✅ 画像GCPアップロード成功: {gcp_image_url}")
+                        logger.info(f"✅ ライブラリ画像GCSアップロード成功!")
+                        logger.info(f"🔗 gcp_image_url: {gcp_image_url}")
                         
                     except Exception as gcp_error:
-                        logger.error(f"❌ 画像GCPアップロードエラー: {gcp_error}")
+                        logger.error(f"❌ === ライブラリ画像GCSアップロードエラー ===")
+                        logger.error(f"💥 エラータイプ: {type(gcp_error).__name__}")
+                        logger.error(f"💥 エラーメッセージ: {str(gcp_error)}")
+                        logger.error(f"💥 エラー詳細: {gcp_error}")
+                        
+                        # Firebase関連エラーかチェック
+                        error_str = str(gcp_error).lower()
+                        if any(keyword in error_str for keyword in ['firebase', 'credential', 'authentication']):
+                            logger.error("🔥 Firebase認証競合の可能性あり!")
+                        
+                        # 環境変数も再度チェック
+                        google_creds = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
+                        logger.error(f"🔑 エラー時のGOOGLE_APPLICATION_CREDENTIALS: {google_creds}")
+                        
                         # GCPアップロードに失敗した場合は元のURLを使用
                         logger.info("⚠️ 元の画像URLを使用してタイムラインに保存します")
+                else:
+                    logger.info("📷 画像URLまたはfrontend_idが見つからないため、GCSアップロードをスキップします")
                 
                 # タイムラインエントリを作成
                 timeline_entry = Library.objects.create(**validated_data)

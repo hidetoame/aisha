@@ -29,6 +29,7 @@ const FirebasePhoneLoginModal: React.FC<FirebasePhoneLoginModalProps> = ({
   const [nickname, setNickname] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<any>(null); // Firebase認証済みユーザー
   const [isNewUser, setIsNewUser] = useState(false);
   
   const recaptchaRef = useRef<HTMLDivElement>(null);
@@ -41,6 +42,7 @@ const FirebasePhoneLoginModal: React.FC<FirebasePhoneLoginModalProps> = ({
     setNickname('');
     setIsLoading(false);
     setConfirmationResult(null);
+    setFirebaseUser(null);
     setIsNewUser(false);
     cleanupRecaptcha();
   };
@@ -126,19 +128,36 @@ const FirebasePhoneLoginModal: React.FC<FirebasePhoneLoginModalProps> = ({
     setIsLoading(true);
     try {
       // Firebase認証番号確認
+      console.log('🔐 Firebase認証開始...');
       const firebaseUser = await verifySMSCode(confirmationResult, verificationCode);
+      setFirebaseUser(firebaseUser); // 認証成功時にfirebaseUserを保存
+      
+      console.log('✅ Firebase認証成功:', {
+        uid: firebaseUser.uid,
+        phoneNumber: firebaseUser.phoneNumber,
+        isAnonymous: firebaseUser.isAnonymous,
+        metadata: {
+          creationTime: firebaseUser.metadata.creationTime,
+          lastSignInTime: firebaseUser.metadata.lastSignInTime
+        }
+      });
       
       // バックエンドでユーザー確認
+      console.log('🔍 バックエンドユーザー確認開始...');
       console.log('送信データ:', {
         firebaseUid: firebaseUser.uid,
         phoneNumber: firebaseUser.phoneNumber,
       });
       
+      const idToken = await firebaseUser.getIdToken();
+      console.log('🔐 取得したIDトークン:', idToken.substring(0, 50) + '...');
+      console.log('🔐 IDトークンの長さ:', idToken.length);
+      
       const response = await fetch('http://localhost:7999/api/firebase-auth/check-user/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await firebaseUser.getIdToken()}`,
+          'Authorization': `Bearer ${idToken}`,
         },
         body: JSON.stringify({
           firebaseUid: firebaseUser.uid,
@@ -146,10 +165,16 @@ const FirebasePhoneLoginModal: React.FC<FirebasePhoneLoginModalProps> = ({
         }),
       });
 
+      console.log('📡 バックエンドレスポンス:', {
+        status: response.status,
+        ok: response.ok,
+        statusText: response.statusText
+      });
+
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('サーバーエラー:', response.status, errorText);
-        console.log('サーバーエラーのため、新規ユーザーとして処理します');
+        console.error('❌ サーバーエラー:', response.status, errorText);
+        console.log('➡️ サーバーエラーのため、新規ユーザーとして処理します');
         
         // サーバーエラーの場合、新規ユーザーとして処理
         setIsNewUser(true);
@@ -158,19 +183,30 @@ const FirebasePhoneLoginModal: React.FC<FirebasePhoneLoginModalProps> = ({
       }
 
       const data = await response.json();
+      console.log('📋 バックエンドレスポンスデータ:', data);
       
       if (data.exists) {
-        // 既存ユーザーの場合
-        const appUser = await convertFirebaseUserToAppUser(firebaseUser);
+        // 既存ユーザーの場合 - check-userから返されたユーザー情報を直接使用
+        console.log('👤 既存ユーザーでログイン:', data.user);
+        const appUser: User = {
+          id: data.user.id,
+          name: data.user.nickname,
+          loginType: 'phone',
+          phoneNumber: data.user.phoneNumber,
+          isAdmin: data.user.isAdmin,
+        };
+        
+        console.log('✅ ログイン成功:', appUser);
         onLoginSuccess(appUser);
         handleClose();
       } else {
         // 新規ユーザーの場合
+        console.log('🆕 新規ユーザー登録へ');
         setIsNewUser(true);
         setCurrentStep('registration');
       }
     } catch (error) {
-      console.error('認証エラー:', error);
+      console.error('💥 認証エラー:', error);
       onError(error instanceof Error ? error.message : '認証に失敗しました');
     } finally {
       setIsLoading(false);
@@ -188,21 +224,62 @@ const FirebasePhoneLoginModal: React.FC<FirebasePhoneLoginModalProps> = ({
       return;
     }
 
-    if (!confirmationResult) {
+    if (!firebaseUser) { // firebaseUserが保存されていない場合はエラー
       onError('認証セッションが無効です。最初からやり直してください。');
       return;
     }
 
     setIsLoading(true);
     try {
-      // 再度Firebase認証（新規ユーザー登録用）
-      const firebaseUser = await verifySMSCode(confirmationResult, verificationCode);
+      // 保存済みのFirebaseユーザー情報を使用
+      const idToken = await firebaseUser.getIdToken();
       
-      // アプリケーション用ユーザー作成
-      const appUser = await convertFirebaseUserToAppUser(firebaseUser, nickname.trim());
+      console.log('新規ユーザー登録:', {
+        firebaseUid: firebaseUser.uid,
+        phoneNumber: firebaseUser.phoneNumber,
+        nickname: nickname.trim()
+      });
       
-      onLoginSuccess(appUser);
-      handleClose();
+      // バックエンドでユーザー作成
+      const API_BASE = import.meta.env.VITE_AISHA_API_BASE || 'http://localhost:7999/api';
+      const response = await fetch(`${API_BASE}/firebase-auth/user-info/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          firebaseUid: firebaseUser.uid,
+          phoneNumber: firebaseUser.phoneNumber,
+          nickname: nickname.trim(),
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('ユーザー作成エラー:', response.status, errorText);
+        onError('ユーザー登録に失敗しました');
+        return;
+      }
+
+      const userData = await response.json();
+      
+      if (userData.success) {
+        // 登録成功
+        const appUser: User = {
+          id: userData.id,
+          name: userData.nickname,
+          loginType: 'phone',
+          phoneNumber: userData.phoneNumber,
+          isAdmin: userData.isAdmin,
+        };
+        
+        console.log('ユーザー登録成功:', appUser);
+        onLoginSuccess(appUser);
+        handleClose();
+      } else {
+        onError(userData.message || 'ユーザー登録に失敗しました');
+      }
     } catch (error) {
       console.error('ユーザー登録エラー:', error);
       onError(error instanceof Error ? error.message : 'ユーザー登録に失敗しました');
