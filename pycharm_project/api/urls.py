@@ -24,7 +24,8 @@ from api.views.suzuri import (
     get_user_products,
     get_product_detail,
     create_purchase_intent,
-    confirm_purchase
+    confirm_purchase,
+    get_user_goods_history
 )
 from api.views.user_admin import (
     get_user_profile,
@@ -87,12 +88,13 @@ urlpatterns += [
     path('image-expansion/', ImageExpansionView.as_view(), name='image-expansion'),
     
     # SUZURI関連
-    path('suzuri/merchandise/', create_merchandise, name='suzuri-create-merchandise'),
-    path('suzuri/items/', get_available_items, name='suzuri-get-items'),
-    path('suzuri/products/', get_user_products, name='suzuri-get-products'),
-    path('suzuri/products/<int:product_id>/', get_product_detail, name='suzuri-get-product-detail'),
-    path('suzuri/purchase/intent/', create_purchase_intent, name='suzuri-create-purchase-intent'),
-    path('suzuri/purchase/confirm/', confirm_purchase, name='suzuri-confirm-purchase'),
+path('suzuri/merchandise/', create_merchandise, name='suzuri-create-merchandise'),
+path('suzuri/items/', get_available_items, name='suzuri-get-items'),
+path('suzuri/products/', get_user_products, name='suzuri-get-products'),
+path('suzuri/products/<int:product_id>/', get_product_detail, name='suzuri-get-product-detail'),
+path('suzuri/purchase/intent/', create_purchase_intent, name='suzuri-create-purchase-intent'),
+path('suzuri/purchase/confirm/', confirm_purchase, name='suzuri-confirm-purchase'),
+path('suzuri/history/', get_user_goods_history, name='suzuri-get-user-goods-history'),
     
     # ユーザー管理関連
     path('users/<str:frontend_user_id>/profile/', get_user_profile, name='user-profile'),

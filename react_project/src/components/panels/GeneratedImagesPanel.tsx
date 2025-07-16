@@ -27,6 +27,7 @@ interface GeneratedImagesPanelProps {
     selectedVariations?: Record<string, string>,
   ) => void;
   onToggleImagePublicStatus: (imageId: string, isPublic: boolean) => void;
+  onGoodsUpdate: (imageId: string) => void; // グッズ作成成功時のコールバック
 }
 
 export const GeneratedImagesPanel: React.FC<GeneratedImagesPanelProps> = ({
@@ -41,6 +42,7 @@ export const GeneratedImagesPanel: React.FC<GeneratedImagesPanelProps> = ({
   onRateImage,
   onCreateGoodsForImage,
   onToggleImagePublicStatus,
+  onGoodsUpdate,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const prevFirstImageIdRef = useRef<string | undefined>(undefined);
@@ -107,6 +109,7 @@ export const GeneratedImagesPanel: React.FC<GeneratedImagesPanelProps> = ({
           onRate={onRateImage}
           onCreateGoods={onCreateGoodsForImage}
           onTogglePublic={onToggleImagePublicStatus}
+          onGoodsUpdate={onGoodsUpdate}
         />
       ))}
     </div>

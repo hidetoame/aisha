@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { GeneratedImage, User } from '../types';
-import { PhotoIcon, UserCircleIcon, CalendarDaysIcon, SparklesIcon, ChatBubbleLeftIcon, HeartIcon } from '../components/icons/HeroIcons';
+import { PhotoIcon, UserCircleIcon, CalendarDaysIcon, SparklesIcon, ChatBubbleLeftIcon, HeartIcon, ShoppingBagIcon, XMarkIcon as CloseIcon } from '../components/icons/HeroIcons';
 import CommentModal from '../components/modals/CommentModal';
+import { SuzuriMerchandiseModal } from '../components/modals/SuzuriMerchandiseModal';
 import { commentApiService } from '../services/commentApi';
 
 interface PublicTimelineViewProps {
@@ -13,16 +14,36 @@ interface PublicTimelineViewProps {
 const PublicTimelineView: React.FC<PublicTimelineViewProps> = ({ publicImages, currentUser }) => {
   const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+  const [isGoodsModalOpen, setIsGoodsModalOpen] = useState(false);
+  const [selectedImageForGoods, setSelectedImageForGoods] = useState<GeneratedImage | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImageForExpand, setSelectedImageForExpand] = useState<GeneratedImage | null>(null);
   const [images, setImages] = useState<GeneratedImage[]>(publicImages);
 
   // publicImagesが更新されたときにローカルstateも更新
   useEffect(() => {
+    console.log('🔍 PublicTimelineView - publicImages更新:', publicImages.map(img => ({
+      id: img.id,
+      goods_creation_count: img.goods_creation_count,
+      goodsCreationCount: img.goodsCreationCount,
+      authorName: img.authorName
+    })));
     setImages(publicImages);
   }, [publicImages]);
 
   const handleCommentClick = (image: GeneratedImage) => {
     setSelectedImage(image);
     setIsCommentModalOpen(true);
+  };
+
+  const handleGoodsClick = (image: GeneratedImage) => {
+    setSelectedImageForGoods(image);
+    setIsGoodsModalOpen(true);
+  };
+
+  const handleImageClick = (image: GeneratedImage) => {
+    setSelectedImageForExpand(image);
+    setShowImageModal(true);
   };
 
   const handleCommentUpdate = (imageId: string, newCommentCount: number) => {
@@ -33,6 +54,30 @@ const PublicTimelineView: React.FC<PublicTimelineViewProps> = ({ publicImages, c
           : prevImage
       )
     );
+  };
+
+  const handleGoodsUpdate = (imageId: string) => {
+    console.log('🔄 handleGoodsUpdate 呼び出し - imageId:', imageId);
+    
+    // グッズ作成成功時にカウンタを+1
+    setImages(prevImages => {
+      const updated = prevImages.map(prevImage => 
+        prevImage.id === imageId 
+          ? { 
+              ...prevImage, 
+              goodsCreationCount: (prevImage.goodsCreationCount || prevImage.goods_creation_count || 0) + 1,
+              goods_creation_count: (prevImage.goodsCreationCount || prevImage.goods_creation_count || 0) + 1 
+            }
+          : prevImage
+      );
+      
+      const updatedImage = updated.find(img => img.id === imageId);
+      if (updatedImage) {
+        console.log('✅ カウンタ更新完了 - 新しいカウント:', updatedImage.goodsCreationCount || updatedImage.goods_creation_count);
+      }
+      
+      return updated;
+    });
   };
 
   const handleLikeClick = async (image: GeneratedImage) => {
@@ -55,35 +100,24 @@ const PublicTimelineView: React.FC<PublicTimelineViewProps> = ({ publicImages, c
             : prevImage
         )
       );
-      
-      console.log('Like toggle result:', result);
     } catch (error) {
-      console.error('Failed to toggle like:', error);
-      // TODO: エラーメッセージを表示
+      console.error('いいね処理でエラーが発生しました:', error);
     }
   };
-  if (publicImages.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 p-8">
-        <PhotoIcon className="w-24 h-24 mb-6" />
-        <h2 className="text-2xl font-semibold text-gray-400 mb-2">公開タイムラインはまだ空です</h2>
-        <p className="text-lg">ユーザーが画像を公開すると、ここに表示されます。</p>
-        {!currentUser && <p className="mt-4 text-sm">ログインして、あなたも画像を生成・公開してみませんか？</p>}
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
-       <h1 className="text-3xl font-bold text-indigo-400 mb-8 text-center">公開タイムライン</h1>
+      <h1 className="text-3xl font-bold text-indigo-400 mb-8 text-center">公開タイムライン</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {images.map((image) => (
           <div key={image.id} className="bg-gray-800 rounded-lg shadow-xl overflow-hidden flex flex-col">
             <div className="aspect-video bg-gray-700/50 flex items-center justify-center overflow-hidden">
               <img 
                 src={image.url} 
-                alt={image.menuName || 'AI画像生成'} 
-                className="w-full h-full object-cover" // Changed to object-cover for better fill
+                alt={image.menuName || 'AI画像生成'}
+                className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => handleImageClick(image)}
+                title="クリックして拡大表示"
               />
             </div>
             <div className="p-4 flex flex-col flex-grow">
@@ -115,13 +149,23 @@ const PublicTimelineView: React.FC<PublicTimelineViewProps> = ({ publicImages, c
                     <HeartIcon className="w-4 h-4 mr-1" />
                     <span>{image.likeCount || 0}</span>
                   </button>
+                  <button 
+                    onClick={() => handleGoodsClick(image)}
+                    className={`flex items-center transition-colors ${
+                      ((image.goodsCreationCount || image.goods_creation_count) || 0) > 0 
+                        ? 'text-orange-400 hover:text-orange-500' 
+                        : 'text-gray-500 hover:text-gray-600'
+                    }`}
+                  >
+                    <ShoppingBagIcon className="w-4 h-4 mr-1" />
+                    <span>{(image.goodsCreationCount || image.goods_creation_count) || 0}</span>
+                  </button>
                 </div>
                 <div className="flex items-center">
                   <CalendarDaysIcon className="w-4 h-4 mr-1" />
                   <span>{new Date(image.timestamp).toLocaleDateString('ja-JP')}</span>
                 </div>
               </div>
-              {/* Future: Add like/comment/save buttons if currentUser is present */}
             </div>
           </div>
         ))}
@@ -136,6 +180,44 @@ const PublicTimelineView: React.FC<PublicTimelineViewProps> = ({ publicImages, c
           currentUser={currentUser}
           onCommentUpdate={handleCommentUpdate}
         />
+      )}
+      
+      {/* Goods Modal */}
+      {selectedImageForGoods && (
+        <SuzuriMerchandiseModal
+          isOpen={isGoodsModalOpen}
+          onClose={() => setIsGoodsModalOpen(false)}
+          image={selectedImageForGoods}
+          currentUser={currentUser}
+          onGoodsCreated={() => handleGoodsUpdate(selectedImageForGoods.id)}
+        />
+      )}
+      
+      {/* Image Expand Modal */}
+      {showImageModal && selectedImageForExpand && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-[80] p-4"
+          onClick={() => setShowImageModal(false)}
+        >
+          <div className="relative max-w-[95vw] max-h-[95vh] flex items-center justify-center">
+            <button
+              onClick={() => setShowImageModal(false)}
+              className="absolute top-2 right-2 text-white bg-black/50 hover:bg-black/70 p-2 rounded-full z-10 transition-colors"
+              aria-label="拡大表示を閉じる"
+            >
+              <CloseIcon className="w-6 h-6" />
+            </button>
+            <img
+              src={selectedImageForExpand.url}
+              alt={selectedImageForExpand.menuName || 'AI画像生成'}
+              className="max-w-full max-h-full object-contain shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <div className="absolute bottom-4 left-4 right-4 bg-black/70 text-white p-3 rounded-lg">
+              <p className="text-sm font-medium">{selectedImageForExpand.menuName || '公開画像'}</p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

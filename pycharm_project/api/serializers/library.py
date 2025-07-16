@@ -43,6 +43,9 @@ class LibrarySerializer(serializers.ModelSerializer):
     comment_count = serializers.SerializerMethodField()
     like_count = serializers.SerializerMethodField()
     
+    # グッズ作成回数を追加
+    goods_creation_count = serializers.IntegerField(read_only=True)
+    
     def get_comment_count(self, obj):
         """コメント数を取得"""
         return obj.get_comment_count()
@@ -66,6 +69,7 @@ class LibrarySerializer(serializers.ModelSerializer):
             'isSavedToLibrary',  # is_saved_to_library
             'comment_count',  # コメント数
             'like_count',  # いいね数
+            'goods_creation_count',  # グッズ作成回数
         ]
 
 

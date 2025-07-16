@@ -14,6 +14,7 @@ import FirebasePhoneLoginModal from './components/modals/FirebasePhoneLoginModal
 import { auth } from './services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getCurrentUserIdToken, signOutFirebase } from './services/api/firebase-auth';
+import { suzuriApiClient, SuzuriGoodsHistoryItem } from './services/suzuriApi';
 import {
   User,
   Plan,
@@ -288,6 +289,50 @@ const App: React.FC = () => {
   useEffect(() => {
     if (user) refreshCredits(user.id);
   }, [user]);
+
+  // SuzuriGoodsHistoryItemをGoodsCreationRecordに変換する関数
+  const convertToGoodsCreationRecord = (item: SuzuriGoodsHistoryItem): GoodsCreationRecord => {
+    return {
+      id: item.id.toString(),
+      goodsName: item.product_title,
+      imageId: item.library_image_id,
+      imageUrl: item.sample_image_url, // SUZURI商品のプレビュー画像をサムネイルに使用
+      prompt: item.description || item.car_name,
+      timestamp: new Date(item.created_at),
+      creditCost: 0, // APIレスポンスにない場合は0
+      selectedVariations: {
+        itemType: item.item_name,
+        productId: item.product_id.toString(),
+        productUrl: item.product_url,
+        originalImageUrl: item.original_image_url, // 元画像URLはselectedVariationsに保存
+      }
+    };
+  };
+
+  // グッズ履歴を取得する関数（独立）
+  const loadGoodsHistory = async () => {
+    if (user?.id) {
+      try {
+        console.log('📦 グッズ履歴を取得中... user_id:', user.id);
+        const historyData = await suzuriApiClient.getUserGoodsHistory(user.id);
+        console.log('✅ グッズ履歴取得成功:', historyData);
+        
+        const convertedHistory = historyData.map(convertToGoodsCreationRecord);
+        setGoodsCreationHistory(convertedHistory);
+      } catch (error) {
+        console.error('❌ グッズ履歴取得エラー:', error);
+        // エラーの場合は空配列を設定
+        setGoodsCreationHistory([]);
+      }
+    }
+  };
+
+  // グッズ履歴を取得するuseEffect
+  useEffect(() => {
+    if (showGoodsHistoryModal) {
+      loadGoodsHistory();
+    }
+  }, [showGoodsHistoryModal, user?.id]);
 
   const toggleView = useCallback(() => {
     setIsAdminView((prev) => !prev);
@@ -982,6 +1027,11 @@ const App: React.FC = () => {
           isOpen={showGoodsHistoryModal}
           onClose={() => setShowGoodsHistoryModal(false)}
           history={goodsCreationHistory}
+          currentUser={user}
+          onGoodsCreated={() => {
+            console.log('🔄 App.tsx - グッズ作成完了通知受信、履歴を再取得します');
+            loadGoodsHistory();
+          }}
         />
         
         {/* 決済履歴モーダル */}

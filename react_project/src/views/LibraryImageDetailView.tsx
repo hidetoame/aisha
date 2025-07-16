@@ -45,6 +45,23 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
 
   const [showSuzuriModal, setShowSuzuriModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+
+  // デバッグ: showSuzuriModalの変化を監視
+  useEffect(() => {
+    console.log('🔍 LibraryImageDetailView - showSuzuriModal変化:', showSuzuriModal);
+    if (!showSuzuriModal) {
+      console.log('🔍 LibraryImageDetailView - SuzuriModal が閉じられました');
+      console.trace('🔍 LibraryImageDetailView - Modal閉じる呼び出し元:');
+    }
+  }, [showSuzuriModal]);
+
+  // デバッグ: LibraryImageDetailViewのマウント/アンマウント監視
+  useEffect(() => {
+    console.log('🔍 LibraryImageDetailView - マウントされました');
+    return () => {
+      console.log('🔍 LibraryImageDetailView - アンマウントされました');
+    };
+  }, []);
   const [showImageModal, setShowImageModal] = useState(false); // 画像拡大モーダル用
   const [isCurrentlyPublic, setIsCurrentlyPublic] = useState(image.isPublic);
   const [currentRating, setCurrentRating] = useState<
@@ -142,6 +159,8 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
     
     // 画像URLを渡してapplyRegenerateFormDataToMenuExePanelと同じ処理を実行
     onLoadOptions(formData, image.url);
+    console.log('🔍 LibraryImageDetailView - onClose呼び出し【この画像で生成】');
+    console.trace('🔍 LibraryImageDetailView - この画像で生成からのonClose:');
     onClose();
   };
 
@@ -157,6 +176,8 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
       )
     ) {
       onDeleteImage(image.id);
+      console.log('🔍 LibraryImageDetailView - onClose呼び出し【削除】');
+      console.trace('🔍 LibraryImageDetailView - 削除からのonClose:');
       onClose();
     }
   };
@@ -171,14 +192,22 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
     <>
       <div
         className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[70] p-4"
-        onClick={onClose}
+        onClick={() => {
+          console.log('🔍 LibraryImageDetailView - onClose呼び出し【背景クリック】');
+          console.trace('🔍 LibraryImageDetailView - 背景クリックからのonClose:');
+          onClose();
+        }}
       >
         <div
           className="bg-gray-850 border border-gray-700 p-4 md:p-6 rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col md:flex-row gap-4 md:gap-6 relative"
           onClick={(e) => e.stopPropagation()}
         >
           <button
-            onClick={onClose}
+            onClick={() => {
+              console.log('🔍 LibraryImageDetailView - onClose呼び出し【×ボタン】');
+              console.trace('🔍 LibraryImageDetailView - ×ボタンからのonClose:');
+              onClose();
+            }}
             className="absolute top-3 right-3 text-gray-500 hover:text-white bg-gray-800/50 hover:bg-gray-700/80 p-1.5 rounded-full z-10"
             aria-label="詳細ビューを閉じる"
           >
@@ -309,8 +338,18 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
         {showSuzuriModal && (
           <SuzuriMerchandiseModal
             isOpen={showSuzuriModal}
-            onClose={() => setShowSuzuriModal(false)}
+            onClose={() => {
+              console.log('🔍 LibraryImageDetailView - SuzuriModal onClose呼び出し');
+              console.trace('🔍 LibraryImageDetailView - onClose呼び出し元:');
+              setShowSuzuriModal(false);
+            }}
             image={image}
+            currentUser={currentUser}
+            onGoodsCreated={() => {
+              console.log('🔍 LibraryImageDetailView - onGoodsCreated コールバック呼び出し');
+              // モーダルは閉じずに、プレビュー画面を表示させる（他のコンポーネントと同様）
+              console.log('🔍 LibraryImageDetailView - SUZURIモーダル処理完了（モーダルは開いたまま）');
+            }}
           />
         )}
       </div>

@@ -45,18 +45,21 @@ interface GeneratedImagePanelProps {
     selectedVariations?: Record<string, string>,
   ) => void;
   onTogglePublic: (imageId: string, isPublic: boolean) => void;
+  onGoodsUpdate: (imageId: string) => void; // グッズ作成成功時のコールバック
 }
 
 export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
   image,
   currentUser,
   applyRegenerateFormDataToMenuExePanel,
+  onRegenerate,
   onExtendImage,
   onDelete,
   onSaveToLibrary,
   onRate,
   onCreateGoods,
   onTogglePublic,
+  onGoodsUpdate,
 }) => {
   const credits = useCredits();
 
@@ -368,6 +371,11 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
         isOpen={showSuzuriModal}
         onClose={() => setShowSuzuriModal(false)}
         image={image}
+        currentUser={currentUser}
+        onGoodsCreated={() => {
+          console.log('🔄 GeneratedImagePanel - グッズ作成成功:', image.id);
+          onGoodsUpdate(image.id);
+        }}
       />
 
       {/* グッズ作成モーダル（従来のモック機能）*/}

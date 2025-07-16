@@ -44,6 +44,12 @@ class Library(models.Model):
         help_text="ユーザーがライブラリに明示的に保存したかどうか"
     )
     
+    # グッズ作成回数
+    goods_creation_count = models.IntegerField(
+        default=0,
+        help_text="この画像を使ってグッズが作成された回数"
+    )
+    
     # タイムスタンプ
     created_at = models.DateTimeField(auto_now_add=True, help_text="作成日時")
     updated_at = models.DateTimeField(auto_now=True, help_text="更新日時")

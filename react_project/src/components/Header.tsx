@@ -120,7 +120,16 @@ export const Header: React.FC<HeaderProps> = ({
                 <RectangleStackIcon className="w-5 h-5 md:mr-1.5" />{' '}
                 <span className="hidden md:inline">ライブラリ</span>
               </button>
-              {/* 5. Timeline / Generate Toggle Button */}
+              {/* 5. Goods History Button */}
+              <button
+                onClick={onGoodsHistoryClick}
+                className="text-sm text-gray-300 hover:text-indigo-400 transition-colors duration-150 flex items-center bg-gray-700 hover:bg-gray-600 px-2 md:px-3 py-1.5 rounded-lg"
+                title="グッズ履歴を見る"
+              >
+                <BuildingStorefrontIcon className="w-5 h-5 md:mr-1.5" />{' '}
+                <span className="hidden md:inline">グッズ履歴</span>
+              </button>
+              {/* 6. Timeline / Generate Toggle Button */}
               {onToggleAppViewMode && !isAdminView && (
                 <button
                   onClick={onToggleAppViewMode}
@@ -214,7 +223,16 @@ export const Header: React.FC<HeaderProps> = ({
                   >
                     <RectangleStackIcon className="w-5 h-5 mr-2" /> ライブラリ
                   </button>
-                  {/* 4. Timeline / Generate Toggle Button */}
+                  {/* 4. Goods History Button */}
+                  <button
+                    onClick={() =>
+                      handleMobileMenuAction(onGoodsHistoryClick)
+                    }
+                    className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-indigo-600 hover:text-white flex items-center"
+                  >
+                    <BuildingStorefrontIcon className="w-5 h-5 mr-2" /> グッズ履歴
+                  </button>
+                  {/* 5. Timeline / Generate Toggle Button */}
                   {onToggleAppViewMode && !isAdminView && (
                     <button
                       onClick={() =>

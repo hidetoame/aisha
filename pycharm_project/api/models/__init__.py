@@ -7,5 +7,6 @@ from .library import Library
 from .comment import Comment, Like
 from .user_profile import UserProfile
 from .phone_user import PhoneUser, PhoneVerificationSession, PhoneLoginToken
+from .suzuri_merchandise import SuzuriMerchandise
 
-__all__ = ['Category', 'Menu', 'PromptVariable', 'CarSettings', 'CreditCharge', 'UserCredit', 'CreditTransaction', 'Library', 'Comment', 'Like', 'UserProfile', 'PhoneUser', 'PhoneVerificationSession', 'PhoneLoginToken']
+__all__ = ['Category', 'Menu', 'PromptVariable', 'CarSettings', 'CreditCharge', 'UserCredit', 'CreditTransaction', 'Library', 'Comment', 'Like', 'UserProfile', 'PhoneUser', 'PhoneVerificationSession', 'PhoneLoginToken', 'SuzuriMerchandise']

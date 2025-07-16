@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GeneratedImage } from '@/types';
+import { GeneratedImage, User } from '@/types';
 import { suzuriApiClient } from '@/services/suzuriApi';
 import {
   XMarkIcon as CloseIcon,
@@ -13,20 +13,35 @@ import {
   EyeIcon,
 } from '../icons/HeroIcons';
 
+interface ExistingProductData {
+  selectedItemId: string;
+  merchandiseResult: MerchandiseResult;
+}
+
 interface SuzuriMerchandiseModalProps {
   isOpen: boolean;
   onClose: () => void;
   image: GeneratedImage;
+  currentUser?: User | null; // ユーザー情報を追加
+  onGoodsCreated?: () => void; // グッズ作成成功時のコールバック
+  initialStep?: 'select' | 'preview' | 'result'; // 初期ステップ（デフォルト: 'select'）
+  existingProductData?: ExistingProductData; // 既存商品データ（履歴から開く場合）
 }
 
 interface MerchandiseResult {
   success: boolean;
   productUrl?: string;
+  product_url?: string;  // バックエンドからの互換性
   productTitle?: string;
+  product_title?: string;  // バックエンドからの互換性
   sampleImageUrl?: string;
+  sample_image_url?: string;  // バックエンドからの互換性
   itemName?: string;
+  item_name?: string;  // バックエンドからの互換性
   productId?: number;
+  product_id?: number;  // バックエンドからの互換性
   materialId?: number;
+  material_id?: number;  // バックエンドからの互換性
   error?: string;
 }
 
@@ -101,12 +116,54 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
   isOpen,
   onClose,
   image,
+  currentUser,
+  onGoodsCreated,
+  initialStep = 'select',
+  existingProductData,
 }) => {
-  const [selectedItem, setSelectedItem] = useState<ItemOption | null>(null);
+  // 既存商品データがある場合は、そのアイテムを初期選択する
+  const getInitialSelectedItem = () => {
+    if (existingProductData) {
+      return ITEM_OPTIONS.find(item => item.id === existingProductData.selectedItemId) || null;
+    }
+    return null;
+  };
+
+  const [selectedItem, setSelectedItem] = useState<ItemOption | null>(getInitialSelectedItem());
   const [isCreating, setIsCreating] = useState(false);
-  const [result, setResult] = useState<MerchandiseResult | null>(null);
-  const [step, setStep] = useState<'select' | 'preview' | 'result'>('select');
+  const [result, setResult] = useState<MerchandiseResult | null>(existingProductData?.merchandiseResult || null);
+  const [step, setStep] = useState<'select' | 'preview' | 'result'>(initialStep);
   const [previewAnimation, setPreviewAnimation] = useState(false);
+
+  // デバッグ: previewステップの条件チェック
+  const checkPreviewCondition = () => {
+    const stepCheck = step === 'preview';
+    const itemCheck = selectedItem !== null;
+    const result = stepCheck && itemCheck;
+    console.log('🔍 Preview条件チェック - step:', step, 'selectedItem:', selectedItem, '結果:', result);
+    return result;
+  };
+
+  // デバッグ: モーダル開始時のimage情報をログ出力
+  useEffect(() => {
+    if (isOpen) {
+      console.log('🔍 SuzuriMerchandiseModal 開始');
+      console.log('🔍 image:', image);
+      console.log('🔍 currentUser:', currentUser);
+      console.log('🔍 onGoodsCreated:', onGoodsCreated);
+    }
+  }, [isOpen, image, currentUser, onGoodsCreated]);
+
+  // デバッグ: stepとselectedItemの変化を監視
+  useEffect(() => {
+    console.log('🔍 step変化:', step);
+    checkPreviewCondition(); // 条件チェックも実行
+  }, [step]);
+
+  useEffect(() => {
+    console.log('🔍 selectedItem変化:', selectedItem);
+    checkPreviewCondition(); // 条件チェックも実行
+  }, [selectedItem]);
 
   useEffect(() => {
     if (step === 'preview') {
@@ -151,11 +208,59 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
     return cleanPrompt.slice(0, 50).trim() || 'AISHA生成画像';
   };
 
+  const _get_item_display_name = (item_name: string, requested_type: string) => {
+    const display_names: Record<string, string> = {
+      'heavyweight-t-shirt': 'Tシャツ',
+      'heavyweight-hoodie': 'パーカー',
+      'heavyweight-sweat': 'スウェット',
+      'tote-bag': 'トートバッグ',
+      'mug-cup': 'マグカップ',
+      'sticker': 'ステッカー',
+    };
+    
+    // requested_typeから優先的に表示名を取得
+    if (requested_type in display_names) {
+      return display_names[requested_type];
+    }
+    
+    // item_nameから表示名を取得
+    if (item_name in display_names) {
+      return display_names[item_name];
+    }
+    
+    // マッピングにない場合はそのまま返す
+    return item_name || 'グッズ';
+  };
+
+  // アイテムタイプ別の価格を取得する関数
+  const getItemPrice = (itemType: string): string => {
+    const priceMapping: Record<string, string> = {
+      'heavyweight-t-shirt': '¥3,500〜',
+      'heavyweight-hoodie': '¥4,800〜', 
+      'heavyweight-sweat': '¥4,200〜',
+      'tote-bag': '¥2,800〜',
+      'mug-cup': '¥2,500〜',
+      'sticker': '¥800〜',
+    };
+    
+    return priceMapping[itemType] || '¥3,500〜';
+  };
+
   const carName = extractCarName(image.displayPrompt);
 
   const handleItemSelect = (item: ItemOption) => {
-    setSelectedItem(item);
-    setStep('preview');
+    console.log('🔍 handleItemSelect 開始 - item:', item);
+    console.log('🔍 現在のstep:', step);
+    
+    try {
+      setSelectedItem(item);
+      console.log('✅ setSelectedItem 完了');
+      
+      setStep('preview');
+      console.log('✅ setStep("preview") 完了');
+    } catch (error) {
+      console.error('❌ handleItemSelect エラー:', error);
+    }
   };
 
   const handleCreate = async () => {
@@ -168,13 +273,27 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
       const requestData = {
         image_url: image.url,
         car_name: carName,
-        description: `AISHA で生成された車の画像から作成された${selectedItem.displayName}です。\n\n生成プロンプト: ${image.displayPrompt}`,
+        description: `${carName} ${selectedItem.displayName}`,
         item_type: selectedItem.id,
+        user_id: currentUser?.id,  // ユーザーIDを追加
       };
 
       const response = await suzuriApiClient.createMerchandise(requestData);
       console.log('SUZURI API 応答:', response);
       setResult(response);
+      
+      // デバッグ用ログ
+      console.log('🔍 デバッグ: response.success =', response.success);
+      console.log('🔍 デバッグ: onGoodsCreated =', onGoodsCreated);
+      console.log('🔍 デバッグ: typeof onGoodsCreated =', typeof onGoodsCreated);
+      
+      // グッズ作成成功時にコールバックを呼び出し
+      if (response.success && onGoodsCreated) {
+        console.log('🛍️ グッズ作成成功 - カウンタ更新を通知');
+        onGoodsCreated();
+      } else {
+        console.log('❌ コールバック呼び出し失敗: success =', response.success, ', callback =', !!onGoodsCreated);
+      }
     } catch (error: any) {
       console.error('SUZURI merchandise creation failed:', error);
       
@@ -208,6 +327,8 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
   };
 
   const handleClose = () => {
+    console.log('🔍 handleClose 呼び出し');
+    console.trace('🔍 handleClose呼び出し元:');
     setStep('select');
     setSelectedItem(null);
     setResult(null);
@@ -216,7 +337,10 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden relative transform transition-all duration-300 scale-100">
+      <div 
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden relative transform transition-all duration-300 scale-100"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* シンプルなヘッダー */}
         <div className="bg-gradient-to-r from-pink-500 to-purple-600 p-4 text-white relative">
           <button
@@ -331,7 +455,10 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
                 {ITEM_OPTIONS.map((item) => (
                   <button
                     key={item.id}
-                    onClick={() => handleItemSelect(item)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleItemSelect(item);
+                    }}
                     className="group p-4 bg-white border border-gray-200 rounded-xl hover:border-purple-300 hover:shadow-md transition-all duration-200 text-center"
                   >
                     <div className={`w-12 h-12 bg-gradient-to-br ${item.gradient} rounded-lg flex items-center justify-center text-xl mb-2 mx-auto group-hover:scale-105 transition-transform duration-200`}>
@@ -388,24 +515,56 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
                     </div>
                   </div>
 
-                  {/* シンプルな商品詳細 */}
-                  <div className="space-y-3">
+                  {/* 商品詳細情報 */}
+                  <div className="space-y-4">
                     <h4 className="text-lg font-bold text-gray-800 flex items-center">
                       <ShoppingBagIcon className="w-5 h-5 text-purple-500 mr-2" />
                       商品詳細
                     </h4>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between p-2 bg-white rounded-lg">
-                        <span className="text-gray-600 text-sm">アイテム</span>
-                        <span className="font-semibold text-gray-800">{selectedItem.displayName}</span>
+                    <div className="space-y-3">
+                      {/* アイテムタイプ */}
+                      <div className="bg-white rounded-xl p-4 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600 text-sm font-medium">アイテム</span>
+                          <span className="font-bold text-gray-800">
+                            {selectedItem.displayName}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between p-2 bg-white rounded-lg">
-                        <span className="text-gray-600 text-sm">プリント位置</span>
-                        <span className="font-semibold text-gray-800">前面中央</span>
+                      
+                      {/* プリント位置 */}
+                      <div className="bg-white rounded-xl p-4 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600 text-sm font-medium">プリント位置</span>
+                          <span className="font-medium text-gray-800">
+                            フロント中央
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between p-2 bg-white rounded-lg">
-                        <span className="text-gray-600 text-sm">印刷品質</span>
-                        <span className="font-semibold text-green-600">高解像度</span>
+                      
+                      {/* 印刷品質 */}
+                      <div className="bg-white rounded-xl p-4 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600 text-sm font-medium">印刷品質</span>
+                          <span className="font-medium text-gray-800">
+                            高品質プリント
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* 価格 */}
+                      <div className="bg-white rounded-xl p-4 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600 text-sm font-medium">販売価格</span>
+                          <span className="font-bold text-purple-600 text-xl">
+                            {getItemPrice(selectedItem.id)}
+                          </span>
+                        </div>
+                        <div className="text-right mt-1">
+                          <span className="text-gray-500 text-xs">
+                            ※サイズ・カラーにより異なります
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>

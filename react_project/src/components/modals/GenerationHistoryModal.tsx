@@ -44,6 +44,8 @@ export const GenerationHistoryModal: React.FC<GenerationHistoryModalProps> = ({
   };
 
   const handleCloseDetailView = () => {
+    console.log('🔍 GenerationHistoryModal - handleCloseDetailView 呼び出し');
+    console.trace('🔍 GenerationHistoryModal - handleCloseDetailView呼び出し元:');
     setSelectedImageDetail(null);
   };
 

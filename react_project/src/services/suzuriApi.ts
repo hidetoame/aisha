@@ -5,6 +5,7 @@ export interface SuzuriMerchandiseRequest {
   car_name: string;
   description?: string;
   item_type?: string;
+  user_id?: string; // ユーザーIDを追加
 }
 
 export interface SuzuriMerchandiseResponse {
@@ -64,6 +65,25 @@ export interface SuzuriPurchaseConfirmResponse {
   estimated_delivery?: string;
   error?: string;
 }
+
+// グッズ履歴用の型定義
+export interface SuzuriGoodsHistoryItem {
+  id: number;
+  product_id: number;
+  product_title: string;
+  product_url: string;
+  sample_image_url: string;
+  original_image_url: string;
+  car_name: string;
+  description: string;
+  item_name: string;
+  created_at: string;
+  library_image_id: string;
+  material_id: number;
+  item_id: number;
+}
+
+export type SuzuriGoodsHistoryResponse = SuzuriGoodsHistoryItem[];
 
 export interface SuzuriApiItem {
   id: number;
@@ -159,6 +179,14 @@ export class SuzuriApiClient {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  /**
+   * ユーザーのグッズ作成履歴を取得
+   */
+  async getUserGoodsHistory(userId: string): Promise<SuzuriGoodsHistoryResponse> {
+    const params = new URLSearchParams({ user_id: userId });
+    return this.makeRequest<SuzuriGoodsHistoryResponse>(`/suzuri/history/?${params}`);
   }
 }
 

@@ -5,8 +5,17 @@ class SuzuriMerchandise(models.Model):
     """SUZURI で作成されたグッズの履歴を管理するモデル"""
     
     # 基本情報
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='suzuri_merchandise')
-    frontend_user_id = models.CharField(max_length=100, help_text="フロントエンドのユーザーID")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='suzuri_merchandise', null=True, blank=True)
+    
+    # ユーザー情報（必須）
+    goods_creator_user_id = models.CharField(max_length=100, help_text="グッズを作った人のユーザーID（Firebase UID）")
+    original_image_creator_user_id = models.CharField(max_length=100, help_text="元画像を生成した人のユーザーID（Firebase UID）")
+    
+    # 画像情報（必須）
+    library_image_id = models.UUIDField(help_text="グッズを作った画像のLibrary ID")
+    
+    # 後方互換性のため残すフィールド
+    frontend_user_id = models.CharField(max_length=100, help_text="フロントエンドのユーザーID（後方互換性）", blank=True)
     
     # SUZURI API からのレスポンス情報
     product_id = models.BigIntegerField(help_text="SUZURI の商品ID")
@@ -25,15 +34,18 @@ class SuzuriMerchandise(models.Model):
     item_id = models.IntegerField(help_text="SUZURI のアイテムID")
     
     # タイムスタンプ
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, help_text="グッズ作成日")
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = 'suzuri_merchandise'
         ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['frontend_user_id', '-created_at']),
+            models.Index(fields=['goods_creator_user_id', '-created_at']),
+            models.Index(fields=['original_image_creator_user_id', '-created_at']),
+            models.Index(fields=['library_image_id']),
             models.Index(fields=['product_id']),
+            models.Index(fields=['frontend_user_id', '-created_at']),  # 後方互換性
         ]
     
     def __str__(self):

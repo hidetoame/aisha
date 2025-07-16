@@ -38,12 +38,14 @@ def create_merchandise(request):
         car_name = request.data.get('car_name')
         description = request.data.get('description', '')
         item_type = request.data.get('item_type', 'heavyweight-t-shirt')  # デフォルトはTシャツ
+        user_id = request.data.get('user_id')  # グッズを作成するユーザーのID
         
         logger.info(f"SUZURI merchandise creation request:")
         logger.info(f"  image_url: {image_url}")
         logger.info(f"  car_name: {car_name}")
         logger.info(f"  description: {description}")
         logger.info(f"  item_type: {item_type}")
+        logger.info(f"  user_id: {user_id}")
         
         if not image_url:
             logger.error("❌ 画像URLが未設定")
@@ -98,6 +100,76 @@ def create_merchandise(request):
             logger.info(f"  product_title: {product.get('title')}")
             logger.info(f"  sample_url: {product.get('sampleUrl')}")
             logger.info(f"  sample_image_url: {product.get('sampleImageUrl')}")
+            
+            # グッズ作成成功時にLibraryのグッズ作成回数をインクリメント
+            library_entry = None
+            try:
+                from api.models.library import Library
+                from django.db.models import F
+                
+                # image_urlに一致するLibraryエントリを検索してカウントを増加
+                updated_count = Library.objects.filter(
+                    image_url=public_image_url
+                ).update(goods_creation_count=F('goods_creation_count') + 1)
+                
+                if updated_count > 0:
+                    logger.info(f"✅ グッズ作成回数を更新: {updated_count}件のライブラリエントリ")
+                    # 履歴記録用にLibraryエントリを取得
+                    library_entry = Library.objects.filter(image_url=public_image_url).first()
+                else:
+                    logger.warning(f"⚠️ 画像URLに一致するライブラリエントリが見つかりません: {public_image_url}")
+                    
+            except Exception as e:
+                logger.error(f"❌ グッズ作成回数更新エラー: {str(e)}")
+            
+            # SUZURIグッズ作成履歴を記録
+            try:
+                from api.models.suzuri_merchandise import SuzuriMerchandise
+                
+                # 必要なデータを準備
+                goods_creator_user_id = user_id or 'anonymous'  # グッズを作った人のID
+                original_image_creator_user_id = library_entry.user_id if library_entry else 'unknown'  # 元画像を生成した人のID
+                library_image_id = library_entry.id if library_entry else None  # ライブラリ画像ID
+                
+                # SUZURIからの結果
+                product_id = product.get('id', 0)
+                material_id = result.get('material', {}).get('id', 0)
+                product_title = product.get('title', '')
+                product_url = product.get('sampleUrl', result.get('product_url', ''))
+                sample_image_url = product.get('sampleImageUrl', '')
+                item_name = result.get('item', {}).get('name', item_type)
+                item_id = result.get('item', {}).get('id', 0)
+                
+                # SUZURIグッズ履歴を作成
+                merchandise = SuzuriMerchandise.objects.create(
+                    goods_creator_user_id=goods_creator_user_id,
+                    original_image_creator_user_id=original_image_creator_user_id,
+                    library_image_id=library_image_id,
+                    frontend_user_id=user_id or '',  # 後方互換性
+                    product_id=product_id,
+                    material_id=material_id,
+                    product_title=product_title,
+                    product_url=product_url,
+                    sample_image_url=sample_image_url,
+                    original_image_url=public_image_url,
+                    car_name=car_name,
+                    description=description,
+                    item_name=item_name,
+                    item_id=item_id
+                )
+                
+                logger.info(f"✅ SUZURI グッズ履歴を記録:")
+                logger.info(f"  履歴ID: {merchandise.id}")
+                logger.info(f"  グッズ作成者: {goods_creator_user_id}")
+                logger.info(f"  元画像作成者: {original_image_creator_user_id}")
+                logger.info(f"  ライブラリ画像ID: {library_image_id}")
+                logger.info(f"  商品ID: {product_id}")
+                logger.info(f"  商品タイトル: {product_title}")
+                
+            except Exception as e:
+                logger.error(f"❌ SUZURI グッズ履歴記録エラー: {str(e)}")
+                import traceback
+                logger.error(f"❌ エラー詳細: {traceback.format_exc()}")
             
             return Response({
                 'success': True,
@@ -389,5 +461,81 @@ def confirm_purchase(request):
         logger.error(f"Purchase confirmation error: {str(e)}")
         return Response(
             {'error': '注文処理中にエラーが発生しました'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@csrf_exempt
+def get_user_goods_history(request):
+    """
+    ユーザーのSUZURIグッズ作成履歴を取得
+    
+    Query Parameters:
+    - user_id: ユーザーID（Firebase UID）
+    
+    Response:
+    [
+        {
+            "id": 1,
+            "product_id": 73698227,
+            "product_title": "車の画像 Tシャツ",
+            "product_url": "https://suzuri.jp/AISHA/...",
+            "sample_image_url": "https://example.com/sample.jpg",
+            "original_image_url": "https://example.com/original.jpg",
+            "car_name": "NISSAN FAIRLADY Z",
+            "description": "...",
+            "item_name": "heavyweight-t-shirt",
+            "created_at": "2024-01-01T12:00:00Z",
+            "library_image_id": "uuid-string"
+        }
+    ]
+    """
+    try:
+        user_id = request.GET.get('user_id')
+        
+        if not user_id:
+            return Response(
+                {'error': 'user_id パラメータが必要です'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        logger.info(f"📦 グッズ履歴取得 - user_id: {user_id}")
+        
+        # SuzuriMerchandiseモデルをインポート
+        from api.models.suzuri_merchandise import SuzuriMerchandise
+        
+        # ユーザーのグッズ履歴を取得（作成日降順）
+        goods_history = SuzuriMerchandise.objects.filter(
+            goods_creator_user_id=user_id
+        ).order_by('-created_at')
+        
+        # レスポンスデータを構築
+        history_data = []
+        for goods in goods_history:
+            history_data.append({
+                'id': goods.id,
+                'product_id': goods.product_id,
+                'product_title': goods.product_title,
+                'product_url': goods.product_url,
+                'sample_image_url': goods.sample_image_url,
+                'original_image_url': goods.original_image_url,
+                'car_name': goods.car_name,
+                'description': goods.description,
+                'item_name': goods.item_name,
+                'created_at': goods.created_at.isoformat(),
+                'library_image_id': str(goods.library_image_id),
+                'material_id': goods.material_id,
+                'item_id': goods.item_id,
+            })
+        
+        logger.info(f"✅ グッズ履歴取得成功 - 件数: {len(history_data)}")
+        
+        return Response(history_data, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"❌ グッズ履歴取得エラー: {str(e)}")
+        return Response(
+            {'error': 'グッズ履歴の取得に失敗しました'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
