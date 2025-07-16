@@ -58,7 +58,6 @@ services:
     rootDir: react_project
     buildCommand: npm ci && npm run build
     staticPublishPath: ./dist
-    plan: free
     envVars:
       - key: VITE_AISHA_API_BASE
         value: https://aisha-backend-nza6.onrender.com/api
