@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { fetchCredits } from '@/services/api/credits';
+import { fetchCredits } from '../services/api/credits';
 import { useToast } from './ToastContext';
 
 interface CreditsContextValue {
