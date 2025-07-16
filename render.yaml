@@ -51,6 +51,21 @@ services:
           name: aisha-database
           property: connectionString
 
+  # React Frontend  
+  - type: static
+    name: aisha-frontend
+    buildCommand: |
+      cd react_project &&
+      npm ci &&
+      npm run build
+    staticPublishPath: react_project/dist
+    plan: free
+    envVars:
+      - key: VITE_AISHA_API_BASE
+        value: https://aisha-backend-nza6.onrender.com/api
+      - key: NODE_ENV
+        value: production
+
 databases:
   - name: aisha-database
     plan: free
