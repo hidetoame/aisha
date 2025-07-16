@@ -22,12 +22,7 @@ const PublicTimelineView: React.FC<PublicTimelineViewProps> = ({ publicImages, c
 
   // publicImagesが更新されたときにローカルstateも更新
   useEffect(() => {
-    console.log('🔍 PublicTimelineView - publicImages更新:', publicImages.map(img => ({
-      id: img.id,
-      goods_creation_count: img.goods_creation_count,
-      goodsCreationCount: img.goodsCreationCount,
-      authorName: img.authorName
-    })));
+    // 公開画像の更新処理
     setImages(publicImages);
   }, [publicImages]);
 

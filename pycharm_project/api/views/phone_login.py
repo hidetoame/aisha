@@ -1,3 +1,5 @@
+import json
+import logging
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -6,27 +8,25 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
-import json
-import random
+import secrets  # セキュリティ改善：randomからsecretsに変更
 import string
 import uuid
 from datetime import timedelta
 from ..models.phone_user import PhoneUser, PhoneVerificationSession, PhoneLoginToken
-import logging
 
 logger = logging.getLogger(__name__)
 
 def generate_verification_code():
-    """6桁の認証番号を生成"""
-    return ''.join(random.choices(string.digits, k=6))
+    """6桁の認証番号を生成（セキュア版）"""
+    return ''.join(secrets.choice(string.digits) for _ in range(6))
 
 def generate_session_id():
-    """セッションIDを生成"""
-    return str(uuid.uuid4())
+    """セッションIDを生成（セキュア版）"""
+    return secrets.token_urlsafe(32)
 
 def generate_token():
-    """ログイン用トークンを生成"""
-    return ''.join(random.choices(string.ascii_letters + string.digits, k=64))
+    """ログイン用トークンを生成（セキュア版）"""
+    return secrets.token_urlsafe(64)
 
 def send_sms(phone_number, verification_code):
     """
@@ -257,7 +257,7 @@ def register_phone_user(request):
             phone_number=phone_number,
             nickname=nickname,
             is_admin=False,
-            credits=100
+            credits=30  # 電話番号ログインは30クレジット
         )
         
         # トークンを生成

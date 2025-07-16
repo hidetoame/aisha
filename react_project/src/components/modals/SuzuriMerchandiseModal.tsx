@@ -140,30 +140,8 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
     const stepCheck = step === 'preview';
     const itemCheck = selectedItem !== null;
     const result = stepCheck && itemCheck;
-    console.log('🔍 Preview条件チェック - step:', step, 'selectedItem:', selectedItem, '結果:', result);
     return result;
   };
-
-  // デバッグ: モーダル開始時のimage情報をログ出力
-  useEffect(() => {
-    if (isOpen) {
-      console.log('🔍 SuzuriMerchandiseModal 開始');
-      console.log('🔍 image:', image);
-      console.log('🔍 currentUser:', currentUser);
-      console.log('🔍 onGoodsCreated:', onGoodsCreated);
-    }
-  }, [isOpen, image, currentUser, onGoodsCreated]);
-
-  // デバッグ: stepとselectedItemの変化を監視
-  useEffect(() => {
-    console.log('🔍 step変化:', step);
-    checkPreviewCondition(); // 条件チェックも実行
-  }, [step]);
-
-  useEffect(() => {
-    console.log('🔍 selectedItem変化:', selectedItem);
-    checkPreviewCondition(); // 条件チェックも実行
-  }, [selectedItem]);
 
   useEffect(() => {
     if (step === 'preview') {
@@ -249,18 +227,8 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
   const carName = extractCarName(image.displayPrompt);
 
   const handleItemSelect = (item: ItemOption) => {
-    console.log('🔍 handleItemSelect 開始 - item:', item);
-    console.log('🔍 現在のstep:', step);
-    
-    try {
-      setSelectedItem(item);
-      console.log('✅ setSelectedItem 完了');
-      
-      setStep('preview');
-      console.log('✅ setStep("preview") 完了');
-    } catch (error) {
-      console.error('❌ handleItemSelect エラー:', error);
-    }
+    setSelectedItem(item);
+    setStep('preview');
   };
 
   const handleCreate = async () => {
@@ -279,20 +247,11 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
       };
 
       const response = await suzuriApiClient.createMerchandise(requestData);
-      console.log('SUZURI API 応答:', response);
       setResult(response);
-      
-      // デバッグ用ログ
-      console.log('🔍 デバッグ: response.success =', response.success);
-      console.log('🔍 デバッグ: onGoodsCreated =', onGoodsCreated);
-      console.log('🔍 デバッグ: typeof onGoodsCreated =', typeof onGoodsCreated);
       
       // グッズ作成成功時にコールバックを呼び出し
       if (response.success && onGoodsCreated) {
-        console.log('🛍️ グッズ作成成功 - カウンタ更新を通知');
         onGoodsCreated();
-      } else {
-        console.log('❌ コールバック呼び出し失敗: success =', response.success, ', callback =', !!onGoodsCreated);
       }
     } catch (error: any) {
       console.error('SUZURI merchandise creation failed:', error);
@@ -327,8 +286,6 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
   };
 
   const handleClose = () => {
-    console.log('🔍 handleClose 呼び出し');
-    console.trace('🔍 handleClose呼び出し元:');
     setStep('select');
     setSelectedItem(null);
     setResult(null);
@@ -697,7 +654,6 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
                             className="inline-flex items-center justify-center w-full px-8 py-4 bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500 text-white font-bold rounded-2xl hover:from-purple-700 hover:to-pink-600 transition-all shadow-xl hover:shadow-2xl transform hover:-translate-y-1"
                             onClick={(e) => {
                               const url = result.productUrl || result.product_url;
-                              console.log('SUZURIリンククリック:', url);
                               if (!url) {
                                 e.preventDefault();
                                 alert('商品URLが見つかりません。');
@@ -723,7 +679,6 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
                             <p className="text-red-600 mb-4">商品URLが取得できませんでした</p>
                             <button
                               onClick={() => {
-                                console.log('SUZURI応答の詳細:', result);
                                 alert('SUZURI応答の詳細をコンソールで確認してください');
                               }}
                               className="text-sm text-gray-500 underline"

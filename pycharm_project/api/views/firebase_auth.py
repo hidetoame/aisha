@@ -469,25 +469,10 @@ def get_or_create_user_info(request):
                 phone_number=phone_number or '',
                 nickname=nickname,
                 is_admin=False,
-                credits=100  # 後方互換のため残す
+                credits=100  # マイガレージログインは100クレジット
             )
             
             logger.info(f"✅ 新規ユーザー作成完了: ID={phone_user.id}")
-            
-            # 統一クレジットシステムに初期クレジットを追加
-            try:
-                success, message = UnifiedCreditService.add_credits(
-                    user_id=firebase_uid,
-                    amount=100,
-                    description=f"新規ユーザー登録ボーナス: {nickname}",
-                    transaction_type='bonus'
-                )
-                if success:
-                    logger.info(f"✅ 統一クレジットシステムに初期クレジット追加: {message}")
-                else:
-                    logger.error(f"❌ 統一クレジットシステムへの初期クレジット追加失敗: {message}")
-            except Exception as e:
-                logger.error(f"❌ 統一クレジットシステムエラー: {str(e)}")
             
             # 統一クレジットシステムから最新のクレジット残高を取得
             credit_balance = UnifiedCreditService.get_user_credits(firebase_uid)

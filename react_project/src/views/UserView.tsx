@@ -126,8 +126,6 @@ const UserView: React.FC<UserViewProps> = ({
         showToast('error', '画像生成に失敗しました。'),
       );
       if (exeResponse) {
-        console.log('🔍 Raw API Response:', exeResponse); // デバッグログ追加
-        console.log('🔍 Generated Image URL:', exeResponse.generatedImageUrl); // デバッグログ追加
         // GeneratedImageに必要情報を格納
         const newImage: GeneratedImage = {
           id: Date.now().toString(),
@@ -139,7 +137,6 @@ const UserView: React.FC<UserViewProps> = ({
           isPublic: false,
           authorName: currentUser?.name || 'ゲスト',
         };
-        console.log('🔍 Generated Image:', newImage); // デバッグログ追加
         setGeneratedImages((prev) => [newImage, ...prev]);
         
         // タイムラインに保存（生成履歴として、ライブラリフラグ=false）

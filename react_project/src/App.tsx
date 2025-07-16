@@ -531,15 +531,11 @@ const App: React.FC = () => {
     async (image: GeneratedImage) => {
       if (!user?.id) return;
       
-      console.log('🔍 ライブラリ保存開始:', { imageId: image.id, currentFlag: image.isSavedToLibrary });
-      
       try {
         // 既存画像のライブラリフラグを更新
         const updatedImage = await updateTimelineEntry(user.id, image.id, { 
           isSavedToLibrary: true 
         });
-        
-        console.log('✅ API更新成功:', updatedImage);
         
         if (updatedImage) {
           // セッション画像のライブラリフラグを更新
@@ -833,8 +829,6 @@ const App: React.FC = () => {
 
   // 決済履歴モーダルのハンドラー
   const handlePaymentHistoryClick = useCallback(() => {
-    console.log('🔍 handlePaymentHistoryClick called');
-    console.log('🔍 Current user:', user);
     setShowPaymentHistoryModal(true);
   }, [user]);
 
