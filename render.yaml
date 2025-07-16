@@ -52,13 +52,12 @@ services:
           property: connectionString
 
   # React Frontend  
-  - type: static
+  - type: web
     name: aisha-frontend
-    buildCommand: |
-      cd react_project &&
-      npm ci &&
-      npm run build
-    staticPublishPath: react_project/dist
+    runtime: static
+    rootDir: react_project
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
     plan: free
     envVars:
       - key: VITE_AISHA_API_BASE
