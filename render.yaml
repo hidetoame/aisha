@@ -56,7 +56,7 @@ services:
     name: aisha-frontend
     runtime: static
     rootDir: react_project
-    buildCommand: npm ci && npm run build
+    buildCommand: npm install --legacy-peer-deps && npm run build
     staticPublishPath: ./dist
     envVars:
       - key: VITE_AISHA_API_BASE
