@@ -18,6 +18,14 @@ services:
         value: false
       - key: ALLOWED_HOSTS
         value: "*"
+      - key: ENV_FILE
+        value: .env.prod
+      - key: APP_NAME  
+        value: AISHA
+      - key: TSUKURUMA_API_HOST
+        value: your_api_host
+      - key: TSUKURUMA_API_PORT
+        value: your_api_port
       - key: POSTGRES_DB
         fromDatabase:
           name: aisha-database
@@ -42,19 +50,6 @@ services:
         fromDatabase:
           name: aisha-database
           property: connectionString
-
-  # React Frontend (Static Site)
-  - type: static
-    name: aisha-frontend
-    buildCommand: |
-      cd react_project &&
-      npm install &&
-      npm run build
-    staticPublishPath: react_project/dist
-    plan: free
-    envVars:
-      - key: VITE_AISHA_API_BASE
-        value: https://aisha-backend.onrender.com/api
 
 databases:
   - name: aisha-database
