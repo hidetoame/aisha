@@ -1,9 +1,9 @@
 import './index.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from '@/App';
-import { ToastProvider } from '@/contexts/ToastContext';
-import { CreditsProvider } from '@/contexts/CreditsContext';
+import App from './src/App';
+import { ToastProvider } from './src/contexts/ToastContext';
+import { CreditsProvider } from './src/contexts/CreditsContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
