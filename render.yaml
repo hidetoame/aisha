@@ -56,7 +56,7 @@ services:
     name: aisha-frontend
     runtime: static
     rootDir: react_project
-    buildCommand: rm -rf node_modules package-lock.json && npm install --force && npm run build
+    buildCommand: rm -rf node_modules package-lock.json && npm install && npm run build
     staticPublishPath: ./dist
     envVars:
       - key: VITE_AISHA_API_BASE
