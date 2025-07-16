@@ -33,7 +33,15 @@ TSUKURUMA_API_HOST = env("TSUKURUMA_API_HOST")
 TSUKURUMA_API_PORT = env("TSUKURUMA_API_PORT")
 APP_NAME = env("APP_NAME")
 EXE_ENV = env("ENV_FILE").split('.')[-1]
+# Render用のALLOWED_HOSTS設定
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost"])
+
+# 本番環境（Render）の場合、追加のホストを許可
+if not DEBUG:
+    ALLOWED_HOSTS.extend([
+        '.onrender.com',  # Renderのドメイン
+        'aisha-backend.onrender.com',  # 予想されるサービス名
+    ])
 
 # Application definition
 
@@ -84,16 +92,27 @@ WSGI_APPLICATION = 'django_project.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': env('POSTGRES_DB'),
-        'USER': env('POSTGRES_USER'),
-        'PASSWORD': env('POSTGRES_PASSWORD'),
-        'HOST': 'db',  # docker-compose.ymlのサービス名と一致
-        'PORT': env('POSTGRES_PORT', default='5432'),
+# Render用のデータベース設定（DATABASE_URLが利用可能な場合）
+import dj_database_url
+
+# DATABASE_URLが設定されている場合（Render本番環境）
+DATABASE_URL = env('DATABASE_URL', default=None)
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.parse(DATABASE_URL)
     }
-}
+else:
+    # ローカル開発環境用
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': env('POSTGRES_DB'),
+            'USER': env('POSTGRES_USER'),
+            'PASSWORD': env('POSTGRES_PASSWORD'),
+            'HOST': env('POSTGRES_HOST', default='db'),  # docker-compose.ymlのサービス名と一致
+            'PORT': env('POSTGRES_PORT', default='5432'),
+        }
+    }
 
 
 # Password validation
@@ -181,7 +200,14 @@ GCS_LOCATION = 'car-settings'
 GCS_CUSTOM_DOMAIN = f'{GCS_BUCKET_NAME}.storage.googleapis.com'
 
 # Static files (CSS, JavaScript, Images)
-STATIC_URL = f'https://{GCS_CUSTOM_DOMAIN}/{GCS_LOCATION}/'
+# 本番環境（Render）ではWhiteNoiseを使用、ローカルではGCSを使用
+if DEBUG:
+    # 開発環境ではGCS設定を使用
+    STATIC_URL = f'https://{GCS_CUSTOM_DOMAIN}/{GCS_LOCATION}/' if GCS_CUSTOM_DOMAIN else '/static/'
+else:
+    # 本番環境（Render）ではWhiteNoiseを使用
+    STATIC_URL = '/static/'
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Stripe Settings
 STRIPE_PUBLISHABLE_KEY = env('STRIPE_PUBLISHABLE_KEY', default='')

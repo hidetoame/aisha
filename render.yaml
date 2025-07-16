@@ -1,0 +1,63 @@
+services:
+  # Django Backend
+  - type: web
+    name: aisha-backend
+    env: python
+    buildCommand: |
+      cd pycharm_project &&
+      pip install -r requirements.txt &&
+      python manage.py collectstatic --noinput &&
+      python manage.py migrate
+    startCommand: cd pycharm_project && gunicorn django_project.wsgi:application --bind 0.0.0.0:$PORT
+    plan: free
+    healthCheckPath: /api/health/
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: false
+      - key: ALLOWED_HOSTS
+        value: "*"
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: aisha-database
+          property: database
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: aisha-database
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: aisha-database
+          property: password
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: aisha-database
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: aisha-database
+          property: port
+      - key: DATABASE_URL
+        fromDatabase:
+          name: aisha-database
+          property: connectionString
+
+  # React Frontend (Static Site)
+  - type: static
+    name: aisha-frontend
+    buildCommand: |
+      cd react_project &&
+      npm install &&
+      npm run build
+    staticPublishPath: react_project/dist
+    plan: free
+    envVars:
+      - key: VITE_AISHA_API_BASE
+        value: https://aisha-backend.onrender.com/api
+
+databases:
+  - name: aisha-database
+    plan: free
+    databaseName: aisha_db
+    user: aisha_user 

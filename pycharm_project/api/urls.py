@@ -51,6 +51,7 @@ from api.views.unified_credit_views import (
     consume_credits,
     migrate_phone_user
 )
+from api.views import health_check
 
 router = DefaultRouter()
 router.register(r'categories', CategoryViewSet, basename='category')
@@ -59,6 +60,8 @@ router.register(r'menus', MenuViewSet, basename='menu')
 urlpatterns = router.urls
 
 urlpatterns += [
+    # ヘルスチェック
+    path('health/', health_check, name='health'),
     path('menus/<int:menu_id>/execute/', MenuExecutionView.as_view(), name='menu-execute'),
     path('images/upload/', ImageUploadView.as_view(), name='image-upload'),
     path('car-settings/', CarSettingsListCreateView.as_view(), name='car-settings-list-create'),

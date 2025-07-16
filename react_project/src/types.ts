@@ -144,8 +144,7 @@ export interface GeneratedImage {
   like_count?: number; // いいね数（スネークケース）
   commentCount?: number; // コメント数（キャメルケース）
   likeCount?: number; // いいね数（キャメルケース）
-  goods_creation_count?: number; // グッズ作成回数（スネークケース）
-  goodsCreationCount?: number; // グッズ作成回数（キャメルケース）
+  goods_creation_count?: number; // グッズ作成回数
 }
 
 export interface GoodsVariation {
