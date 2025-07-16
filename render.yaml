@@ -65,6 +65,27 @@ services:
         value: https://aisha-backend-nza6.onrender.com/api
       - key: NODE_ENV
         value: production
+      # Firebase Configuration (You need to set these in Render dashboard)
+      - key: VITE_FIREBASE_API_KEY
+        sync: false
+      - key: VITE_FIREBASE_AUTH_DOMAIN
+        sync: false
+      - key: VITE_FIREBASE_PROJECT_ID
+        sync: false
+      - key: VITE_FIREBASE_STORAGE_BUCKET
+        sync: false
+      - key: VITE_FIREBASE_MESSAGING_SENDER_ID
+        sync: false
+      - key: VITE_FIREBASE_APP_ID
+        sync: false
+      - key: VITE_FIREBASE_MEASUREMENT_ID
+        sync: false
+      # Stripe Configuration
+      - key: VITE_STRIPE_PUBLISHABLE_KEY
+        sync: false
+      # Share URL (will be set after frontend deployment)
+      - key: VITE_AISHA_SHARE_BASE_URL
+        sync: false
 
 databases:
   - name: aisha-database
