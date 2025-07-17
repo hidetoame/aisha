@@ -62,7 +62,21 @@ gcloud services enable sqladmin.googleapis.com
 
 ## 🔄 デプロイ方法
 
-### Method 1: GitHub Actions（推奨）
+### Method 1: 安全な段階的デプロイ（推奨）
+```bash
+# 1. 開発環境と本番環境の分離確認
+docker-compose -f docker-compose.dev.yml down
+docker-compose -f docker-compose.prod.yml build --no-cache
+
+# 2. 本番用設定の準備
+cp .env.prod.template .env.prod
+# .env.prod に本番用の値を設定
+
+# 3. 安全なデプロイ実行
+./deploy-to-gcp.sh
+```
+
+### Method 2: GitHub Actions（自動化）
 ```bash
 git push origin main
 ```
@@ -70,13 +84,13 @@ git push origin main
 - GCP + Render同時デプロイ
 - 失敗時の自動ロールバック
 
-### Method 2: GCP直接デプロイ
+### Method 3: GCP直接デプロイ
 ```bash
 cd deploy
 ./gcp-deploy.sh
 ```
 
-### Method 3: Render（バックアップ）
+### Method 4: Render（バックアップ）
 ```bash
 git push origin main  # 自動検知
 ```

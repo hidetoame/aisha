@@ -1,0 +1,46 @@
+services:
+  web:
+    build:
+      context: ./pycharm_project
+      dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.prod
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /app/gcs-credentials.json
+      DJANGO_SETTINGS_MODULE: django_project.settings_prod
+    depends_on:
+      - db
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn django_project.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: prod_db
+      POSTGRES_USER: prod_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+
+  react:
+    build:
+      context: ./react_project
+      target: production
+      args:
+        NODE_ENV: production
+        AISHA_API_BASE: https://your-production-domain.com/api
+    environment:
+      NODE_ENV: production
+    ports:
+      - "80:80"
+    depends_on:
+      - web
+
+volumes:
+  postgres_prod_data:
