@@ -44,7 +44,7 @@ const FirebasePhoneLoginModal: React.FC<FirebasePhoneLoginModalProps> = ({
     setConfirmationResult(null);
     setFirebaseUser(null);
     setIsNewUser(false);
-    cleanupRecaptcha();
+    cleanupRecaptcha(recaptchaContainerId);
   };
 
   const handleClose = () => {
@@ -55,7 +55,7 @@ const FirebasePhoneLoginModal: React.FC<FirebasePhoneLoginModalProps> = ({
   // コンポーネントがアンマウントされる時のクリーンアップ
   useEffect(() => {
     return () => {
-      cleanupRecaptcha();
+      cleanupRecaptcha(recaptchaContainerId);
     };
   }, []);
 
@@ -95,6 +95,9 @@ const FirebasePhoneLoginModal: React.FC<FirebasePhoneLoginModalProps> = ({
 
     setIsLoading(true);
     try {
+      // reCAPTCHAを事前にクリーンアップ
+      cleanupRecaptcha(recaptchaContainerId);
+      
       // Firebase SMS認証
       const confirmation = await sendSMSVerification(phoneNumber, recaptchaContainerId);
       setConfirmationResult(confirmation);

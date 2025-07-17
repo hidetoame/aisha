@@ -51,12 +51,24 @@ from api.views.unified_credit_views import (
     consume_credits,
     migrate_phone_user
 )
+from api.views.admin_credit import (
+    add_credits_to_user,
+    get_user_credits as admin_get_user_credits,
+    delete_user
+)
 from api.views.charge_option import (
     ChargeOptionListView,
     ChargeOptionDetailView,
     ChargeOptionCreateView,
     ChargeOptionUpdateView,
     ChargeOptionDeleteView
+)
+from api.views.mygarage_auth import (
+    mygarage_login,
+    mygarage_logout,
+    validate_mygarage_token,
+    get_user_credits as mygarage_get_user_credits,
+    get_user_credit_history as mygarage_get_user_credit_history
 )
 from api.views import health_check
 
@@ -136,4 +148,16 @@ path('suzuri/history/', get_user_goods_history, name='suzuri-get-user-goods-hist
     path('unified-credits/history/', get_credit_history, name='unified-credit-history'),
     path('unified-credits/consume/', consume_credits, name='unified-credit-consume'),
     path('unified-credits/migrate/', migrate_phone_user, name='unified-credit-migrate'),
+    
+    # 管理者用クレジット管理
+    path('admin/credits/add/', add_credits_to_user, name='admin-add-credits'),
+    path('admin/credits/check/', admin_get_user_credits, name='admin-check-credits'),
+    path('admin/users/delete/', delete_user, name='admin-delete-user'),
+    
+    # MyGarage認証関連（独自システム）
+    path('mygarage-auth/login/', mygarage_login, name='mygarage-login'),
+    path('mygarage-auth/logout/', mygarage_logout, name='mygarage-logout'),
+    path('mygarage-auth/validate/', validate_mygarage_token, name='mygarage-validate'),
+    path('mygarage-auth/users/<str:user_id>/credits/', mygarage_get_user_credits, name='mygarage-user-credits'),
+    path('mygarage-auth/users/<str:user_id>/credit-history/', mygarage_get_user_credit_history, name='mygarage-user-credit-history'),
 ]

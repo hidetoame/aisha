@@ -26,8 +26,11 @@ ENV NODE_ENV=$NODE_ENV
 RUN npm run build
 
 # prodステージ（nginx配信）
-FROM nginx:1.25-alpine AS prod
+FROM nginx:1.25-alpine AS production
 COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/nginx.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+COPY nginx.conf.template /etc/nginx/nginx.conf.template
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENV PORT=8080
+EXPOSE $PORT
+CMD ["/entrypoint.sh"]

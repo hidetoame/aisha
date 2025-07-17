@@ -35,13 +35,30 @@ try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   
-  // 開発環境でreCAPTCHA設定を調整
+  // reCAPTCHA設定を調整
   if (typeof window !== 'undefined') {
+    // 本番環境では通常のreCAPTCHA検証を使用
     auth.settings.appVerificationDisabledForTesting = false;
     
-    // 開発環境でのdomain設定
-    if (import.meta.env.DEV) {
-      console.log('Development mode - Firebase Auth configured for localhost');
+    // reCAPTCHA v2を強制使用（Enterprise版との競合を避ける）
+    (window as any).recaptchaV3SiteKey = undefined;
+    
+    // Firebase reCAPTCHA設定をより詳細に設定
+    const currentHost = window.location.hostname;
+    const currentOrigin = window.location.origin;
+    
+    console.log('Firebase Auth configured with reCAPTCHA v2', {
+      hostname: currentHost,
+      origin: currentOrigin,
+      authDomain: firebaseConfig.authDomain
+    });
+    
+    // 認証ドメインの設定を確認
+    if (firebaseConfig.authDomain && !firebaseConfig.authDomain.includes(currentHost)) {
+      console.warn('⚠️  Current hostname does not match Firebase Auth domain:', {
+        current: currentHost,
+        expected: firebaseConfig.authDomain
+      });
     }
   }
   

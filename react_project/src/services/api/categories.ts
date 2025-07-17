@@ -64,3 +64,22 @@ export const deleteCategory = async (
     return false;
   }
 };
+
+export const updateCategoryOrder = async (
+  categories: { id: number; orderIndex: number }[],
+  onError?: (error: unknown) => void,
+): Promise<boolean> => {
+  try {
+    await axios.post(`${API_BASE}/update_order/`, {
+      categories: categories.map(cat => ({
+        id: cat.id,
+        order_index: cat.orderIndex
+      }))
+    });
+    return true;
+  } catch (err) {
+    console.error('カテゴリ順番更新失敗', err);
+    onError?.(err);
+    return false;
+  }
+};

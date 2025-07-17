@@ -36,11 +36,13 @@ EXE_ENV = env("ENV_FILE").split('.')[-1]
 # Render用のALLOWED_HOSTS設定
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost"])
 
-# 本番環境（Render）の場合、追加のホストを許可
+# 本番環境（Render/GCP）の場合、追加のホストを許可
 if not DEBUG:
     ALLOWED_HOSTS.extend([
         '.onrender.com',  # Renderのドメイン
         'aisha-backend.onrender.com',  # 予想されるサービス名
+        '.run.app',  # Google Cloud Runのドメイン
+        'django-api-584412696241.europe-west1.run.app',  # 現在のCloud Run URL
     ])
 
 # Application definition

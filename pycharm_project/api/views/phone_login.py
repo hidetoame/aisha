@@ -13,6 +13,7 @@ import string
 import uuid
 from datetime import timedelta
 from ..models.phone_user import PhoneUser, PhoneVerificationSession, PhoneLoginToken
+from ..services.unified_credit_service import UnifiedCreditService
 
 logger = logging.getLogger(__name__)
 
@@ -252,12 +253,24 @@ def register_phone_user(request):
                 'message': 'この電話番号は既に登録されています'
             }, status=status.HTTP_400_BAD_REQUEST)
         
+        # Firebase UIDを生成（統一クレジットシステム用）
+        firebase_uid = f"phone_{phone_number}_{str(uuid.uuid4())[:8]}"
+        
         # ユーザーを作成
         phone_user = PhoneUser.objects.create(
+            firebase_uid=firebase_uid,
             phone_number=phone_number,
             nickname=nickname,
             is_admin=False,
             credits=30  # 電話番号ログインは30クレジット
+        )
+        
+        # 統一クレジットシステムに30クレジットを追加
+        UnifiedCreditService.add_credits(
+            firebase_uid,
+            30,
+            '電話番号認証新規ユーザー登録ボーナス',
+            'phone_signup_bonus'
         )
         
         # トークンを生成
@@ -330,7 +343,7 @@ def validate_phone_token(request):
                 'nickname': phone_user.nickname,
                 'phoneNumber': phone_user.phone_number,
                 'isAdmin': phone_user.is_admin,
-                'credits': phone_user.credits,
+                'credits': UnifiedCreditService.get_user_credits(phone_user.firebase_uid),
                 'loginType': 'phone'
             }
         })

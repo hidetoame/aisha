@@ -10,7 +10,6 @@ class PhoneUser(models.Model):
     phone_number = models.CharField(max_length=15, db_index=True)  # unique=True を削除（Firebase認証で管理）
     nickname = models.CharField(max_length=20)
     is_admin = models.BooleanField(default=False)
-    credits = models.IntegerField(default=30)  # 電話番号ログインのデフォルトクレジット
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

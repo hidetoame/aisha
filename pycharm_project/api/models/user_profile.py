@@ -10,6 +10,7 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     is_admin = models.BooleanField(default=False, verbose_name='管理者フラグ')
     frontend_user_id = models.CharField(max_length=100, blank=True, verbose_name='フロントエンドユーザーID')
+    nickname = models.CharField(max_length=100, blank=True, verbose_name='ニックネーム')
     
     # タイムスタンプ
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='作成日時')

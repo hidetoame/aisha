@@ -5,6 +5,10 @@ from django.db.models import CharField, TextField
 class Category(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(default="", blank=True)
+    order_index = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['order_index', 'id']
 
     # DBへの保存時の変換処理
     # 変換処理が「データとしての整合性や制約」なら ここに書く。

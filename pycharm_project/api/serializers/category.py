@@ -12,5 +12,5 @@ class CategorySerializer(serializers.ModelSerializer):
             # モデルに定義は不要（Djangoが自動生成）
             'id',
             # 自モデル
-            'name', 'description'
+            'name', 'description', 'order_index'
         ]

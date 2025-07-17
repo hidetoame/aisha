@@ -1,5 +1,28 @@
 import React, { useState, useRef } from 'react'; // Added useRef
 import {
+  DndContext,
+  closestCenter,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
+import {
+  CSS,
+} from '@dnd-kit/utilities';
+import {
   AdminGenerationMenuItem,
   AdminGoodsItem,
   SupportedGenerationEngine,
@@ -29,6 +52,7 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
+  updateCategoryOrder,
 } from '../services/api/categories';
 import { createMenu, updateMenu, deleteMenu } from '../services/api/menus';
 import {
@@ -46,6 +70,7 @@ import {
   useCategoriesActions,
 } from '@/contexts/CategoriesContext';
 import { useMenus, useMenusActions } from '@/contexts/MenusContext';
+import { getUserCredits, addCreditsToUser, UserCreditInfo } from '@/services/api/admin-credits';
 
 const initialGoods: AdminGoodsItem[] = DEFAULT_GOODS_OPTIONS.map((opt) => ({
   id: opt.id,
@@ -81,6 +106,24 @@ const AdminView: React.FC = () => {
   const [editingGoodsItem, setEditingGoodsItem] =
     useState<AdminGoodsItem | null>(null);
 
+  // クレジット管理用のstate
+  const [searchUsername, setSearchUsername] = useState('');
+  const [foundUsers, setFoundUsers] = useState<UserCreditInfo[]>([]);
+  const [selectedUser, setSelectedUser] = useState<UserCreditInfo | null>(null);
+  const [creditAmount, setCreditAmount] = useState(100);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isAddingCredits, setIsAddingCredits] = useState(false);
+
+  // ドラッグ&ドロップ用の状態
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   const renderAdminNavItem = (
     sectionId: AdminSection,
     label: string,
@@ -98,6 +141,130 @@ const AdminView: React.FC = () => {
       <span>{label}</span>
     </button>
   );
+
+  // クレジット管理の関数
+  const handleSearchUser = async () => {
+    if (!searchUsername.trim()) {
+      showToast('ユーザー名を入力してください', 'error');
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const userInfo = await getUserCredits(searchUsername.trim());
+      console.log('Search result:', userInfo);
+      
+      if (Array.isArray(userInfo)) {
+        setFoundUsers(userInfo);
+        setSelectedUser(null);
+        showToast(`${userInfo.length}人のユーザーが見つかりました`, 'success');
+      } else {
+        setFoundUsers([userInfo]);
+        setSelectedUser(userInfo);
+        showToast('ユーザーが見つかりました', 'success');
+      }
+    } catch (error) {
+      console.error('ユーザー検索エラー:', error);
+      setFoundUsers([]);
+      setSelectedUser(null);
+      showToast(
+        error instanceof Error ? error.message : 'ユーザーの検索に失敗しました',
+        'error'
+      );
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleAddCredits = async () => {
+    if (!selectedUser) {
+      showToast('先にユーザーを選択してください', 'error');
+      return;
+    }
+
+    if (creditAmount <= 0) {
+      showToast('クレジット数は1以上を入力してください', 'error');
+      return;
+    }
+
+    setIsAddingCredits(true);
+    try {
+      const result = await addCreditsToUser({
+        userIdentifier: selectedUser.firebase_uid,
+        amount: creditAmount,
+        description: `管理者による手動追加: ${creditAmount}クレジット`,
+      });
+
+      if (result.success) {
+        showToast(`${selectedUser.nickname}に${creditAmount}クレジットを追加しました！`, 'success');
+        // ユーザー情報を再取得して最新のクレジット残高を表示
+        const updatedUserInfo = await getUserCredits(selectedUser.firebase_uid);
+        if (Array.isArray(updatedUserInfo)) {
+          const updated = updatedUserInfo.find(u => u.firebase_uid === selectedUser.firebase_uid);
+          if (updated) {
+            setSelectedUser(updated);
+            setFoundUsers(foundUsers.map(u => u.firebase_uid === selectedUser.firebase_uid ? updated : u));
+          }
+        } else {
+          setSelectedUser(updatedUserInfo);
+          setFoundUsers([updatedUserInfo]);
+        }
+      } else {
+        showToast(result.message || 'クレジットの追加に失敗しました', 'error');
+      }
+    } catch (error) {
+      console.error('クレジット追加エラー:', error);
+      showToast(
+        `${selectedUser.nickname}へのクレジット追加に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`,
+        'error'
+      );
+    } finally {
+      setIsAddingCredits(false);
+    }
+  };
+
+  // ドラッグ&ドロップのハンドラー
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+    setIsDragging(true);
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+    setIsDragging(false);
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    if (!categories) return;
+
+    const oldIndex = categories.findIndex(cat => cat.id.toString() === active.id);
+    const newIndex = categories.findIndex(cat => cat.id.toString() === over.id);
+
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const newCategories = arrayMove(categories, oldIndex, newIndex);
+      
+      // ローカル状態を先に更新（ユーザー体験をスムーズに）
+      refreshCategories();
+      
+      // サーバーに順番更新を送信
+      const orderUpdates = newCategories.map((cat, index) => ({
+        id: cat.id,
+        orderIndex: index
+      }));
+      
+      const success = await updateCategoryOrder(orderUpdates, () => {
+        showToast('カテゴリ順番の更新に失敗しました', 'error');
+      });
+      
+      if (success) {
+        showToast('カテゴリ順番を更新しました', 'success');
+        refreshCategories();
+      }
+    }
+  };
 
   const renderSectionContent = () => {
     switch (activeSection) {
@@ -140,47 +307,53 @@ const AdminView: React.FC = () => {
                 onCancel={() => setEditingAdminGenMenuCategory(null)}
               />
             )}
-            <ul className="space-y-3 mt-4">
-              {categories?.map((cat) => (
-                <li
-                  key={cat.id}
-                  className="bg-gray-700 p-4 rounded-md shadow flex justify-between items-start"
+            <div className="mt-4">
+              <p className="text-sm text-gray-400 mb-2">
+                ドラッグ&ドロップでカテゴリ順番を変更できます
+              </p>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={categories?.map(cat => cat.id.toString()) || []}
+                  strategy={verticalListSortingStrategy}
                 >
-                  <div>
-                    <p className="font-semibold text-indigo-400">{cat.name}</p>
-                    <p className="text-sm text-gray-300 mt-1">
-                      {cat.description || '説明なし'}
-                    </p>
-                  </div>
-                  <div className="space-x-2 flex-shrink-0">
-                    <button
-                      onClick={() => setEditingAdminGenMenuCategory(cat)}
-                      className="p-2 text-gray-400 hover:text-indigo-300"
-                      aria-label={`Edit ${cat.name}`}
-                    >
-                      <PencilAltIcon className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={async () => {
-                        if (window.confirm(`${cat.name}を削除しますか？`)) {
-                          const success = await deleteCategory(cat.id, () => {
-                            showToast('error', 'カテゴリ削除に失敗しました');
-                          });
-                          if (success) {
-                            showToast('success', 'カテゴリを削除しました');
-                            refreshCategories();
+                  <ul className="space-y-3">
+                    {categories?.map((cat) => (
+                      <SortableCategoryItem
+                        key={cat.id}
+                        category={cat}
+                        onEdit={() => setEditingAdminGenMenuCategory(cat)}
+                        onDelete={async () => {
+                          if (window.confirm(`${cat.name}を削除しますか？`)) {
+                            const success = await deleteCategory(cat.id, () => {
+                              showToast('error', 'カテゴリ削除に失敗しました');
+                            });
+                            if (success) {
+                              showToast('success', 'カテゴリを削除しました');
+                              refreshCategories();
+                            }
                           }
-                        }
-                      }}
-                      className="p-2 text-gray-400 hover:text-red-400"
-                      aria-label={`Delete ${cat.name}`}
-                    >
-                      <TrashIcon className="w-5 h-5" />
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                        }}
+                        isDragging={isDragging}
+                      />
+                    ))}
+                  </ul>
+                </SortableContext>
+                <DragOverlay>
+                  {activeId ? (
+                    <div className="bg-gray-600 p-4 rounded-md shadow-lg opacity-80">
+                      <p className="font-semibold text-indigo-400">
+                        {categories?.find(cat => cat.id.toString() === activeId)?.name}
+                      </p>
+                    </div>
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
+            </div>
           </div>
         );
       case 'engines':
@@ -746,6 +919,120 @@ const AdminView: React.FC = () => {
             </p>
           </div>
         );
+      case 'creditManagement':
+        return (
+          <div>
+            <h3 className="text-xl font-semibold text-indigo-300 mb-6">
+              クレジット管理
+            </h3>
+            
+            {/* ユーザー検索セクション */}
+            <div className="bg-gray-800 p-6 rounded-lg mb-6">
+              <h4 className="text-lg font-medium text-white mb-4">ユーザー検索</h4>
+              <div className="flex space-x-4">
+                <input
+                  type="text"
+                  value={searchUsername}
+                  onChange={(e) => setSearchUsername(e.target.value)}
+                  placeholder="ユーザー名を入力"
+                  className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearchUser()}
+                />
+                <button
+                  onClick={handleSearchUser}
+                  disabled={isSearching}
+                  className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSearching ? '検索中...' : '検索'}
+                </button>
+              </div>
+            </div>
+
+            {/* 検索結果表示セクション */}
+            {foundUsers.length > 0 && (
+              <div className="bg-gray-800 p-6 rounded-lg mb-6">
+                <h4 className="text-lg font-medium text-white mb-4">
+                  検索結果 ({foundUsers.length}人)
+                </h4>
+                <div className="space-y-4">
+                  {foundUsers.map((user, index) => (
+                    <div
+                      key={user.firebase_uid}
+                      className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                        selectedUser?.firebase_uid === user.firebase_uid
+                          ? 'border-indigo-500 bg-indigo-50 bg-opacity-10'
+                          : 'border-gray-600 hover:border-gray-500'
+                      }`}
+                      onClick={() => setSelectedUser(user)}
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-400">ユーザー名:</span>
+                          <span className="text-white ml-2 font-medium">{user.nickname}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">ユーザータイプ:</span>
+                          <span className="text-blue-400 ml-2">{user.user_type}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">統一クレジット:</span>
+                          <span className="text-green-400 ml-2 font-medium">{user.unified_credits}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">レガシークレジット:</span>
+                          <span className="text-yellow-400 ml-2 font-medium">{user.legacy_credits}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">電話番号:</span>
+                          <span className="text-white ml-2">{user.phone_number || 'なし'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Firebase UID:</span>
+                          <span className="text-gray-300 ml-2 text-xs">{user.firebase_uid}</span>
+                        </div>
+                      </div>
+                      {selectedUser?.firebase_uid === user.firebase_uid && (
+                        <div className="mt-2 text-xs text-indigo-400">
+                          ✓ 選択済み - このユーザーにクレジットを追加できます
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* クレジット付与セクション */}
+            {selectedUser && (
+              <div className="bg-gray-800 p-6 rounded-lg">
+                <h4 className="text-lg font-medium text-white mb-4">
+                  クレジット付与 - {selectedUser.nickname}
+                </h4>
+                <div className="flex space-x-4 items-end">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-400 mb-2">
+                      付与クレジット数
+                    </label>
+                    <input
+                      type="number"
+                      value={creditAmount}
+                      onChange={(e) => setCreditAmount(parseInt(e.target.value) || 0)}
+                      min="1"
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <button
+                    onClick={handleAddCredits}
+                    disabled={isAddingCredits}
+                    className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isAddingCredits ? '追加中...' : 'クレジット追加'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
       case 'sales':
         return (
           <div className="text-gray-400">
@@ -812,6 +1099,11 @@ const AdminView: React.FC = () => {
           <UsersIcon className="w-5 h-5" />,
         )}
         {renderAdminNavItem(
+          'creditManagement',
+          'クレジット管理',
+          <CreditCardIcon className="w-5 h-5" />,
+        )}
+        {renderAdminNavItem(
           'generationHistory',
           '生成履歴',
           <ClipboardDocumentListIcon className="w-5 h-5" />,
@@ -831,6 +1123,84 @@ const AdminView: React.FC = () => {
         {renderSectionContent()}
       </div>
     </div>
+  );
+};
+
+// SortableCategoryItemコンポーネント
+const SortableCategoryItem: React.FC<{
+  category: AdminGenerationMenuCategoryItem;
+  onEdit: () => void;
+  onDelete: () => void;
+  isDragging: boolean;
+}> = ({ category, onEdit, onDelete, isDragging }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging: isSortableDragging,
+  } = useSortable({ id: category.id.toString() });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={`bg-gray-700 p-4 rounded-md shadow flex justify-between items-start transition-opacity ${
+        isSortableDragging ? 'opacity-50' : 'opacity-100'
+      } ${
+        isDragging && !isSortableDragging ? 'pointer-events-none' : ''
+      }`}
+    >
+      <div className="flex items-center space-x-3 flex-grow">
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-1 text-gray-400 hover:text-indigo-300 transition-colors"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 5v.01M12 12v.01M12 19v.01M12 5a2 2 0 110-4 2 2 0 010 4zM12 12a2 2 0 110-4 2 2 0 010 4zM12 19a2 2 0 110-4 2 2 0 010 4z"
+            />
+          </svg>
+        </div>
+        <div>
+          <p className="font-semibold text-indigo-400">{category.name}</p>
+          <p className="text-sm text-gray-300 mt-1">
+            {category.description || '説明なし'}
+          </p>
+        </div>
+      </div>
+      <div className="space-x-2 flex-shrink-0">
+        <button
+          onClick={onEdit}
+          className="p-2 text-gray-400 hover:text-indigo-300 transition-colors"
+          aria-label={`Edit ${category.name}`}
+        >
+          <PencilAltIcon className="w-5 h-5" />
+        </button>
+        <button
+          onClick={onDelete}
+          className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+          aria-label={`Delete ${category.name}`}
+        >
+          <TrashIcon className="w-5 h-5" />
+        </button>
+      </div>
+    </li>
   );
 };
 

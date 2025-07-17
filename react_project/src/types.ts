@@ -186,6 +186,7 @@ export interface AdminGenerationMenuCategoryItem {
   id: number;
   name: string;
   description?: string;
+  orderIndex?: number;
 }
 
 export interface AdminGenerationMenuItem {
@@ -232,6 +233,7 @@ export type AdminSection =
   | 'generationHistory' 
   | 'sales' 
   | 'users' 
+  | 'creditManagement'
   | 'goods' 
   | 'suzuriApi' 
   | 'stripeApi';

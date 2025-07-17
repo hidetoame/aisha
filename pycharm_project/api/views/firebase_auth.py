@@ -363,7 +363,7 @@ def get_or_create_user_info(request):
             phone_user = PhoneUser.objects.get(firebase_uid=firebase_uid)
             logger.info(f"👤 既存ユーザー発見: ID={phone_user.id}, nickname={phone_user.nickname}")
             
-            # 統一クレジットシステムからクレジット残高を取得
+            # クレジット残高を取得（統一システム優先、なければPhoneUser）
             credit_balance = UnifiedCreditService.get_user_credits(firebase_uid)
             
             # 既存ユーザーの場合
@@ -427,13 +427,14 @@ def get_or_create_user_info(request):
                             success, message = UnifiedCreditService.migrate_phone_user_to_unified(firebase_uid)
                             if success:
                                 logger.info(f"✅ 統一クレジットシステム移行完了: {message}")
+                                credit_balance = UnifiedCreditService.get_user_credits(firebase_uid)
                             else:
                                 logger.warning(f"⚠️ 統一クレジットシステム移行: {message}")
+                                # 移行に失敗した場合は統一クレジットシステムから取得
+                                credit_balance = UnifiedCreditService.get_user_credits(existing_phone_user.firebase_uid)
                         except Exception as e:
                             logger.error(f"❌ 統一クレジットシステム移行エラー: {str(e)}")
-                        
-                        # 統一クレジットシステムから最新のクレジット残高を取得
-                        credit_balance = UnifiedCreditService.get_user_credits(firebase_uid)
+                            credit_balance = UnifiedCreditService.get_user_credits(existing_phone_user.firebase_uid)
                         
                         # 既存ユーザー（統合済み）として返す
                         return Response({
@@ -468,14 +469,26 @@ def get_or_create_user_info(request):
                 firebase_uid=firebase_uid,
                 phone_number=phone_number or '',
                 nickname=nickname,
-                is_admin=False,
-                credits=100  # マイガレージログインは100クレジット
+                is_admin=False
             )
             
             logger.info(f"✅ 新規ユーザー作成完了: ID={phone_user.id}")
             
-            # 統一クレジットシステムから最新のクレジット残高を取得
-            credit_balance = UnifiedCreditService.get_user_credits(firebase_uid)
+            # 統一クレジットシステムに初期クレジットを追加
+            success, message = UnifiedCreditService.add_credits(
+                firebase_uid, 
+                30, 
+                "新規登録ボーナス（電話番号認証）", 
+                "registration_bonus"
+            )
+            
+            if success:
+                logger.info(f"✅ 統一クレジット追加成功: {message}")
+                credit_balance = 30
+            else:
+                logger.error(f"❌ 統一クレジット追加失敗: {message}")
+                # 失敗した場合は統一クレジットシステムから取得
+                credit_balance = UnifiedCreditService.get_user_credits(phone_user.firebase_uid)
             
             return Response({
                 'success': True,
@@ -537,7 +550,7 @@ def validate_firebase_user(request):
                     'nickname': phone_user.nickname,
                     'phoneNumber': phone_user.phone_number,
                     'isAdmin': phone_user.is_admin,
-                    'credits': phone_user.credits,
+                    'credits': UnifiedCreditService.get_user_credits(phone_user.firebase_uid),
                     'loginType': 'phone'
                 }
             })

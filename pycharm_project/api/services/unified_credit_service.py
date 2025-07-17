@@ -26,11 +26,11 @@ class UnifiedCreditService:
             user_credit = UserCredit.objects.get(user_id=user_id)
             return user_credit.credit_balance
         except UserCredit.DoesNotExist:
-            # 統一システムにない場合、PhoneUserから取得（後方互換）
+            # 統一システムにない場合、PhoneUserが存在するかチェック
             try:
                 phone_user = PhoneUser.objects.get(firebase_uid=user_id)
-                logger.warning(f"PhoneUser {user_id} not migrated to unified system, using legacy credits")
-                return phone_user.credits
+                logger.warning(f"PhoneUser {user_id} not in unified system, returning 0 credits")
+                return 0
             except PhoneUser.DoesNotExist:
                 logger.warning(f"User {user_id} not found in any credit system")
                 return 0
@@ -75,23 +75,7 @@ class UnifiedCreditService:
                     return True, f"クレジットを消費しました: -{amount} (残高: {user_credit.credit_balance})"
                     
                 except UserCredit.DoesNotExist:
-                    # 統一システムにない場合、PhoneUserから消費（後方互換）
-                    try:
-                        phone_user = PhoneUser.objects.get(firebase_uid=user_id)
-                        
-                        if phone_user.credits < amount:
-                            return False, f"クレジット不足: 残高 {phone_user.credits}, 必要 {amount}"
-                        
-                        # PhoneUserからクレジット消費
-                        old_balance = phone_user.credits
-                        phone_user.credits -= amount
-                        phone_user.save()
-                        
-                        logger.warning(f"Legacy credit consumption: User {user_id}, Amount: {amount}, Balance: {old_balance} -> {phone_user.credits}")
-                        return True, f"クレジットを消費しました: -{amount} (残高: {phone_user.credits})"
-                        
-                    except PhoneUser.DoesNotExist:
-                        return False, f"ユーザー {user_id} が見つかりません"
+                    return False, f"ユーザー {user_id} が統一クレジットシステムに存在しません"
                         
         except Exception as e:
             logger.error(f"Credit consumption failed: User {user_id}, Error: {str(e)}")
@@ -197,22 +181,9 @@ class UnifiedCreditService:
                 if not created:
                     return False, f"既に統一システムに移行済みです (残高: {user_credit.credit_balance})"
                 
-                # PhoneUserのクレジットを移行
-                if phone_user.credits > 0:
-                    user_credit.credit_balance = phone_user.credits
-                    user_credit.save()
-                    
-                    # 初期クレジットの取引履歴を作成
-                    CreditTransaction.objects.create(
-                        user_id=firebase_uid,
-                        transaction_type='bonus',
-                        amount=phone_user.credits,
-                        balance_after=phone_user.credits,
-                        description=f'PhoneUserから移行: {phone_user.nickname}'
-                    )
-                
-                logger.info(f"PhoneUser {firebase_uid} migrated to unified system: {phone_user.credits} credits")
-                return True, f"統一システムに移行しました: {phone_user.credits} クレジット"
+                # PhoneUserは移行済みとしてマーク（creditsフィールドは削除済み）
+                logger.info(f"PhoneUser {firebase_uid} migrated to unified system: 0 credits")
+                return True, f"統一システムに移行しました: 0 クレジット"
                 
         except PhoneUser.DoesNotExist:
             return False, f"PhoneUser {firebase_uid} が見つかりません"

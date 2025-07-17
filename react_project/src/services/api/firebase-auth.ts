@@ -16,20 +16,32 @@ let recaptchaVerifier: RecaptchaVerifier | null = null;
  * @param containerId reCAPTCHAコンテナのID
  */
 export const initializeRecaptcha = (containerId: string): RecaptchaVerifier => {
+  // 既存のverifierをクリーンアップ
   if (recaptchaVerifier) {
-    recaptchaVerifier.clear();
+    try {
+      recaptchaVerifier.clear();
+    } catch (error) {
+      console.log('既存reCAPTCHAクリア中にエラー（無視）:', error);
+    }
+    recaptchaVerifier = null;
+  }
+  
+  // コンテナの内容もクリア
+  const container = document.getElementById(containerId);
+  if (container) {
+    container.innerHTML = '';
   }
   
   recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
     size: 'invisible',
     callback: () => {
-      console.log('reCAPTCHA解決済み');
+      console.log('✅ reCAPTCHA解決済み');
     },
     'expired-callback': () => {
-      console.log('reCAPTCHA期限切れ');
+      console.log('⏰ reCAPTCHA期限切れ');
     },
     'error-callback': (error: any) => {
-      console.error('reCAPTCHA エラー:', error);
+      console.error('❌ reCAPTCHA エラー:', error);
     }
   });
   
@@ -236,10 +248,22 @@ export const signOutFirebase = async (): Promise<void> => {
 /**
  * reCAPTCHAをクリーンアップ
  */
-export const cleanupRecaptcha = (): void => {
+export const cleanupRecaptcha = (containerId?: string): void => {
   if (recaptchaVerifier) {
-    recaptchaVerifier.clear();
+    try {
+      recaptchaVerifier.clear();
+    } catch (error) {
+      console.log('reCAPTCHAクリーンアップ中にエラー（無視）:', error);
+    }
     recaptchaVerifier = null;
+  }
+  
+  // コンテナの内容もクリア
+  if (containerId) {
+    const container = document.getElementById(containerId);
+    if (container) {
+      container.innerHTML = '';
+    }
   }
 };
 
@@ -265,10 +289,18 @@ const getErrorMessage = (error: any): string => {
     case 'auth/code-expired':
       return '認証コードの有効期限が切れています。新しいコードを取得してください。';
     case 'auth/too-many-requests':
-      return 'リクエストが多すぎます。しばらく時間をおいてから再試行してください。';
+      return 'SMS送信回数の制限に達しました。しばらく時間をおいてから（約1時間後）再試行してください。';
     case 'auth/captcha-check-failed':
-      return 'reCAPTCHA認証に失敗しました。ページを再読み込みして再試行してください。';
+      return 'reCAPTCHA認証に失敗しました。Firebase Console で認証ドメインの設定を確認してください。';
+    case 'auth/recaptcha-not-enabled':
+      return 'reCAPTCHA機能が有効化されていません。';
+    case 'auth/missing-app-credential':
+      return 'Firebase設定に問題があります。';
     default:
+      // reCAPTCHA重複エラーの場合
+      if (error?.message?.includes('reCAPTCHA has already been rendered')) {
+        return 'reCAPTCHA認証の初期化エラー。ページを再読み込みして再試行してください。';
+      }
       return error?.message || '認証エラーが発生しました。';
   }
 };

@@ -15,9 +15,9 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # アプリケーションの全ファイルをコピー
 COPY . /app/
 
-# 使用するポート（例：8000）
-EXPOSE 8000
+# Cloud Run用のポート設定
+ENV PORT=8080
+EXPOSE 8080
 
-# Gunicornでアプリを起動（プロジェクト名やwsgiパスは実際のものに合わせる）
-# docker-compose.ymlで上書きされなかった時のデフォルト（本番環境用コマンド）
-CMD ["gunicorn", "django_project.wsgi:application", "--bind", "0.0.0.0:8000"]
+# 直接Gunicornで起動（シンプル版）
+CMD ["gunicorn", "django_project.wsgi:application", "--bind", "0.0.0.0:8080", "--workers", "2"]

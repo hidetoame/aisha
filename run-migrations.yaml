@@ -1,0 +1,48 @@
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: aisha-migrate-job
+spec:
+  template:
+    spec:
+      template:
+        spec:
+          containers:
+          - image: gcr.io/aisha-462412/aisha-backend:latest
+            command: ["python", "manage.py", "migrate"]
+            env:
+            - name: DJANGO_SECRET_KEY
+              value: "django-insecure-temp-secret-key"
+            - name: SECRET_KEY
+              value: "django-insecure-temp-secret-key"
+            - name: DB_HOST
+              value: "/cloudsql/aisha-462412:asia-northeast1:aisha-db"
+            - name: DB_NAME
+              value: "postgres"
+            - name: DB_USER
+              value: "postgres"
+            - name: DB_PASSWORD
+              value: "postgres"
+            - name: TSUKURUMA_API_HOST
+              value: "localhost"
+            - name: TSUKURUMA_API_PORT
+              value: "8000"
+            - name: APP_NAME
+              value: "AISHA"
+            - name: ENV_FILE
+              value: ".env.prod"
+            - name: ALLOWED_HOSTS
+              value: "aisha-backend-584412696241.asia-northeast1.run.app"
+            - name: DEBUG
+              value: "False"
+            - name: POSTGRES_DB
+              value: "postgres"
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              value: "postgres"
+            - name: POSTGRES_HOST
+              value: "/cloudsql/aisha-462412:asia-northeast1:aisha-db"
+            - name: POSTGRES_PORT
+              value: "5432"
+          serviceAccountName: aisha-backend@aisha-462412.iam.gserviceaccount.com
