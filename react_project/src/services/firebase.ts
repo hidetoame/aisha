@@ -40,7 +40,7 @@ try {
     auth.settings.appVerificationDisabledForTesting = false;
     
     // 開発環境でのdomain設定
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console.log('Development mode - Firebase Auth configured for localhost');
     }
   }

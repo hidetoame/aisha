@@ -572,7 +572,7 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
     }
     
     // ログ出力を制御（開発時のみ、かつ画像がある場合のみ）
-    if (process.env.NODE_ENV === 'development' && imageUrl) {
+    if (import.meta.env.DEV && imageUrl) {
       console.log(`📷 getCarSettingsImageUrl(${angle}):`, imageUrl);
     }
     return imageUrl;

@@ -28,7 +28,7 @@ interface MyGarageUser {
   personalSettings?: any;
 }
 
-const MGDRIVE_API_BASE_URL = process.env.MGDRIVE_API_BASE_URL || 'https://md2.mygare.jp/api';
+const MGDRIVE_API_BASE_URL = import.meta.env.VITE_MGDRIVE_API_BASE_URL || 'https://md2.mygare.jp/api';
 const AISHA_API_BASE_URL = import.meta.env.VITE_AISHA_API_BASE || 'http://localhost:7999/api';
 
 // AISHA APIから管理者ステータスを取得する関数

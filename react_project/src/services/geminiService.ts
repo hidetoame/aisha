@@ -13,7 +13,7 @@ function getPlaceholderBase64Image(): string {
 }
 
 export async function generateImageWithGemini(prompt: string, options: GenerationOptions): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_API_KEY;
   if (!apiKey) {
     console.warn("No Gemini API Key found. Returning placeholder image.");
     return getPlaceholderBase64Image();
