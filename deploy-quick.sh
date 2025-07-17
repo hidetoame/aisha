@@ -13,10 +13,9 @@ echo ""
 echo "📋 デプロイ先を選択してください:"
 echo "1. GitHub Actions（自動デプロイ）"
 echo "2. GCP（手動デプロイ）"
-echo "3. Render（手動デプロイ）"
-echo "4. 全て（順次実行）"
+echo "3. 全て（順次実行）"
 
-read -p "選択 (1-4): " choice
+read -p "選択 (1-3): " choice
 
 case $choice in
     1)
@@ -37,14 +36,6 @@ case $choice in
         cd ..
         ;;
     3)
-        echo "🌐 Render デプロイ..."
-        echo "GitHub経由でRenderへプッシュ..."
-        git add .
-        git commit -m "Render deploy"
-        git push origin main
-        echo "✅ Renderが自動デプロイを開始します"
-        ;;
-    4)
         echo "🚀 全プラットフォームデプロイ..."
         echo ""
         echo "1. GitHub Actions（自動テスト＋デプロイ）"
@@ -74,5 +65,4 @@ echo "📍 確認URL:"
 echo "- GitHub Actions: https://github.com/hidetoame/aisha/actions"
 echo "- GCP Frontend: https://aisha-frontend-[hash].a.run.app"
 echo "- GCP Backend: https://aisha-backend-[hash].a.run.app"
-echo "- Render: https://aisha-frontend.onrender.com"
 echo ""
