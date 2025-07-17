@@ -57,49 +57,40 @@ interface ItemOption {
 
 const ITEM_OPTIONS: ItemOption[] = [
   {
-    id: 'heavyweight-t-shirt',
-    name: 'heavyweight-t-shirt',
-    displayName: 'Tシャツ',
+    id: 'dry-t-shirt',
+    name: 'dry-t-shirt',
+    displayName: 'ドライTシャツ',
     icon: '👕',
     basePrice: '',
     description: '',
     gradient: 'from-blue-400 to-blue-600',
   },
   {
-    id: 'heavyweight-hoodie',
-    name: 'heavyweight-hoodie',
-    displayName: 'パーカー',
-    icon: '🧥',
+    id: 'smartphone-case',
+    name: 'smartphone-case',
+    displayName: 'iPhoneケース',
+    icon: '📱',
     basePrice: '',
     description: '',
     gradient: 'from-purple-400 to-purple-600',
   },
   {
-    id: 'tote-bag',
-    name: 'tote-bag',
-    displayName: 'トートバッグ',
+    id: 'big-shoulder-bag',
+    name: 'big-shoulder-bag',
+    displayName: 'ショルダーバッグ',
     icon: '👜',
     basePrice: '',
     description: '',
     gradient: 'from-green-400 to-green-600',
   },
   {
-    id: 'mug-cup',
-    name: 'mug-cup', 
-    displayName: 'マグカップ',
-    icon: '☕',
+    id: 'thermo-tumbler',
+    name: 'thermo-tumbler', 
+    displayName: 'タンブラー',
+    icon: '🥤',
     basePrice: '',
     description: '',
     gradient: 'from-orange-400 to-orange-600',
-  },
-  {
-    id: 'heavyweight-sweat',
-    name: 'heavyweight-sweat',
-    displayName: 'スウェット',
-    icon: '👔',
-    basePrice: '',
-    description: '',
-    gradient: 'from-indigo-400 to-indigo-600',
   },
   {
     id: 'sticker',
@@ -109,6 +100,15 @@ const ITEM_OPTIONS: ItemOption[] = [
     basePrice: '',
     description: '',
     gradient: 'from-yellow-400 to-yellow-600',
+  },
+  {
+    id: 'clear-file-folder',
+    name: 'clear-file-folder',
+    displayName: 'クリアファイル',
+    icon: '📁',
+    basePrice: '',
+    description: '',
+    gradient: 'from-indigo-400 to-indigo-600',
   },
 ];
 
@@ -188,12 +188,12 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
 
   const _get_item_display_name = (item_name: string, requested_type: string) => {
     const display_names: Record<string, string> = {
-      'heavyweight-t-shirt': 'Tシャツ',
-      'heavyweight-hoodie': 'パーカー',
-      'heavyweight-sweat': 'スウェット',
-      'tote-bag': 'トートバッグ',
-      'mug-cup': 'マグカップ',
+      'dry-t-shirt': 'ドライTシャツ',
+      'smartphone-case': 'iPhoneケース',
+      'big-shoulder-bag': 'ショルダーバッグ',
+      'thermo-tumbler': 'タンブラー',
       'sticker': 'ステッカー',
+      'clear-file-folder': 'クリアファイル',
     };
     
     // requested_typeから優先的に表示名を取得
@@ -213,15 +213,15 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
   // アイテムタイプ別の価格を取得する関数
   const getItemPrice = (itemType: string): string => {
     const priceMapping: Record<string, string> = {
-      'heavyweight-t-shirt': '¥3,500〜',
-      'heavyweight-hoodie': '¥4,800〜', 
-      'heavyweight-sweat': '¥4,200〜',
-      'tote-bag': '¥2,800〜',
-      'mug-cup': '¥2,500〜',
-      'sticker': '¥800〜',
+      'dry-t-shirt': '¥5,100〜',
+      'smartphone-case': '¥3,000〜',
+      'big-shoulder-bag': '¥5,000〜',
+      'thermo-tumbler': '¥4,100〜',
+      'sticker': '¥1,100〜',
+      'clear-file-folder': '¥2,200〜',
     };
     
-    return priceMapping[itemType] || '¥3,500〜';
+    return priceMapping[itemType] || '¥5,100〜';
   };
 
   const carName = extractCarName(image.displayPrompt);

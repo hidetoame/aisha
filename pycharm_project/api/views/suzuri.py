@@ -140,31 +140,58 @@ def create_merchandise(request):
                 item_name = result.get('item', {}).get('name', item_type)
                 item_id = result.get('item', {}).get('id', 0)
                 
-                # SUZURIグッズ履歴を作成
-                merchandise = SuzuriMerchandise.objects.create(
-                    goods_creator_user_id=goods_creator_user_id,
-                    original_image_creator_user_id=original_image_creator_user_id,
-                    library_image_id=library_image_id,
-                    frontend_user_id=user_id or '',  # 後方互換性
-                    product_id=product_id,
-                    material_id=material_id,
-                    product_title=product_title,
-                    product_url=product_url,
-                    sample_image_url=sample_image_url,
+                # 重複チェック: 同じ画像URL + 同じアイテムタイプの組み合わせが存在するか
+                existing_merchandise = SuzuriMerchandise.objects.filter(
                     original_image_url=public_image_url,
-                    car_name=car_name,
-                    description=description,
                     item_name=item_name,
-                    item_id=item_id
-                )
+                    goods_creator_user_id=goods_creator_user_id
+                ).first()
                 
-                logger.info(f"✅ SUZURI グッズ履歴を記録:")
-                logger.info(f"  履歴ID: {merchandise.id}")
-                logger.info(f"  グッズ作成者: {goods_creator_user_id}")
-                logger.info(f"  元画像作成者: {original_image_creator_user_id}")
-                logger.info(f"  ライブラリ画像ID: {library_image_id}")
-                logger.info(f"  商品ID: {product_id}")
-                logger.info(f"  商品タイトル: {product_title}")
+                if existing_merchandise:
+                    # 既存のレコードを更新
+                    existing_merchandise.product_id = product_id
+                    existing_merchandise.material_id = material_id
+                    existing_merchandise.product_title = product_title
+                    existing_merchandise.product_url = product_url
+                    existing_merchandise.sample_image_url = sample_image_url
+                    existing_merchandise.car_name = car_name
+                    existing_merchandise.description = description
+                    existing_merchandise.item_id = item_id
+                    existing_merchandise.save()
+                    
+                    merchandise = existing_merchandise
+                    logger.info(f"✅ SUZURI グッズ履歴を更新（重複回避）:")
+                    logger.info(f"  既存履歴ID: {merchandise.id}")
+                    logger.info(f"  グッズ作成者: {goods_creator_user_id}")
+                    logger.info(f"  元画像作成者: {original_image_creator_user_id}")
+                    logger.info(f"  ライブラリ画像ID: {library_image_id}")
+                    logger.info(f"  商品ID: {product_id}")
+                    logger.info(f"  商品タイトル: {product_title}")
+                else:
+                    # 新しいレコードを作成
+                    merchandise = SuzuriMerchandise.objects.create(
+                        goods_creator_user_id=goods_creator_user_id,
+                        original_image_creator_user_id=original_image_creator_user_id,
+                        library_image_id=library_image_id,
+                        frontend_user_id=user_id or '',  # 後方互換性
+                        product_id=product_id,
+                        material_id=material_id,
+                        product_title=product_title,
+                        product_url=product_url,
+                        sample_image_url=sample_image_url,
+                        original_image_url=public_image_url,
+                        car_name=car_name,
+                        description=description,
+                        item_name=item_name,
+                        item_id=item_id
+                    )
+                    logger.info(f"✅ SUZURI グッズ履歴を新規作成:")
+                    logger.info(f"  履歴ID: {merchandise.id}")
+                    logger.info(f"  グッズ作成者: {goods_creator_user_id}")
+                    logger.info(f"  元画像作成者: {original_image_creator_user_id}")
+                    logger.info(f"  ライブラリ画像ID: {library_image_id}")
+                    logger.info(f"  商品ID: {product_id}")
+                    logger.info(f"  商品タイトル: {product_title}")
                 
             except Exception as e:
                 logger.error(f"❌ SUZURI グッズ履歴記録エラー: {str(e)}")

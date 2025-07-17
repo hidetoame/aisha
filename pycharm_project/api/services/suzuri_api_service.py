@@ -312,14 +312,18 @@ class SuzuriAPIService:
         アイテム名から表示用の名前を取得
         """
         display_names = {
-            'heavyweight-t-shirt': 'Tシャツ',
-            'heavyweight-hoodie': 'パーカー',
-            'heavyweight-sweat': 'スウェット',
-            'tote-bag': 'トートバッグ',
-            'mug-cup': 'マグカップ',
-            'sticker': 'ステッカー',
+            'dry-t-shirt': 'ドライTシャツ',
+            'smartphone-case': 'iPhoneケース',
+            'iphone-case': 'iPhoneケース',
+            'phone-case': 'iPhoneケース',
+            'big-shoulder-bag': 'ショルダーバッグ',
+            'shoulder-bag': 'ショルダーバッグ',
+            'thermo-tumbler': 'タンブラー',
             'tumbler': 'タンブラー',
-            'phone-case': 'スマホケース',
+            'sticker': 'ステッカー',
+            'clear-file-folder': 'クリアファイル',
+            'clear-file': 'クリアファイル',
+            'file-folder': 'クリアファイル',
         }
         
         # requested_typeから優先的に表示名を取得
@@ -349,12 +353,12 @@ class SuzuriAPIService:
         
         # フロントエンドのitem_typeとSUZURI APIアイテム名のマッピング
         item_type_mapping = {
-            'heavyweight-t-shirt': ['heavyweight-t-shirt', 't-shirt', 'tshirt', 't_shirt', 'shirt', 'シャツ', 'heavyweight-t', 'heavy-t', 'premium-t'],
-            'heavyweight-hoodie': ['heavyweight-hoodie', 'hoodie', 'parker', 'パーカー', 'parka'],
-            'heavyweight-sweat': ['heavyweight-sweat', 'sweat', 'sweatshirt', 'スウェット'],
-            'tote-bag': ['tote-bag', 'tote', 'bag', 'トートバッグ', 'トート'],
-            'mug-cup': ['mug-cup', 'mug', 'cup', 'magcup', 'マグカップ', 'マグ', 'カップ'],
+            'dry-t-shirt': ['dry-t-shirt', 'dry-t', 'ドライTシャツ', 'ドライT', 'dry', 'dri-fit'],
+            'smartphone-case': ['smartphone-case', 'phone-case', 'iphone-case', 'iphoneケース', 'スマホケース', 'ケース'],
+            'big-shoulder-bag': ['big-shoulder-bag', 'shoulder-bag', 'ショルダーバッグ', 'ショルダー', 'shoulder'],
+            'thermo-tumbler': ['thermo-tumbler', 'tumbler', 'タンブラー', 'サーモ', 'thermo'],
             'sticker': ['sticker', 'ステッカー', 'シール'],
+            'clear-file-folder': ['clear-file-folder', 'clear-file', 'file-folder', 'クリアファイル', 'ファイル'],
         }
         
         try:
@@ -365,8 +369,8 @@ class SuzuriAPIService:
                     'success': True,
                     'product': {
                         'id': 12345,
-                        'title': f"{car_name} Tシャツ",
-                        'description': description or f"AISHA で生成された {car_name} の画像を使用したオリジナルTシャツです。",
+                        'title': f"{car_name} ドライTシャツ",
+                        'description': description or f"AISHA で生成された {car_name} の画像を使用したオリジナルドライTシャツです。",
                         'price': 3500,  # ベース価格 + 1000円利益
                         'profit': 1000,  # 利益額
                         'created_at': '2024-01-01T12:00:00Z',
@@ -380,7 +384,7 @@ class SuzuriAPIService:
                     },
                     'item': {
                         'id': 148,
-                        'name': 'heavyweight-t-shirt',
+                        'name': 'dry-t-shirt',
                         'base_price': 2500
                     },
                     'product_url': f"https://suzuri.jp/products/demo-{car_name.lower().replace(' ', '-')}"
@@ -421,16 +425,16 @@ class SuzuriAPIService:
                 if target_item:
                     break
             
-            # 指定アイテムが見つからない場合はTシャツにフォールバック
+            # 指定アイテムが見つからない場合はドライTシャツにフォールバック
             if not target_item:
-                logger.warning(f"指定アイテム '{item_type}' が見つかりません。Tシャツを検索します。")
-                tshirt_keywords = item_type_mapping.get('heavyweight-t-shirt', ['t-shirt'])
+                logger.warning(f"指定アイテム '{item_type}' が見つかりません。ドライTシャツを検索します。")
+                dry_tshirt_keywords = item_type_mapping.get('dry-t-shirt', ['dry-t-shirt'])
                 for item in items:
                     item_name = item.get('name', '').lower()
-                    for keyword in tshirt_keywords:
+                    for keyword in dry_tshirt_keywords:
                         if keyword.lower() in item_name:
                             target_item = item
-                            logger.info(f"✅ フォールバック: Tシャツアイテム発見: {item.get('name')} (ID: {item.get('id')})")
+                            logger.info(f"✅ フォールバック: ドライTシャツアイテム発見: {item.get('name')} (ID: {item.get('id')})")
                             break
                     if target_item:
                         break
@@ -468,11 +472,14 @@ class SuzuriAPIService:
                 product_title = f"{car_name} {item_display_name}"
                 product_description = description or f"AISHA で生成された {car_name} の画像を使用したオリジナル{item_display_name}です。"
                 
+                # アイテム種類に応じて利益額を設定
+                profit_amount = 500 if item_type == 'sticker' else 1000
+                
                 # Zennで推奨されているJSON形式でマテリアルと商品を同時作成
                 data = {
                     'texture': f'data:{mime_type};base64,{image_base64}',
                     'title': product_title,  # 商品タイトルとして使用
-                    'price': 1000,  # 利益額（1000円）
+                    'price': profit_amount,  # 利益額（ステッカー: 500円、その他: 1000円）
                     'description': product_description,
                     'products': [
                         {
@@ -488,7 +495,7 @@ class SuzuriAPIService:
                 logger.info(f"  🚗 Product title: {product_title}")
                 logger.info(f"  🎯 Item ID: {target_item['id']} ({target_item.get('name')})")
                 logger.info(f"  🏷️ Item type: {item_type}")
-                logger.info(f"  💰 Profit price: 1000円")
+                logger.info(f"  💰 Profit price: {profit_amount}円")
                 
                 result = self._make_request('POST', '/materials', data=data)
                 
