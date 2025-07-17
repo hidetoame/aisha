@@ -30,6 +30,8 @@ export const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
   const itemsPerPage = 10;
 
   useEffect(() => {
+    if (!currentUser) return; // ログインしていない場合は何もしない
+    
     console.log('🔍 PaymentHistoryModal useEffect:', { isOpen, currentUser });
     if (isOpen && currentUser?.id) {
       fetchPaymentHistoryData(1);

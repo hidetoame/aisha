@@ -2,7 +2,7 @@ import axios from 'axios';
 import { AdminChargeOptionItem } from '@/types';
 import { keysToSnakeCase, keysToCamelCase } from '@/utils/caseConverter';
 
-const API_BASE = `${process.env.MOCK_API_BASE}/charge-options`;
+const API_BASE = `${import.meta.env.VITE_API_BASE || 'http://localhost:7999/api'}/charge-options`;
 
 export const fetchChargeOptions = async (
   onError?: (error: unknown) => void,

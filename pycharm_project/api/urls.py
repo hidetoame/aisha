@@ -51,6 +51,13 @@ from api.views.unified_credit_views import (
     consume_credits,
     migrate_phone_user
 )
+from api.views.charge_option import (
+    ChargeOptionListView,
+    ChargeOptionDetailView,
+    ChargeOptionCreateView,
+    ChargeOptionUpdateView,
+    ChargeOptionDeleteView
+)
 from api.views import health_check
 
 router = DefaultRouter()
@@ -75,6 +82,13 @@ urlpatterns += [
     path('users/<str:user_id>/credit-transactions/', CreditTransactionHistoryView.as_view(), name='credit-transactions'),
     path('users/<str:user_id>/charge-history/', ChargeHistoryView.as_view(), name='charge-history'),
     path('stripe/config/', stripe_config, name='stripe-config'),
+    
+    # チャージオプション関連
+    path('charge-options/', ChargeOptionListView.as_view(), name='charge-options-list'),
+    path('charge-options/<int:pk>/', ChargeOptionDetailView.as_view(), name='charge-options-detail'),
+    path('charge-options/create/', ChargeOptionCreateView.as_view(), name='charge-options-create'),
+    path('charge-options/<int:pk>/update/', ChargeOptionUpdateView.as_view(), name='charge-options-update'),
+    path('charge-options/<int:pk>/delete/', ChargeOptionDeleteView.as_view(), name='charge-options-delete'),
     
     # タイムライン関連
     path('timeline/', TimelineListCreateView.as_view(), name='timeline-list-create'),
