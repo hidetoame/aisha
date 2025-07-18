@@ -1,0 +1,40 @@
+# AISHA 本番環境用 React Dockerfile  
+# ローカル環境とは完全に分離された設定
+
+# ベースイメージ
+FROM node:20-alpine AS base
+WORKDIR /app
+
+# 依存関係のインストール
+COPY package.json package-lock.json* ./
+RUN npm ci --only=production && npm cache clean --force
+
+# ビルドステージ
+FROM base AS build
+COPY . .
+# 本番用ビルド実行
+RUN npm run build
+
+# 本番ステージ（nginx）
+FROM nginx:1.25-alpine AS production
+
+# ビルド成果物をコピー
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# nginx設定をコピー
+COPY nginx.conf.template /etc/nginx/nginx.conf.template
+COPY entrypoint.sh /entrypoint.sh
+
+# 実行権限付与
+RUN chmod +x /entrypoint.sh
+
+# 本番用ポート設定
+ENV PORT=8080
+EXPOSE $PORT
+
+# ヘルスチェック追加
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:$PORT/ || exit 1
+
+# エントリーポイント実行
+CMD ["/entrypoint.sh"] 

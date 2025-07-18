@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(deploy/gcp-deploy.sh:*)",
+      "Bash(./deploy/gcp-deploy.sh:*)",
+      "Bash(cd deploy && ./gcp-deploy.sh:*)",
+      "Bash(./deploy-to-gcp.sh:*)",
+      "Bash(gcloud run deploy:*)",
+      "Bash(deploy-quick.sh:*)",
+      "Bash(./deploy-quick.sh:*)"
+    ]
+  }
+}
