@@ -42,7 +42,7 @@ jobs:
     
     - name: Get Backend URL
       run: |
-        BACKEND_URL=$(gcloud run services describe aisha-backend-new --region ${{ secrets.GCP_REGION }} --format 'value(status.url)')
+        BACKEND_URL=$(gcloud run services describe aisha-backend-new --region asia-northeast1 --format 'value(status.url)')
         echo "BACKEND_URL=$BACKEND_URL" >> $GITHUB_ENV
     
     - name: Deploy Frontend to Cloud Run
@@ -65,7 +65,7 @@ jobs:
     
     - name: Get Frontend URL
       run: |
-        FRONTEND_URL=$(gcloud run services describe aisha-frontend-new --region ${{ secrets.GCP_REGION }} --format 'value(status.url)')
+        FRONTEND_URL=$(gcloud run services describe aisha-frontend-new --region asia-northeast1 --format 'value(status.url)')
         echo "🎉 Deployment Complete!"
         echo "Backend: ${{ env.BACKEND_URL }}"
         echo "Frontend: $FRONTEND_URL"
