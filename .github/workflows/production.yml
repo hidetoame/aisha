@@ -17,19 +17,19 @@ jobs:
       uses: google-github-actions/setup-gcloud@v2
       with:
         service_account_key: ${{ secrets.GCP_SA_KEY }}
-        project_id: ${{ secrets.GCP_PROJECT_ID }}
+        project_id: aisha-462412
         export_default_credentials: true
     
     - name: Configure Docker for GCP
       run: |
-        gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev
+        gcloud auth configure-docker asia-northeast1-docker.pkg.dev
     
     - name: Deploy Backend to Cloud Run
       run: |
         gcloud run deploy aisha-backend-new \
           --source ./pycharm_project \
           --platform managed \
-          --region ${{ secrets.GCP_REGION }} \
+          --region asia-northeast1 \
           --allow-unauthenticated \
           --memory 1Gi \
           --cpu 1 \
@@ -50,7 +50,7 @@ jobs:
         gcloud run deploy aisha-frontend-new \
           --source ./react_project \
           --platform managed \
-          --region ${{ secrets.GCP_REGION }} \
+          --region asia-northeast1 \
           --allow-unauthenticated \
           --memory 1Gi \
           --cpu 1 \
