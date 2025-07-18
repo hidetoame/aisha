@@ -11,6 +11,7 @@ import PersonalSettingsView from './views/PersonalSettingsView'; // Added
 import { ToastNotification } from './components/ToastNotification'; // Added
 import { ShareView } from './views/ShareView';
 import FirebasePhoneLoginModal from './components/modals/FirebasePhoneLoginModal'; // Firebase SMS authentication
+import AwsSmsLoginModal from './components/modals/AwsSmsLoginModal'; // AWS SMS authentication
 import { auth } from './services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getCurrentUserIdToken, signOutFirebase } from './services/api/firebase-auth';
@@ -68,6 +69,7 @@ const App: React.FC = () => {
   const [showPersonalSettingsModal, setShowPersonalSettingsModal] =
     useState(false); // Added
   const [showPhoneLoginModal, setShowPhoneLoginModal] = useState(false); // Added
+  const [showAwsSmsLoginModal, setShowAwsSmsLoginModal] = useState(false); // AWS SMS Login Modal
 
   const [generationHistory, setGenerationHistory] = useState<GeneratedImage[]>(
     [],
@@ -390,6 +392,11 @@ const App: React.FC = () => {
     setShowPhoneLoginModal(true);
   };
 
+  const handleAwsSmsLogin = () => {
+    setShowLoginModal(false);
+    setShowAwsSmsLoginModal(true);
+  };
+
   const handlePhoneLoginSuccess = (user: User) => {
     setUser(user);
     setShowPhoneLoginModal(false);
@@ -398,6 +405,17 @@ const App: React.FC = () => {
   };
 
   const handlePhoneLoginError = (message: string) => {
+    showToast('error', message);
+  };
+
+  const handleAwsSmsLoginSuccess = (user: User) => {
+    setUser(user);
+    setShowAwsSmsLoginModal(false);
+    setCurrentAppView('generator');
+    showToast('success', 'AWS SMS認証でログインしました');
+  };
+
+  const handleAwsSmsLoginError = (message: string) => {
     showToast('error', message);
   };
 
@@ -983,7 +1001,14 @@ const App: React.FC = () => {
                 onClick={handlePhoneLogin}
                 className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-150 ease-in-out mb-3"
               >
-                電話番号でログイン
+                電話番号でログイン (Firebase)
+              </button>
+              
+              <button
+                onClick={handleAwsSmsLogin}
+                className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-lg transition duration-150 ease-in-out mb-3"
+              >
+                電話番号でログイン (AWS SMS)
               </button>
               
               <button
@@ -1057,6 +1082,14 @@ const App: React.FC = () => {
           onClose={() => setShowPhoneLoginModal(false)}
           onLoginSuccess={handlePhoneLoginSuccess}
           onError={handlePhoneLoginError}
+        />
+        
+        {/* AWS SMS認証ログインモーダル */}
+        <AwsSmsLoginModal
+          isOpen={showAwsSmsLoginModal}
+          onClose={() => setShowAwsSmsLoginModal(false)}
+          onLoginSuccess={handleAwsSmsLoginSuccess}
+          onError={handleAwsSmsLoginError}
         />
         
         <ToastNotification />

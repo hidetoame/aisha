@@ -71,6 +71,13 @@ from api.views.mygarage_auth import (
     get_user_credit_history as mygarage_get_user_credit_history
 )
 from api.views import health_check
+from api.views.migrate_endpoint import run_migrations, migration_status
+from api.views.db_inspect import inspect_database_tables
+from api.views.aws_sms_auth import (
+    AWSSMSAuthView,
+    AWSSMSVerifyView,
+    AWSSMSUserInfoView
+)
 
 router = DefaultRouter()
 router.register(r'categories', CategoryViewSet, basename='category')
@@ -143,6 +150,11 @@ path('suzuri/history/', get_user_goods_history, name='suzuri-get-user-goods-hist
     path('firebase-auth/user-info/', get_or_create_user_info, name='firebase-user-info'),
     path('firebase-auth/validate/', validate_firebase_user, name='firebase-validate'),
     
+    # AWS SMS認証関連
+    path('aws-sms-auth/send/', AWSSMSAuthView.as_view(), name='aws-sms-send'),
+    path('aws-sms-auth/verify/', AWSSMSVerifyView.as_view(), name='aws-sms-verify'),
+    path('aws-sms-auth/user-info/', AWSSMSUserInfoView.as_view(), name='aws-sms-user-info'),
+    
     # 統一クレジットシステム関連
     path('unified-credits/', get_user_credits, name='unified-credits'),
     path('unified-credits/history/', get_credit_history, name='unified-credit-history'),
@@ -160,4 +172,9 @@ path('suzuri/history/', get_user_goods_history, name='suzuri-get-user-goods-hist
     path('mygarage-auth/validate/', validate_mygarage_token, name='mygarage-validate'),
     path('mygarage-auth/users/<str:user_id>/credits/', mygarage_get_user_credits, name='mygarage-user-credits'),
     path('mygarage-auth/users/<str:user_id>/credit-history/', mygarage_get_user_credit_history, name='mygarage-user-credit-history'),
+    
+    # データベースマイグレーション（本番環境用）
+    path('admin/migrate/', run_migrations, name='admin-migrate'),
+    path('admin/migrate/status/', migration_status, name='admin-migrate-status'),
+    path('admin/db/inspect/', inspect_database_tables, name='admin-db-inspect'),
 ]

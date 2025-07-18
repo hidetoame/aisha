@@ -52,7 +52,7 @@ export interface User {
   name: string;
   isAdmin?: boolean; // Added for admin flag
   personalSettings?: PersonalUserSettings; // Added
-  loginType?: 'mygarage' | 'phone'; // Added for login type tracking
+  loginType?: 'mygarage' | 'phone' | 'aws_sms'; // Added for login type tracking
   phoneNumber?: string; // Added for phone login users
 }
 

@@ -30,6 +30,7 @@ class PhoneVerificationSession(models.Model):
     session_id = models.CharField(max_length=100, unique=True, db_index=True)
     expires_at = models.DateTimeField()
     is_verified = models.BooleanField(default=False)
+    attempts = models.IntegerField(default=0)  # AWS SMS認証用
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:

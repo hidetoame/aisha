@@ -29,7 +29,7 @@ case $choice in
         echo "進捗確認: https://github.com/hidetoame/aisha/actions"
         ;;
     2)
-        echo "🔧 GCP デプロイ..."
+        echo "🔧 GCP デプロイ（自動マイグレーション付き）..."
         cd deploy
         chmod +x gcp-deploy.sh
         ./gcp-deploy.sh
@@ -44,7 +44,7 @@ case $choice in
         git commit -m "$commit_msg"
         git push origin main
         echo ""
-        echo "2. GCP（手動デプロイ）"
+        echo "2. GCP（自動マイグレーション付きデプロイ）"
         cd deploy
         chmod +x gcp-deploy.sh
         ./gcp-deploy.sh

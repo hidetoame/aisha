@@ -77,6 +77,42 @@ jobs:
           --set-env-vars ALLOWED_HOSTS=*.run.app \
           --set-env-vars GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json
     
+    - name: Apply Database Migrations
+      run: |
+        echo "🔄 データベースマイグレーション自動実行..."
+        BACKEND_URL="https://aisha-backend-584412696241.asia-northeast1.run.app"
+        
+        # マイグレーション状況をチェック
+        echo "マイグレーション状況確認中..."
+        MIGRATION_STATUS=$(curl -s -X GET "$BACKEND_URL/api/admin/migrate/status/" || echo "failed")
+        
+        if [[ "$MIGRATION_STATUS" == "failed" ]]; then
+            echo "⚠️ マイグレーション状況の確認に失敗しました。"
+            exit 1
+        else
+            echo "現在のマイグレーション状況を確認しました。"
+            
+            # 未適用のマイグレーションがあるかチェック
+            if echo "$MIGRATION_STATUS" | grep -q "[ ]"; then
+                echo "🔄 未適用のマイグレーションが検出されました。自動適用中..."
+                
+                # マイグレーション実行
+                MIGRATION_RESULT=$(curl -s -X POST "$BACKEND_URL/api/admin/migrate/" -H "Content-Type: application/json" -d "{}")
+                
+                if echo "$MIGRATION_RESULT" | grep -q '"success":true'; then
+                    echo "✅ データベースマイグレーション完了"
+                    echo "📋 適用内容:"
+                    echo "$MIGRATION_RESULT" | grep -o '"output":"[^"]*"' | sed 's/"output":"//;s/"$//' | sed 's/\\n/\n/g'
+                else
+                    echo "❌ マイグレーション適用に失敗しました"
+                    echo "エラー詳細: $MIGRATION_RESULT"
+                    exit 1
+                fi
+            else
+                echo "✅ すべてのマイグレーションが適用済みです"
+            fi
+        fi
+    
     - name: Deploy Frontend to Cloud Run
       run: |
         gcloud run deploy aisha-frontend \

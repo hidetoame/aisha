@@ -61,6 +61,41 @@ gcloud run deploy aisha-backend \
 BACKEND_URL=$(gcloud run services describe aisha-backend --region $REGION --format 'value(status.url)')
 echo "✅ バックエンドURL: $BACKEND_URL"
 
+# データベースマイグレーション自動実行
+echo "🔄 データベースマイグレーションチェック・適用..."
+echo "マイグレーション状況確認中..."
+
+# マイグレーション状況をチェック
+MIGRATION_STATUS=$(curl -s -X GET "$BACKEND_URL/api/admin/migrate/status/" || echo "failed")
+
+if [[ "$MIGRATION_STATUS" == "failed" ]]; then
+    echo "⚠️ マイグレーション状況の確認に失敗しました。手動で確認してください。"
+else
+    echo "現在のマイグレーション状況を確認しました。"
+    
+    # 未適用のマイグレーションがあるかチェック
+    if echo "$MIGRATION_STATUS" | grep -q "[ ]"; then
+        echo "🔄 未適用のマイグレーションが検出されました。自動適用中..."
+        
+        # マイグレーション実行
+        MIGRATION_RESULT=$(curl -s -X POST "$BACKEND_URL/api/admin/migrate/" -H "Content-Type: application/json" -d "{}")
+        
+        if echo "$MIGRATION_RESULT" | grep -q '"success":true'; then
+            echo "✅ データベースマイグレーション完了"
+            echo "📋 適用内容:"
+            echo "$MIGRATION_RESULT" | grep -o '"output":"[^"]*"' | sed 's/"output":"//;s/"$//' | sed 's/\\n/\n/g'
+        else
+            echo "❌ マイグレーション適用に失敗しました"
+            echo "エラー詳細: $MIGRATION_RESULT"
+            echo "⚠️ 手動でマイグレーションを確認してください"
+        fi
+    else
+        echo "✅ すべてのマイグレーションが適用済みです"
+    fi
+fi
+
+echo ""
+
 echo "🎨 フロントエンドデプロイ..."
 gcloud run deploy aisha-frontend \
   --source ./react_project \
