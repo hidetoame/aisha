@@ -337,7 +337,7 @@ class SuzuriAPIService:
         # マッピングにない場合はそのまま返す
         return item_name or 'グッズ'
 
-    def create_car_merchandise(self, image_url: str, car_name: str, description: str = "", item_type: str = "heavyweight-t-shirt") -> Dict[str, Any]:
+    def create_car_merchandise(self, image_url: str, car_name: str, description: str = "", item_type: str = "heavyweight-t-shirt", item_id: int = None) -> Dict[str, Any]:
         """
         車の画像からグッズを作成する統合メソッド（Zennのベストプラクティスに基づく実装）
         
@@ -390,59 +390,71 @@ class SuzuriAPIService:
                     'product_url': f"https://suzuri.jp/products/demo-{car_name.lower().replace(' ', '-')}"
                 }
             
-            # 1. アイテム一覧を取得して指定されたアイテムを探す
-            items = self.get_items()
-            if not items:
-                return {'success': False, 'error': 'アイテム一覧の取得に失敗しました'}
-            
-            # エラーレスポンスかどうかを確認
-            if isinstance(items, dict) and items.get('error'):
-                return {
-                    'success': False, 
-                    'error': f'SUZURI API エラー: {items.get("message", "不明なエラー")}'
-                }
-            
-            # 指定されたアイテムを探す
+            # item_idが指定されている場合は直接使用、指定されていない場合は検索処理
             target_item = None
-            logger.info(f"取得したアイテム数: {len(items)}")
-            logger.info(f"検索対象アイテム: {item_type}")
-            
-            # マッピングテーブルから検索キーワードを取得
-            search_keywords = item_type_mapping.get(item_type, [item_type])
-            logger.info(f"検索キーワード: {search_keywords}")
-            
-            for item in items:
-                item_name = item.get('name', '').lower()
-                logger.info(f"アイテム検索中: ID={item.get('id')}, Name='{item.get('name')}', Lower='{item_name}'")
+            if item_id is not None:
+                # item_idが指定されている場合は、そのIDのアイテムを直接使用
+                logger.info(f"指定されたitem_idを使用: {item_id}")
+                target_item = {
+                    'id': item_id,
+                    'name': item_type,  # フロントエンドから送信されたitem_typeを使用
+                }
+            else:
+                # 従来の検索処理（後方互換性のため）
+                logger.info("item_idが指定されていないため、従来の検索処理を実行")
                 
-                # マッピングテーブルのキーワードと照合
-                for keyword in search_keywords:
-                    if item_name == keyword.lower() or keyword.lower() in item_name:
-                        target_item = item
-                        logger.info(f"✅ 対象アイテム発見: {item.get('name')} (ID: {item.get('id')}) - キーワード: {keyword}")
-                        break
+                # 1. アイテム一覧を取得して指定されたアイテムを探す
+                items = self.get_items()
+                if not items:
+                    return {'success': False, 'error': 'アイテム一覧の取得に失敗しました'}
                 
-                if target_item:
-                    break
-            
-            # 指定アイテムが見つからない場合はドライTシャツにフォールバック
-            if not target_item:
-                logger.warning(f"指定アイテム '{item_type}' が見つかりません。ドライTシャツを検索します。")
-                dry_tshirt_keywords = item_type_mapping.get('dry-t-shirt', ['dry-t-shirt'])
+                # エラーレスポンスかどうかを確認
+                if isinstance(items, dict) and items.get('error'):
+                    return {
+                        'success': False, 
+                        'error': f'SUZURI API エラー: {items.get("message", "不明なエラー")}'
+                    }
+                
+                # 指定されたアイテムを探す
+                logger.info(f"取得したアイテム数: {len(items)}")
+                logger.info(f"検索対象アイテム: {item_type}")
+                
+                # マッピングテーブルから検索キーワードを取得
+                search_keywords = item_type_mapping.get(item_type, [item_type])
+                logger.info(f"検索キーワード: {search_keywords}")
+                
                 for item in items:
                     item_name = item.get('name', '').lower()
-                    for keyword in dry_tshirt_keywords:
-                        if keyword.lower() in item_name:
+                    logger.info(f"アイテム検索中: ID={item.get('id')}, Name='{item.get('name')}', Lower='{item_name}'")
+                    
+                    # マッピングテーブルのキーワードと照合
+                    for keyword in search_keywords:
+                        if item_name == keyword.lower() or keyword.lower() in item_name:
                             target_item = item
-                            logger.info(f"✅ フォールバック: ドライTシャツアイテム発見: {item.get('name')} (ID: {item.get('id')})")
+                            logger.info(f"✅ 対象アイテム発見: {item.get('name')} (ID: {item.get('id')}) - キーワード: {keyword}")
                             break
+                    
                     if target_item:
                         break
-            
-            # 最後の手段として最初のアイテムを使用
-            if not target_item and items:
-                target_item = items[0]
-                logger.info(f"最後の手段として最初のアイテムを使用: {target_item.get('name')}")
+                
+                # 指定アイテムが見つからない場合はドライTシャツにフォールバック
+                if not target_item:
+                    logger.warning(f"指定アイテム '{item_type}' が見つかりません。ドライTシャツを検索します。")
+                    dry_tshirt_keywords = item_type_mapping.get('dry-t-shirt', ['dry-t-shirt'])
+                    for item in items:
+                        item_name = item.get('name', '').lower()
+                        for keyword in dry_tshirt_keywords:
+                            if keyword.lower() in item_name:
+                                target_item = item
+                                logger.info(f"✅ フォールバック: ドライTシャツアイテム発見: {item.get('name')} (ID: {item.get('id')})")
+                                break
+                        if target_item:
+                            break
+                
+                # 最後の手段として最初のアイテムを使用
+                if not target_item and items:
+                    target_item = items[0]
+                    logger.info(f"最後の手段として最初のアイテムを使用: {target_item.get('name')}")
             
             if not target_item:
                 return {'success': False, 'error': '利用可能なアイテムが見つかりませんでした'}

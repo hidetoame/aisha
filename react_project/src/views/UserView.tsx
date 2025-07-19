@@ -269,9 +269,9 @@ const UserView: React.FC<UserViewProps> = ({
       const success = await deleteFromTimeline(currentUser.id, imageIdToDelete);
       if (success) {
         // フロントエンドのステートからも削除
-        setGeneratedImages((prev) =>
-          prev.filter((img) => img.id !== imageIdToDelete),
-        );
+    setGeneratedImages((prev) =>
+      prev.filter((img) => img.id !== imageIdToDelete),
+    );
         
         // ライブラリデータも更新（削除した画像がライブラリにある場合）
         onReloadUserHistory();

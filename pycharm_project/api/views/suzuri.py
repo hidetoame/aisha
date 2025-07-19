@@ -28,23 +28,20 @@ def create_merchandise(request):
     }
     """
     try:
-        # リクエストデータの詳細ログ
-        logger.info(f"🔍 Raw request data: {request.data}")
-        logger.info(f"🔍 Request headers: {dict(request.headers)}")
-        logger.info(f"🔍 Request method: {request.method}")
-        logger.info(f"🔍 Content type: {request.content_type}")
-        
+        # リクエストデータを取得
         image_url = request.data.get('image_url')
-        car_name = request.data.get('car_name')
+        car_name = request.data.get('car_name', 'AISHA生成画像')
         description = request.data.get('description', '')
-        item_type = request.data.get('item_type', 'heavyweight-t-shirt')  # デフォルトはTシャツ
-        user_id = request.data.get('user_id')  # グッズを作成するユーザーのID
+        item_type = request.data.get('item_type', 'heavyweight-t-shirt')
+        item_id = request.data.get('item_id')  # SUZURIアイテムIDを直接取得
+        user_id = request.data.get('user_id')
         
         logger.info(f"SUZURI merchandise creation request:")
         logger.info(f"  image_url: {image_url}")
         logger.info(f"  car_name: {car_name}")
         logger.info(f"  description: {description}")
         logger.info(f"  item_type: {item_type}")
+        logger.info(f"  item_id: {item_id}")
         logger.info(f"  user_id: {user_id}")
         
         if not image_url:
@@ -86,7 +83,8 @@ def create_merchandise(request):
             image_url=public_image_url,  # 署名付きURLまたはオリジナルURL
             car_name=car_name,
             description=description,
-            item_type=item_type  # アイテム種類を渡す
+            item_type=item_type,  # アイテム種類を渡す
+            item_id=item_id  # SUZURIアイテムIDを直接渡す
         )
         
         logger.info(f"🔍 SUZURI service result: {result}")

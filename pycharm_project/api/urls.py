@@ -27,6 +27,12 @@ from api.views.suzuri import (
     confirm_purchase,
     get_user_goods_history
 )
+from api.views.goods_management import (
+    goods_management_list,
+    goods_management_detail,
+    goods_management_update,
+    sync_suzuri_items
+)
 from api.views.user_admin import (
     get_user_profile,
     check_admin_status,
@@ -124,13 +130,19 @@ urlpatterns += [
     path('image-expansion/', ImageExpansionView.as_view(), name='image-expansion'),
     
     # SUZURI関連
-path('suzuri/merchandise/', create_merchandise, name='suzuri-create-merchandise'),
-path('suzuri/items/', get_available_items, name='suzuri-get-items'),
-path('suzuri/products/', get_user_products, name='suzuri-get-products'),
-path('suzuri/products/<int:product_id>/', get_product_detail, name='suzuri-get-product-detail'),
-path('suzuri/purchase/intent/', create_purchase_intent, name='suzuri-create-purchase-intent'),
-path('suzuri/purchase/confirm/', confirm_purchase, name='suzuri-confirm-purchase'),
-path('suzuri/history/', get_user_goods_history, name='suzuri-get-user-goods-history'),
+    path('suzuri/merchandise/', create_merchandise, name='suzuri-create-merchandise'),
+    path('suzuri/items/', get_available_items, name='suzuri-get-items'),
+    path('suzuri/products/', get_user_products, name='suzuri-get-products'),
+    path('suzuri/products/<int:product_id>/', get_product_detail, name='suzuri-get-product-detail'),
+    path('suzuri/purchase/intent/', create_purchase_intent, name='suzuri-create-purchase-intent'),
+    path('suzuri/purchase/confirm/', confirm_purchase, name='suzuri-confirm-purchase'),
+    path('suzuri/history/', get_user_goods_history, name='suzuri-get-user-goods-history'),
+    
+    # グッズ管理関連
+    path('admin/goods/', goods_management_list, name='goods-management-list'),
+    path('admin/goods/<int:goods_id>/', goods_management_detail, name='goods-management-detail'),
+    path('admin/goods/<int:goods_id>/update/', goods_management_update, name='goods-management-update'),
+    path('admin/goods/sync-suzuri/', sync_suzuri_items, name='sync-suzuri-items'),
     
     # ユーザー管理関連
     path('users/<str:frontend_user_id>/profile/', get_user_profile, name='user-profile'),

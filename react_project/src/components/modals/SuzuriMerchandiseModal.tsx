@@ -53,6 +53,7 @@ interface ItemOption {
   basePrice: string;
   description: string;
   gradient: string;
+  suzuriItemId: number;  // SUZURIアイテムIDを追加
 }
 
 const ITEM_OPTIONS: ItemOption[] = [
@@ -64,6 +65,7 @@ const ITEM_OPTIONS: ItemOption[] = [
     basePrice: '',
     description: '',
     gradient: 'from-blue-400 to-blue-600',
+    suzuriItemId: 112,  // dry-t-shirt
   },
   {
     id: 'smartphone-case',
@@ -73,6 +75,17 @@ const ITEM_OPTIONS: ItemOption[] = [
     basePrice: '',
     description: '',
     gradient: 'from-purple-400 to-purple-600',
+    suzuriItemId: 4,  // smartphone-case
+  },
+  {
+    id: 'android-smartphone-case',
+    name: 'android-smartphone-case',
+    displayName: 'Androidケース',
+    icon: '📱',
+    basePrice: '',
+    description: '',
+    gradient: 'from-purple-400 to-purple-600',
+    suzuriItemId: 294,  // android-smartphone-case
   },
   {
     id: 'big-shoulder-bag',
@@ -82,6 +95,7 @@ const ITEM_OPTIONS: ItemOption[] = [
     basePrice: '',
     description: '',
     gradient: 'from-green-400 to-green-600',
+    suzuriItemId: 62,  // big-shoulder-bag
   },
   {
     id: 'thermo-tumbler',
@@ -91,6 +105,7 @@ const ITEM_OPTIONS: ItemOption[] = [
     basePrice: '',
     description: '',
     gradient: 'from-orange-400 to-orange-600',
+    suzuriItemId: 109,  // thermo-tumbler
   },
   {
     id: 'sticker',
@@ -100,6 +115,7 @@ const ITEM_OPTIONS: ItemOption[] = [
     basePrice: '',
     description: '',
     gradient: 'from-yellow-400 to-yellow-600',
+    suzuriItemId: 11,  // sticker
   },
   {
     id: 'clear-file-folder',
@@ -109,6 +125,7 @@ const ITEM_OPTIONS: ItemOption[] = [
     basePrice: '',
     description: '',
     gradient: 'from-indigo-400 to-indigo-600',
+    suzuriItemId: 101,  // clear-file-folder
   },
 ];
 
@@ -243,6 +260,7 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
         car_name: carName,
         description: `${carName} ${selectedItem.displayName}`,
         item_type: selectedItem.id,
+        item_id: selectedItem.suzuriItemId,  // SUZURIアイテムIDを追加
         user_id: currentUser?.id,  // ユーザーIDを追加
       };
 

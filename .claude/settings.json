@@ -9,5 +9,25 @@
       "Bash(deploy-quick.sh:*)",
       "Bash(./deploy-quick.sh:*)"
     ]
+  },
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "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"
+      }
+    },
+    "google-cloud": {
+      "command": "node",
+      "args": [
+        "C:\\Users\\hidet\\google-cloud-mcp-server\\build\\index.js"
+      ],
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "C:\\Users\\hidet\\google-cloud-credentials.json"
+      }
+    }
   }
 }

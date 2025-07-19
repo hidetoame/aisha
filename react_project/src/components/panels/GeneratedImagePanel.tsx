@@ -465,12 +465,12 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
                         <div className="flex flex-col gap-2">
                           <a
                             href={merchandiseResult.product_url || merchandiseResult.productUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          target="_blank"
+                          rel="noopener noreferrer"
                             className="inline-flex items-center justify-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition-colors"
-                          >
+                        >
                             🛒 SUZURIで購入する
-                          </a>
+                        </a>
                           
                           {/* 商品情報の詳細表示 */}
                           {(merchandiseResult.product_title || merchandiseResult.item_name) && (

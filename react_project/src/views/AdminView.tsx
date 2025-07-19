@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'; // Added useRef
+import React, { useState, useRef, useEffect } from 'react'; // Added useRef and useEffect
 import {
   DndContext,
   closestCenter,
@@ -71,6 +71,13 @@ import {
 } from '@/contexts/CategoriesContext';
 import { useMenus, useMenusActions } from '@/contexts/MenusContext';
 import { getUserCredits, addCreditsToUser, UserCreditInfo } from '@/services/api/admin-credits';
+import { 
+  getGoodsManagementList, 
+  updateGoodsManagement, 
+  syncSuzuriItems,
+  GoodsManagementItem 
+} from '@/services/api/goods-management';
+import AdminGoodsManagementForm from '@/components/AdminGoodsManagementForm';
 
 const initialGoods: AdminGoodsItem[] = DEFAULT_GOODS_OPTIONS.map((opt) => ({
   id: opt.id,
@@ -102,9 +109,12 @@ const AdminView: React.FC = () => {
   const [activeSection, setActiveSection] =
     useState<AdminSection>('genMenuCategories'); // Default to first item in new order
 
-  const [goodsItems, setGoodsItems] = useState<AdminGoodsItem[]>(initialGoods);
+  const [goodsItems, setGoodsItems] = useState<GoodsManagementItem[]>([]);
   const [editingGoodsItem, setEditingGoodsItem] =
-    useState<AdminGoodsItem | null>(null);
+    useState<GoodsManagementItem | null>(null);
+  const [isLoadingGoods, setIsLoadingGoods] = useState(false);
+  const [isSyncingGoods, setIsSyncingGoods] = useState(false);
+  const [showPublicOnly, setShowPublicOnly] = useState(false);
 
   // クレジット管理用のstate
   const [searchUsername, setSearchUsername] = useState('');
@@ -118,11 +128,22 @@ const AdminView: React.FC = () => {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  // コンポーネントマウント時にグッズ一覧を自動読み込み
+  useEffect(() => {
+    if (activeSection === 'goods') {
+      loadGoodsItems();
+    }
+  }, [activeSection]);
 
   const renderAdminNavItem = (
     sectionId: AdminSection,
@@ -197,7 +218,7 @@ const AdminView: React.FC = () => {
 
       if (result.success) {
         showToast(`${selectedUser.nickname}に${creditAmount}クレジットを追加しました！`, 'success');
-        // ユーザー情報を再取得して最新のクレジット残高を表示
+
         const updatedUserInfo = await getUserCredits(selectedUser.firebase_uid);
         if (Array.isArray(updatedUserInfo)) {
           const updated = updatedUserInfo.find(u => u.firebase_uid === selectedUser.firebase_uid);
@@ -220,6 +241,58 @@ const AdminView: React.FC = () => {
       );
     } finally {
       setIsAddingCredits(false);
+    }
+  };
+
+  // グッズ管理の関数
+  const loadGoodsItems = async () => {
+    setIsLoadingGoods(true);
+    try {
+      const items = await getGoodsManagementList();
+      setGoodsItems(items);
+    } catch (error) {
+      console.error('グッズ管理一覧取得エラー:', error);
+      showToast(
+        error instanceof Error ? error.message : 'グッズ管理一覧の取得に失敗しました',
+        'error'
+      );
+    } finally {
+      setIsLoadingGoods(false);
+    }
+  };
+
+  const handleSyncSuzuriItems = async () => {
+    setIsSyncingGoods(true);
+    try {
+      const result = await syncSuzuriItems();
+      showToast(result.message, 'success');
+      // 同期後に一覧を再取得
+      await loadGoodsItems();
+    } catch (error) {
+      console.error('SUZURIアイテム同期エラー:', error);
+      showToast(
+        error instanceof Error ? error.message : 'SUZURIアイテムの同期に失敗しました',
+        'error'
+      );
+    } finally {
+      setIsSyncingGoods(false);
+    }
+  };
+
+  const handleUpdateGoodsItem = async (goodsId: number, data: any) => {
+    try {
+      const updatedItem = await updateGoodsManagement(goodsId, data);
+      setGoodsItems(prev => 
+        prev.map(item => item.id === goodsId ? updatedItem : item)
+      );
+      showToast('グッズ情報を更新しました', 'success');
+      setEditingGoodsItem(null);
+    } catch (error) {
+      console.error('グッズ更新エラー:', error);
+      showToast(
+        error instanceof Error ? error.message : 'グッズ情報の更新に失敗しました',
+        'error'
+      );
     }
   };
 
@@ -615,106 +688,135 @@ const AdminView: React.FC = () => {
               <h3 className="text-xl font-semibold text-indigo-300">
                 グッズ管理
               </h3>
-              <button
-                onClick={() =>
-                  setEditingGoodsItem({
-                    id: `new_${Date.now()}`,
-                    goodsName: '',
-                    suzuriApiId: '',
-                    creditCost: 0,
-                    variations: [],
-                    imageUrl: undefined,
-                  } as AdminGoodsItem)
-                }
-                className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg flex items-center"
-              >
-                <PlusCircleIcon className="w-5 h-5 mr-2" /> 新規グッズ追加
-              </button>
+              <div className="flex space-x-2">
+                <button
+                  onClick={handleSyncSuzuriItems}
+                  disabled={isSyncingGoods}
+                  className="bg-green-500 hover:bg-green-600 disabled:bg-gray-500 text-white font-semibold py-2 px-4 rounded-lg flex items-center"
+                >
+                  {isSyncingGoods ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      同期中...
+                    </>
+                  ) : (
+                    <>
+                      <LinkIcon className="w-5 h-5 mr-2" />
+                      SUZURI同期
+                    </>
+                  )}
+                </button>
+
+              </div>
             </div>
+            
             {editingGoodsItem && (
-              <AdminGoodsForm
+              <AdminGoodsManagementForm
                 item={editingGoodsItem}
-                onSave={(newItem) => {
-                  setGoodsItems((prev) =>
-                    prev.find((g) => g.id === newItem.id)
-                      ? prev.map((g) => (g.id === newItem.id ? newItem : g))
-                      : [...prev, newItem],
-                  );
-                  setEditingGoodsItem(null);
-                }}
+                onSave={(data) => handleUpdateGoodsItem(editingGoodsItem.id, data)}
                 onCancel={() => setEditingGoodsItem(null)}
               />
             )}
-            <ul className="space-y-3 mt-4">
-              {goodsItems.map((item) => (
-                <li
-                  key={item.id}
-                  className="bg-gray-700 p-4 rounded-md shadow flex justify-between items-start"
+            
+            <div className="mt-4">
+              <div className="flex items-center space-x-2 mb-4">
+                <label className="flex items-center space-x-2 text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={showPublicOnly}
+                    onChange={(e) => setShowPublicOnly(e.target.checked)}
+                    className="rounded border-gray-600 bg-gray-700 text-indigo-500 focus:ring-indigo-500"
+                  />
+                  <span>公開のみ表示</span>
+                </label>
+              </div>
+              {isLoadingGoods ? (
+                <div className="flex justify-center items-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-400"></div>
+                  <span className="ml-2 text-gray-400">グッズ一覧を読み込み中...</span>
+                </div>
+              ) : goodsItems.length === 0 ? (
+                <div className="text-center py-8">
+                  <CubeIcon className="w-16 h-16 mx-auto text-gray-500 mb-4" />
+                  <p className="text-gray-400">グッズが登録されていません</p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    「SUZURI同期」ボタンをクリックしてアイテムを同期してください
+                  </p>
+                </div>
+              ) : (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragStart={handleDragStart}
+                  onDragEnd={async (event) => {
+                    const { active, over } = event;
+                    setActiveId(null);
+                    setIsDragging(false);
+                    if (!over || active.id === over.id) return;
+                    // 公開のみ表示の場合も含め、表示中リスト順でdisplay_orderを再割り当て
+                    const filtered = goodsItems.filter(item => !showPublicOnly || item.is_public);
+                    const oldIndex = filtered.findIndex(item => item.id.toString() === active.id);
+                    const newIndex = filtered.findIndex(item => item.id.toString() === over.id);
+                    if (oldIndex !== -1 && newIndex !== -1) {
+                      const newList = arrayMove(filtered, oldIndex, newIndex);
+                      // display_orderを再割り当て
+                      await Promise.all(newList.map((item, idx) => updateGoodsManagement(item.id, { display_order: idx })));
+                      // 再取得
+                      await loadGoodsItems();
+                      showToast('表示順序を更新しました', 'success');
+                    }
+                  }}
                 >
-                  <div className="flex items-start space-x-4">
-                    {item.imageUrl && (
-                      <img
-                        src={item.imageUrl}
-                        alt={item.goodsName}
-                        className="w-20 h-20 object-cover rounded-md border border-gray-600 flex-shrink-0"
-                      />
-                    )}
-                    {!item.imageUrl && (
-                      <div className="w-20 h-20 bg-gray-600 rounded-md flex items-center justify-center text-gray-500 flex-shrink-0">
-                        <CubeIcon className="w-10 h-10" />
-                      </div>
-                    )}
-                    <div className="flex-grow">
-                      <p className="font-semibold text-indigo-400">
-                        {item.goodsName}
-                      </p>
-                      <p className="text-sm text-gray-300">
-                        SUZURI API ID: {item.suzuriApiId}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        コスト: {item.creditCost} クレジット
-                      </p>
-                      {item.variations && item.variations.length > 0 && (
-                        <div className="mt-2">
-                          <p className="text-xs font-medium text-gray-400">
-                            バリエーション:
-                          </p>
-                          {item.variations.map((v) => (
-                            <p
-                              key={v.id}
-                              className="text-xs text-gray-500 ml-2"
-                            >
-                              {v.typeName}: {v.options.join(', ')}
-                            </p>
-                          ))}
+                  <SortableContext
+                    items={goodsItems.filter(item => !showPublicOnly || item.is_public).map(item => item.id.toString())}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <ul className="space-y-3">
+                      {goodsItems.filter(item => !showPublicOnly || item.is_public).map((item) => (
+                        <SortableGoodsItem
+                          key={item.id}
+                          item={item}
+                          onEdit={() => {
+                            console.log('Setting editing goods item:', item);
+                            setEditingGoodsItem(item);
+                          }}
+                          isDragging={activeId === item.id.toString()}
+                        />
+                      ))}
+                    </ul>
+                  </SortableContext>
+                  <DragOverlay>
+                    {activeId ? (
+                      <div className="bg-gray-700 p-4 rounded-md shadow flex justify-between items-start opacity-80">
+                        <div className="flex items-start space-x-4">
+                          {goodsItems.find(item => item.id.toString() === activeId)?.icon_url ? (
+                            <img
+                              src={goodsItems.find(item => item.id.toString() === activeId)?.icon_url}
+                              alt={goodsItems.find(item => item.id.toString() === activeId)?.display_name}
+                              className="w-20 h-20 object-cover rounded-md border border-gray-600 flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-20 h-20 bg-gray-600 rounded-md flex items-center justify-center text-gray-500 flex-shrink-0">
+                              <CubeIcon className="w-10 h-10" />
+                            </div>
+                          )}
+                          <div className="flex-grow">
+                            <div className="flex items-center space-x-2 mb-1">
+                              <p className="font-semibold text-indigo-400">
+                                {goodsItems.find(item => item.id.toString() === activeId)?.display_name}
+                              </p>
+                              <span className={`px-2 py-1 text-xs rounded-full ${goodsItems.find(item => item.id.toString() === activeId)?.is_public ? 'bg-green-600 text-green-100' : 'bg-gray-600 text-gray-300'}`}>
+                                {goodsItems.find(item => item.id.toString() === activeId)?.is_public ? '公開' : '非公開'}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="space-x-2 flex-shrink-0">
-                    <button
-                      onClick={() => setEditingGoodsItem(item)}
-                      className="p-2 text-gray-400 hover:text-indigo-300"
-                      aria-label={`Edit ${item.goodsName}`}
-                    >
-                      <PencilAltIcon className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (window.confirm(`${item.goodsName}を削除しますか？`))
-                          setGoodsItems((prev) =>
-                            prev.filter((g) => g.id !== item.id),
-                          );
-                      }}
-                      className="p-2 text-gray-400 hover:text-red-400"
-                      aria-label={`Delete ${item.goodsName}`}
-                    >
-                      <TrashIcon className="w-5 h-5" />
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                      </div>
+                    ) : null}
+                  </DragOverlay>
+                </DndContext>
+              )}
+            </div>
           </div>
         );
       case 'chargeManagement':
@@ -1204,6 +1306,86 @@ const SortableCategoryItem: React.FC<{
   );
 };
 
+// SortableGoodsItemコンポーネント
+const SortableGoodsItem: React.FC<{
+  item: GoodsManagementItem;
+  onEdit: () => void;
+  isDragging: boolean;
+}> = ({ item, onEdit, isDragging }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging: isSortableDragging,
+  } = useSortable({ id: item.id.toString() });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={`bg-gray-700 p-4 rounded-md shadow flex justify-between items-start transition-opacity cursor-grab ${
+        isSortableDragging ? 'opacity-50' : 'opacity-100'
+      } ${isDragging && !isSortableDragging ? 'pointer-events-none' : ''}`}
+      {...attributes}
+      {...listeners}
+    >
+            <div className="flex items-start space-x-4">
+        {item.icon_url ? (
+          <img
+            src={item.icon_url}
+            alt={item.display_name}
+            className="w-20 h-20 object-cover rounded-md border border-gray-600 flex-shrink-0"
+          />
+        ) : (
+          <div className="w-20 h-20 bg-gray-600 rounded-md flex items-center justify-center text-gray-500 flex-shrink-0">
+            <CubeIcon className="w-10 h-10" />
+          </div>
+        )}
+        <div className="flex-grow">
+          <div className="flex items-center space-x-2 mb-1">
+            <p className="font-semibold text-indigo-400">{item.display_name}</p>
+            <span className={`px-2 py-1 text-xs rounded-full ${item.is_public ? 'bg-green-600 text-green-100' : 'bg-gray-600 text-gray-300'}`}>{item.is_public ? '公開' : '非公開'}</span>
+          </div>
+          <p className="text-sm text-gray-300">SUZURI ID: {item.suzuri_item_id}</p>
+          <p className="text-sm text-gray-300">基本価格: ¥{item.base_price.toLocaleString()}</p>
+          <p className="text-sm text-gray-300">最終価格: ¥{item.final_price.toLocaleString()}</p>
+          {item.descriptions && item.descriptions.length > 0 && (
+            <div className="mt-2">
+              <p className="text-xs font-medium text-gray-400">説明:</p>
+              {item.descriptions.slice(0, 2).map((desc, index) => (
+                <p key={index} className="text-xs text-gray-500 ml-2">{desc}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="space-x-2 flex-shrink-0" data-no-dnd>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            console.log('Edit button clicked for item:', item);
+            onEdit();
+          }}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+          }}
+          className="p-2 text-gray-400 hover:text-indigo-300 pointer-events-auto"
+          aria-label={`Edit ${item.display_name}`}
+        >
+          <PencilAltIcon className="w-5 h-5" />
+        </button>
+      </div>
+    </li>
+  );
+};
+
 // ... (rest of the AdminView forms: AdminGenMenuCategoryForm, AdminGenMenuForm, AdminGoodsForm, AdminChargeOptionForm remain the same)
 // The forms are not included here for brevity but are assumed to be present in the actual file.
 
@@ -1600,232 +1782,7 @@ const AdminGenMenuForm: React.FC<{
   );
 };
 
-const AdminGoodsForm: React.FC<{
-  item: AdminGoodsItem;
-  onSave: (item: AdminGoodsItem) => void;
-  onCancel: () => void;
-}> = ({ item, onSave, onCancel }) => {
-  const [currentItem, setCurrentItem] = useState<AdminGoodsItem>(item);
-  const imageUploadRefForGoods = useRef<ImageUploadRef>(null);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
-    const { name, value } = e.target;
-    setCurrentItem((prev) => ({
-      ...prev,
-      [name]: name === 'creditCost' ? parseInt(value, 10) || 0 : value,
-    }));
-  };
-
-  const handleGoodsImageSelected = (file: File | null) => {
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setCurrentItem((prev) => ({
-          ...prev,
-          imageUrl: reader.result as string,
-        }));
-      };
-      reader.readAsDataURL(file);
-    } else {
-      setCurrentItem((prev) => ({ ...prev, imageUrl: undefined }));
-    }
-  };
-
-  const handleVariationChange = (
-    varIndex: number,
-    field: keyof GoodsVariation,
-    value: string | string[],
-  ) => {
-    const updatedVariations = [...(currentItem.variations || [])];
-    if (typeof updatedVariations[varIndex][field] === 'string') {
-      (updatedVariations[varIndex] as any)[field] = value as string;
-    } else {
-      (updatedVariations[varIndex] as any)[field] = Array.isArray(value)
-        ? value
-        : (value as string)
-            .split(',')
-            .map((s) => s.trim())
-            .filter((s) => s);
-    }
-    setCurrentItem((prev) => ({ ...prev, variations: updatedVariations }));
-  };
-
-  const addVariation = () => {
-    setCurrentItem((prev) => ({
-      ...prev,
-      variations: [
-        ...(prev.variations || []),
-        { id: `var_${Date.now()}`, typeName: '', options: [] },
-      ],
-    }));
-  };
-
-  const removeVariation = (varIndex: number) => {
-    setCurrentItem((prev) => ({
-      ...prev,
-      variations: prev.variations?.filter((_, i) => i !== varIndex),
-    }));
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg space-y-4 overflow-y-auto max-h-[90vh] custom-scrollbar">
-        <h4 className="text-lg font-semibold text-indigo-300">
-          {item.id.startsWith('new_')
-            ? '新規グッズアイテム追加'
-            : `編集: ${item.goodsName}`}
-        </h4>
-        <div>
-          <label
-            htmlFor="goodsName"
-            className="text-sm text-gray-400 block mb-1"
-          >
-            グッズ名
-          </label>
-          <input
-            id="goodsName"
-            name="goodsName"
-            value={currentItem.goodsName || ''}
-            onChange={handleChange}
-            className="w-full bg-gray-700 p-2 rounded text-gray-200"
-            required
-          />
-        </div>
-        <div>
-          <label
-            htmlFor="suzuriApiId"
-            className="text-sm text-gray-400 block mb-1"
-          >
-            SUZURI API ID (または相当品ID)
-          </label>
-          <input
-            id="suzuriApiId"
-            name="suzuriApiId"
-            value={currentItem.suzuriApiId || ''}
-            onChange={handleChange}
-            className="w-full bg-gray-700 p-2 rounded text-gray-200"
-            required
-          />
-        </div>
-        <div>
-          <label
-            htmlFor="creditCostGoods"
-            className="text-sm text-gray-400 block mb-1"
-          >
-            消費クレジット
-          </label>
-          <input
-            id="creditCostGoods"
-            type="number"
-            name="creditCost"
-            value={currentItem.creditCost || 0}
-            onChange={handleChange}
-            className="w-full bg-gray-700 p-2 rounded text-gray-200"
-          />
-        </div>
-
-        <ImageUpload
-          ref={imageUploadRefForGoods}
-          onImageSelect={handleGoodsImageSelected}
-          label="グッズ代表画像 (任意)"
-        />
-
-        <div className="border-t border-gray-700 pt-3 mt-3">
-          <h5 className="text-md font-semibold text-indigo-400 mb-2">
-            バリエーション設定 (任意)
-          </h5>
-          {currentItem.variations &&
-            currentItem.variations.map((variation, varIndex) => (
-              <div
-                key={variation.id || varIndex}
-                className="mb-3 p-3 border border-gray-600 rounded-md space-y-2 relative"
-              >
-                <p className="text-xs text-gray-400">
-                  バリエーションタイプ #{varIndex + 1}
-                </p>
-                <div>
-                  <label
-                    htmlFor={`variationTypeName-${varIndex}`}
-                    className="text-sm text-gray-400 block mb-1"
-                  >
-                    タイプ名
-                  </label>
-                  <input
-                    id={`variationTypeName-${varIndex}`}
-                    value={variation.typeName}
-                    onChange={(e) =>
-                      handleVariationChange(
-                        varIndex,
-                        'typeName',
-                        e.target.value,
-                      )
-                    }
-                    className="w-full bg-gray-700 p-2 rounded text-gray-200"
-                    placeholder="例: サイズ、色、スタイル"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor={`variationOptions-${varIndex}`}
-                    className="text-sm text-gray-400 block mb-1"
-                  >
-                    選択肢 (カンマ区切り)
-                  </label>
-                  <input
-                    id={`variationOptions-${varIndex}`}
-                    value={variation.options.join(', ')}
-                    onChange={(e) =>
-                      handleVariationChange(varIndex, 'options', e.target.value)
-                    }
-                    className="w-full bg-gray-700 p-2 rounded text-gray-200"
-                    placeholder="例: S, M, L  または  赤, 青, 緑"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeVariation(varIndex)}
-                  className="absolute top-2 right-2 p-1 text-red-400 hover:text-red-300"
-                  aria-label="このバリエーションタイプを削除"
-                >
-                  <TrashIcon className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          <button
-            type="button"
-            onClick={addVariation}
-            className="mt-1 text-sm bg-gray-600 hover:bg-gray-500 text-gray-300 px-3 py-1.5 rounded flex items-center"
-          >
-            <PlusCircleIcon className="w-4 h-4 mr-1.5" />{' '}
-            バリエーションタイプを追加
-          </button>
-        </div>
-
-        <div className="flex justify-end space-x-3 pt-4">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded text-gray-200 font-medium"
-          >
-            キャンセル
-          </button>
-          <button
-            type="button"
-            onClick={() => onSave(currentItem)}
-            className="bg-indigo-500 hover:bg-indigo-600 px-4 py-2 rounded text-white font-medium"
-            disabled={
-              !currentItem.goodsName.trim() || !currentItem.suzuriApiId.trim()
-            }
-          >
-            保存
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const AdminChargeOptionForm: React.FC<{
   item: AdminChargeOptionItem;

@@ -124,7 +124,7 @@ class GCSUploadService:
         except Exception as cred_error:
             logger.error(f"❌ 認証情報作成/テストエラー: {cred_error}")
             return None
-
+    
     def _ensure_initialized(self):
         """GCSクライアントの初期化（Firebase認証と分離）"""
         if self._initialized:
@@ -143,7 +143,7 @@ class GCSUploadService:
         logger.info(f"   - GCS_CREDENTIALS_JSON存在: {bool(gcs_credentials_json)}")
         
         credentials = None
-        
+            
         # ⭐ 方法1（優先）: Django設定のGCS_CREDENTIALS_JSONを使用
         if gcs_credentials_json:
             logger.info("🎯 GCS専用認証情報を使用（Firebase認証と分離）")
@@ -173,7 +173,7 @@ class GCSUploadService:
                     credentials = self._try_credentials_with_test(credentials_info, gcs_project_id, gcs_bucket_name)
                 except Exception as file_error:
                     logger.error(f"❌ ファイル読み込みエラー: {file_error}")
-        
+            
         # ⭐ 方法2（フォールバック）: 利用可能なファイルを順次試行
         fallback_paths = [
             '/app/gcs-credentials.json',
@@ -230,7 +230,7 @@ class GCSUploadService:
         # バケットの設定
         self.bucket_name = gcs_bucket_name
         self.bucket = self.client.bucket(self.bucket_name)
-        
+            
         # 最終的なバケット確認（初期化完了のため）
         logger.info(f"🪣 バケット最終確認中: {self.bucket_name}")
         try:
