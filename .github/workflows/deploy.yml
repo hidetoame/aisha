@@ -58,14 +58,6 @@ jobs:
           --set-env-vars DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }} \
           --set-env-vars ALLOWED_HOSTS=*.run.app \
           --set-env-vars DATABASE_URL=${{ secrets.DATABASE_URL }} \
-          --set-env-vars TSUKURUMA_API_HOST=localhost \
-          --set-env-vars TSUKURUMA_API_PORT=8000 \
-          --set-env-vars APP_NAME=AISHA \
-          --set-env-vars ENV_FILE=.env.prod \
-          --set-env-vars GCS_PROJECT_ID=${{ env.PROJECT_ID }} \
-          --set-env-vars GCS_BUCKET_NAME=aisha-car-images \
-          --set-env-vars GCS_CREDENTIALS_JSON=${{ secrets.GCS_CREDENTIALS_JSON }} \
-          --set-env-vars STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \
           --set-env-vars POSTGRES_DB=aisha_prod \
           --set-env-vars POSTGRES_USER=aisha_user \
           --set-env-vars POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
@@ -103,16 +95,7 @@ jobs:
           --min-instances 0 \
           --max-instances 10 \
           --set-env-vars NODE_ENV=production \
-          --set-env-vars VITE_AISHA_API_BASE=${{ env.BACKEND_URL }}/api \
-          --set-env-vars VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }} \
-          --set-env-vars VITE_FIREBASE_AUTH_DOMAIN=${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }} \
-          --set-env-vars VITE_FIREBASE_PROJECT_ID=${{ secrets.VITE_FIREBASE_PROJECT_ID }} \
-          --set-env-vars VITE_FIREBASE_STORAGE_BUCKET=${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }} \
-          --set-env-vars VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }} \
-          --set-env-vars VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID }} \
-          --set-env-vars VITE_FIREBASE_MEASUREMENT_ID=${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }} \
-          --set-env-vars VITE_STRIPE_PUBLISHABLE_KEY=${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }} \
-          --set-env-vars VITE_CLIPDROP_API_KEY=${{ secrets.VITE_CLIPDROP_API_KEY }}
+          --set-env-vars VITE_AISHA_API_BASE=${{ env.BACKEND_URL }}/api
     
     # フロントエンドURL取得
     - name: Get Frontend URL
