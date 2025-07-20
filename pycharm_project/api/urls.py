@@ -31,7 +31,8 @@ from api.views.goods_management import (
     goods_management_list,
     goods_management_detail,
     goods_management_update,
-    sync_suzuri_items
+    sync_suzuri_items,
+    public_goods_list
 )
 from api.views.user_admin import (
     get_user_profile,
@@ -84,6 +85,8 @@ from api.views.aws_sms_auth import (
     AWSSMSVerifyView,
     AWSSMSUserInfoView
 )
+from api.views.stripe_webhook import stripe_webhook
+from api.views.sales_management import SalesManagementView, SalesMonthlyDetailView
 
 router = DefaultRouter()
 router.register(r'categories', CategoryViewSet, basename='category')
@@ -143,6 +146,7 @@ urlpatterns += [
     path('admin/goods/<int:goods_id>/', goods_management_detail, name='goods-management-detail'),
     path('admin/goods/<int:goods_id>/update/', goods_management_update, name='goods-management-update'),
     path('admin/goods/sync-suzuri/', sync_suzuri_items, name='sync-suzuri-items'),
+    path('goods/public/', public_goods_list, name='public-goods-list'),
     
     # ユーザー管理関連
     path('users/<str:frontend_user_id>/profile/', get_user_profile, name='user-profile'),
@@ -189,4 +193,11 @@ urlpatterns += [
     path('admin/migrate/', run_migrations, name='admin-migrate'),
     path('admin/migrate/status/', migration_status, name='admin-migrate-status'),
     path('admin/db/inspect/', inspect_database_tables, name='admin-db-inspect'),
+    
+    # Stripe Webhook（本番環境用）
+    path('stripe/webhook/', stripe_webhook, name='stripe-webhook'),
+    
+    # 売上管理関連
+    path('sales/monthly-summary/', SalesManagementView.as_view(), name='sales-monthly-summary'),
+    path('sales/monthly-details/', SalesMonthlyDetailView.as_view(), name='sales-monthly-details'),
 ]

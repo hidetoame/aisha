@@ -254,7 +254,7 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
         <div className="flex items-center justify-between px-1 mt-1.5">
           <div className="flex items-center space-x-3">
             <span className="text-xs font-semibold text-indigo-300">
-              メニュー: {image.menuName || 'カスタム'}
+              {image.usedFormData.category?.name || 'カテゴリ'}: {image.menuName || 'カスタム'}
             </span>
             <button
               onClick={() => onRate(image.id, 'good')}

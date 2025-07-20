@@ -35,6 +35,9 @@ def create_merchandise(request):
         item_type = request.data.get('item_type', 'heavyweight-t-shirt')
         item_id = request.data.get('item_id')  # SUZURIアイテムIDを直接取得
         user_id = request.data.get('user_id')
+        additional_profit = request.data.get('additional_profit', 0)  # 追加利益
+        print_places = request.data.get('print_places', [])  # プリント位置
+        is_multi_printable = request.data.get('is_multi_printable', False)  # マルチプリント可能フラグ
         
         logger.info(f"SUZURI merchandise creation request:")
         logger.info(f"  image_url: {image_url}")
@@ -43,6 +46,9 @@ def create_merchandise(request):
         logger.info(f"  item_type: {item_type}")
         logger.info(f"  item_id: {item_id}")
         logger.info(f"  user_id: {user_id}")
+        logger.info(f"  additional_profit: {additional_profit}")
+        logger.info(f"  print_places: {print_places}")
+        logger.info(f"  is_multi_printable: {is_multi_printable}")
         
         if not image_url:
             logger.error("❌ 画像URLが未設定")
@@ -84,7 +90,10 @@ def create_merchandise(request):
             car_name=car_name,
             description=description,
             item_type=item_type,  # アイテム種類を渡す
-            item_id=item_id  # SUZURIアイテムIDを直接渡す
+            item_id=item_id,  # SUZURIアイテムIDを直接渡す
+            additional_profit=additional_profit,  # 追加利益を渡す
+            print_places=print_places,  # プリント位置を渡す
+            is_multi_printable=is_multi_printable  # マルチプリント可能フラグを渡す
         )
         
         logger.info(f"🔍 SUZURI service result: {result}")

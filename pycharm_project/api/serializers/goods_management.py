@@ -26,6 +26,9 @@ class GoodsManagementSerializer(serializers.ModelSerializer):
             'available_print_places',
             'is_multi_printable',
             'is_public',
+            'needs_sub_materials',
+            'item_type',
+            'api_config',
             'created_at',
             'updated_at'
         ]
@@ -53,6 +56,9 @@ class GoodsManagementListSerializer(serializers.ModelSerializer):
             'final_price',
             'descriptions',
             'is_public',
+            'needs_sub_materials',
+            'item_type',
+            'api_config',
             'updated_at'
         ]
         read_only_fields = ['id', 'updated_at']
@@ -68,5 +74,8 @@ class GoodsManagementUpdateSerializer(serializers.ModelSerializer):
             'display_name',
             'display_order',
             'profit_margin',
-            'is_public'
+            'is_public',
+            'needs_sub_materials',
+            'item_type',
+            'api_config'
         ] 

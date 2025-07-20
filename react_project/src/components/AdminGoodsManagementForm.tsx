@@ -36,6 +36,9 @@ const AdminGoodsManagementForm: React.FC<AdminGoodsManagementFormProps> = ({
       display_order: currentItem.display_order,
       profit_margin: currentItem.profit_margin,
       is_public: currentItem.is_public,
+      needs_sub_materials: currentItem.needs_sub_materials,
+      item_type: currentItem.item_type,
+      api_config: currentItem.api_config,
     });
   };
 
@@ -107,6 +110,35 @@ const AdminGoodsManagementForm: React.FC<AdminGoodsManagementFormProps> = ({
             </label>
           </div>
 
+          <div className="flex items-center space-x-2">
+            <input
+              id="needs_sub_materials"
+              name="needs_sub_materials"
+              type="checkbox"
+              checked={currentItem.needs_sub_materials}
+              onChange={handleChange}
+              className="w-4 h-4 text-indigo-600 bg-gray-700 border-gray-600 rounded focus:ring-indigo-500"
+            />
+            <label htmlFor="needs_sub_materials" className="text-sm text-gray-400">
+              sub_materialsが必要
+            </label>
+          </div>
+
+          <div>
+            <label htmlFor="item_type" className="text-sm text-gray-400 block mb-1">
+              商品タイプ
+            </label>
+            <input
+              id="item_type"
+              name="item_type"
+              type="text"
+              value={currentItem.item_type || ''}
+              onChange={handleChange}
+              className="w-full bg-gray-700 p-2 rounded text-gray-200"
+              placeholder="例: t-shirt, hoodie, etc."
+            />
+          </div>
+
           <div className="border-t border-gray-700 pt-4">
             <h5 className="text-md font-semibold text-indigo-400 mb-2">
               商品情報
@@ -131,6 +163,33 @@ const AdminGoodsManagementForm: React.FC<AdminGoodsManagementFormProps> = ({
                   <p className="text-xs text-gray-600 ml-2">Debug: descriptions = {JSON.stringify(item.descriptions)}</p>
                 </div>
               )}
+            </div>
+          </div>
+
+          <div className="border-t border-gray-700 pt-4">
+            <h5 className="text-md font-semibold text-indigo-400 mb-2">
+              API設定
+            </h5>
+            <div className="space-y-2 text-sm text-gray-300">
+              <div>
+                <label className="text-gray-400 block mb-1">API Config (JSON)</label>
+                <textarea
+                  value={JSON.stringify(currentItem.api_config, null, 2)}
+                  onChange={(e) => {
+                    try {
+                      const parsed = JSON.parse(e.target.value);
+                      setCurrentItem(prev => ({
+                        ...prev,
+                        api_config: parsed
+                      }));
+                    } catch (error) {
+                      // JSON解析エラーは無視（編集中のため）
+                    }
+                  }}
+                  className="w-full bg-gray-700 p-2 rounded text-gray-200 text-xs font-mono h-32 resize-none"
+                  placeholder="API設定をJSON形式で入力"
+                />
+              </div>
             </div>
           </div>
 

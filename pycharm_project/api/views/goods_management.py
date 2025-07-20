@@ -23,6 +23,22 @@ def goods_management_list(request):
     """
     try:
         goods = GoodsManagement.objects.all()
+        
+        # フィルタリング
+        is_public_only = request.query_params.get('public_only', '').lower() == 'true'
+        needs_sub_materials = request.query_params.get('needs_sub_materials', '').lower() == 'true'
+        
+        logger.info(f"フィルターパラメータ: public_only={is_public_only}, needs_sub_materials={needs_sub_materials}")
+        logger.info(f"フィルター前の商品数: {goods.count()}")
+        
+        if is_public_only:
+            goods = goods.filter(is_public=True)
+            logger.info(f"公開フィルター後の商品数: {goods.count()}")
+        
+        if needs_sub_materials:
+            goods = goods.filter(needs_sub_materials=True)
+            logger.info(f"sub_materialsフィルター後の商品数: {goods.count()}")
+        
         serializer = GoodsManagementListSerializer(goods, many=True)
         return Response({
             'success': True,
@@ -182,4 +198,26 @@ def sync_suzuri_items(request):
         return Response({
             'success': False,
             'error': 'SUZURIアイテムの同期に失敗しました'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+
+
+@api_view(['GET'])
+# @permission_classes([IsAuthenticated, IsAdminUser])  # 一時的に認証を無効化
+def public_goods_list(request):
+    """
+    公開グッズ一覧を取得（フロントエンド用）
+    """
+    try:
+        # 公開フラグが立っているグッズを表示順序でソート
+        goods = GoodsManagement.objects.filter(is_public=True).order_by('display_order')
+        serializer = GoodsManagementListSerializer(goods, many=True)
+        return Response({
+            'success': True,
+            'data': serializer.data
+        })
+    except Exception as e:
+        logger.error(f"公開グッズ一覧取得エラー: {str(e)}")
+        return Response({
+            'success': False,
+            'error': '公開グッズ一覧の取得に失敗しました'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 

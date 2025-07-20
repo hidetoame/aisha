@@ -171,7 +171,7 @@ export const ShareGeneratedImageModal: React.FC<
             <div className="flex items-start">
               <ShareMenuIcon className="w-4 h-4 mr-2 mt-0.5 text-indigo-400 flex-shrink-0" />
               <div>
-                <span className="font-medium text-gray-300">メニュー:</span>
+                <span className="font-medium text-gray-300">カテゴリ名称:</span>
                 <p className="text-gray-200 ml-1 inline">{image.menuName}</p>
               </div>
             </div>

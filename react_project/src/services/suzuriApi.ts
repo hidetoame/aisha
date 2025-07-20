@@ -5,7 +5,17 @@ export interface SuzuriMerchandiseRequest {
   car_name: string;
   description?: string;
   item_type?: string;
-  user_id?: string; // ユーザーIDを追加
+  item_id?: number; // SUZURIアイテムID
+  user_id?: string; // ユーザーID
+  additional_profit?: number; // 追加利益
+  print_places?: string[]; // プリント位置
+  is_multi_printable?: boolean; // マルチプリント可能フラグ
+  // 管理画面のAPI設定を使用するためのフィールド
+  api_config?: {
+    embroidery?: boolean;
+    maxColors?: number | null;
+    maxSize?: string | null;
+  };
 }
 
 export interface SuzuriMerchandiseResponse {

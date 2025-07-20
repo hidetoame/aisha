@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'; // Added useRef and useEffect
+import SalesManagementView from './SalesManagementView';
 import {
   DndContext,
   closestCenter,
@@ -115,6 +116,7 @@ const AdminView: React.FC = () => {
   const [isLoadingGoods, setIsLoadingGoods] = useState(false);
   const [isSyncingGoods, setIsSyncingGoods] = useState(false);
   const [showPublicOnly, setShowPublicOnly] = useState(false);
+  const [showSubMaterialsOnly, setShowSubMaterialsOnly] = useState(false);
 
   // クレジット管理用のstate
   const [searchUsername, setSearchUsername] = useState('');
@@ -248,7 +250,28 @@ const AdminView: React.FC = () => {
   const loadGoodsItems = async () => {
     setIsLoadingGoods(true);
     try {
-      const items = await getGoodsManagementList();
+      const params = new URLSearchParams();
+      if (showPublicOnly) {
+        params.append('public_only', 'true');
+      }
+      if (showSubMaterialsOnly) {
+        params.append('needs_sub_materials', 'true');
+      }
+      
+      console.log('=== フィルター状態 ===');
+      console.log('showPublicOnly:', showPublicOnly);
+      console.log('showSubMaterialsOnly:', showSubMaterialsOnly);
+      console.log('APIパラメータ:', params.toString());
+      console.log('========================');
+      
+      const items = await getGoodsManagementList(params.toString());
+      
+      console.log('=== 取得結果 ===');
+      console.log('取得した商品数:', items.length);
+      console.log('sub_materials必要の商品数:', items.filter(item => item.needs_sub_materials).length);
+      console.log('公開商品数:', items.filter(item => item.is_public).length);
+      console.log('========================');
+      
       setGoodsItems(items);
     } catch (error) {
       console.error('グッズ管理一覧取得エラー:', error);
@@ -341,6 +364,8 @@ const AdminView: React.FC = () => {
 
   const renderSectionContent = () => {
     switch (activeSection) {
+      case 'sales':
+        return <SalesManagementView />;
       case 'genMenuCategories':
         return (
           <div>
@@ -719,15 +744,38 @@ const AdminView: React.FC = () => {
             )}
             
             <div className="mt-4">
-              <div className="flex items-center space-x-2 mb-4">
+              <div className="flex items-center space-x-4 mb-4">
                 <label className="flex items-center space-x-2 text-gray-300">
                   <input
                     type="checkbox"
                     checked={showPublicOnly}
-                    onChange={(e) => setShowPublicOnly(e.target.checked)}
+                    onChange={(e) => {
+                      console.log('公開チェックボックス変更:', e.target.checked);
+                      setShowPublicOnly(e.target.checked);
+                      // 状態更新後に少し待ってからAPI呼び出し
+                      setTimeout(() => {
+                        loadGoodsItems();
+                      }, 0);
+                    }}
                     className="rounded border-gray-600 bg-gray-700 text-indigo-500 focus:ring-indigo-500"
                   />
                   <span>公開のみ表示</span>
+                </label>
+                <label className="flex items-center space-x-2 text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={showSubMaterialsOnly}
+                    onChange={(e) => {
+                      console.log('sub_materialsチェックボックス変更:', e.target.checked);
+                      setShowSubMaterialsOnly(e.target.checked);
+                      // 状態更新後に少し待ってからAPI呼び出し
+                      setTimeout(() => {
+                        loadGoodsItems();
+                      }, 0);
+                    }}
+                    className="rounded border-gray-600 bg-gray-700 text-indigo-500 focus:ring-indigo-500"
+                  />
+                  <span>sub_materials必要のみ表示</span>
                 </label>
               </div>
               {isLoadingGoods ? (

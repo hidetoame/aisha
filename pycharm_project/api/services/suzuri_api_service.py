@@ -337,7 +337,7 @@ class SuzuriAPIService:
         # マッピングにない場合はそのまま返す
         return item_name or 'グッズ'
 
-    def create_car_merchandise(self, image_url: str, car_name: str, description: str = "", item_type: str = "heavyweight-t-shirt", item_id: int = None) -> Dict[str, Any]:
+    def create_car_merchandise(self, image_url: str, car_name: str, description: str = "", item_type: str = "heavyweight-t-shirt", item_id: int = None, additional_profit: int = 0, print_places: List[str] = None, is_multi_printable: bool = False) -> Dict[str, Any]:
         """
         車の画像からグッズを作成する統合メソッド（Zennのベストプラクティスに基づく実装）
         
@@ -350,6 +350,26 @@ class SuzuriAPIService:
         Returns:
             作成結果の辞書（成功/失敗、作成された商品情報など）
         """
+        
+        # 管理画面のデータベースからAPI設定を取得
+        try:
+            from api.models.goods_management import GoodsManagement
+            goods_config = GoodsManagement.objects.filter(
+                suzuri_item_id=item_id,
+                is_public=True
+            ).first()
+            
+            if goods_config:
+                # データベースからitem_typeとapi_configを取得
+                item_type = goods_config.item_type
+                api_config = goods_config.api_config or {}
+                logger.info(f"📋 管理画面から取得した設定: item_type={item_type}, api_config={api_config}")
+            else:
+                api_config = {}
+                logger.info(f"⚠️ 管理画面に設定が見つかりません: item_id={item_id}")
+        except Exception as e:
+            logger.warning(f"管理画面からの設定取得に失敗: {str(e)}")
+            api_config = {}
         
         # フロントエンドのitem_typeとSUZURI APIアイテム名のマッピング
         item_type_mapping = {
@@ -365,14 +385,18 @@ class SuzuriAPIService:
             # デモモードの場合は、デモレスポンスを返す
             if self.demo_mode:
                 logger.info("デモモードでSUZURIグッズ作成をシミュレート")
+                # 追加利益が指定されている場合はそれを使用、そうでなければデフォルト値
+                demo_profit = additional_profit if additional_profit > 0 else 1000
+                demo_price = 2500 + demo_profit  # ベース価格 + 利益
+                
                 return {
                     'success': True,
                     'product': {
                         'id': 12345,
                         'title': f"{car_name} ドライTシャツ",
                         'description': description or f"AISHA で生成された {car_name} の画像を使用したオリジナルドライTシャツです。",
-                        'price': 3500,  # ベース価格 + 1000円利益
-                        'profit': 1000,  # 利益額
+                        'price': demo_price,  # ベース価格 + 追加利益
+                        'profit': demo_profit,  # 利益額
                         'created_at': '2024-01-01T12:00:00Z',
                         'sampleUrl': f"https://suzuri.jp/products/demo-{car_name.lower().replace(' ', '-')}",
                         'sampleImageUrl': image_url
@@ -481,24 +505,73 @@ class SuzuriAPIService:
                 
                 # アイテム種類に応じた商品名を生成
                 item_display_name = self._get_item_display_name(target_item.get('name', ''), item_type)
-                product_title = f"{car_name} {item_display_name}"
+                product_title = f"AISHA - {item_display_name}"
                 product_description = description or f"AISHA で生成された {car_name} の画像を使用したオリジナル{item_display_name}です。"
                 
-                # アイテム種類に応じて利益額を設定
-                profit_amount = 500 if item_type == 'sticker' else 1000
+                # 追加利益が指定されている場合はそれを使用、そうでなければデフォルト値
+                if additional_profit > 0:
+                    profit_amount = additional_profit
+                else:
+                    profit_amount = 500 if item_type == 'sticker' else 1000
                 
                 # Zennで推奨されているJSON形式でマテリアルと商品を同時作成
+                # 商品タイプに応じたパラメータを設定
+                product_config = {
+                    'itemId': target_item['id'],
+                    'published': True
+                }
+                
+                # 管理画面のAPI設定を適用（新しいフォーマット対応）
+                if api_config:
+                    # 新しいapi_configフォーマットから必要なパラメーターを抽出
+                    if 'itemId' in api_config:
+                        product_config['itemId'] = api_config['itemId']
+                    if 'exemplaryItemVariantId' in api_config:
+                        product_config['exemplaryItemVariantId'] = api_config['exemplaryItemVariantId']
+                    if 'resizeMode' in api_config:
+                        product_config['resizeMode'] = api_config['resizeMode']
+                    
+                    # needs_sub_materialsフラグに基づいてsub_materialsを条件付きで追加
+                    if goods_config and goods_config.needs_sub_materials:
+                        # sub_materialsが必要な商品の場合、textureを含む形で追加
+                        if 'sub_materials' in api_config and api_config['sub_materials']:
+                            sub_materials = []
+                            for sub_material in api_config['sub_materials']:
+                                sub_materials.append({
+                                    'texture': f'data:{mime_type};base64,{image_base64}',
+                                    'printSide': sub_material.get('printSide', 'front'),
+                                    'enabled': True
+                                })
+                            product_config['sub_materials'] = sub_materials
+                            logger.info(f"🔧 sub_materialsを追加: {sub_materials}")
+                        else:
+                            # api_configにsub_materialsがない場合はデフォルトで追加
+                            product_config['sub_materials'] = [{
+                                'texture': f'data:{mime_type};base64,{image_base64}',
+                                'printSide': 'front',
+                                'enabled': True
+                            }]
+                            logger.info(f"🔧 デフォルトsub_materialsを追加")
+                    else:
+                        logger.info(f"🔧 sub_materialsは不要（needs_sub_materials=False）")
+                    
+                    logger.info(f"🔧 管理画面のAPI設定を適用: {api_config}")
+                
+                # 後方互換性のため、従来の条件分岐も残す
+                if item_type == 'embroidered-fleece-jacket' and not api_config:
+                    product_config.update({
+                        'embroidery': True,
+                        'maxColors': 8,
+                        'maxSize': '10x10cm'
+                    })
+                    logger.info(f"🔧 従来の刺しゅう設定を適用")
+                
                 data = {
                     'texture': f'data:{mime_type};base64,{image_base64}',
                     'title': product_title,  # 商品タイトルとして使用
                     'price': profit_amount,  # 利益額（ステッカー: 500円、その他: 1000円）
                     'description': product_description,
-                    'products': [
-                        {
-                            'itemId': target_item['id'],
-                            'published': True  # 公開状態で作成
-                        }
-                    ]
+                    'products': [product_config]
                 }
                 
                 logger.info(f"🛠️ SUZURI マテリアル+商品同時作成開始:")
@@ -508,6 +581,24 @@ class SuzuriAPIService:
                 logger.info(f"  🎯 Item ID: {target_item['id']} ({target_item.get('name')})")
                 logger.info(f"  🏷️ Item type: {item_type}")
                 logger.info(f"  💰 Profit price: {profit_amount}円")
+                logger.info(f"  📍 Print places: {print_places or 'デフォルト'}")
+                logger.info(f"  🔄 Multi printable: {is_multi_printable}")
+                
+                # 管理画面のAPI設定をログ出力
+                if api_config:
+                    logger.info(f"  📋 管理画面API設定:")
+                    for key, value in api_config.items():
+                        logger.info(f"    - {key}: {value}")
+                
+                # 刺しゅう商品の場合は特別なログを追加
+                if item_type == 'embroidered-fleece-jacket':
+                    logger.info(f"  🧵 刺しゅう商品設定:")
+                    logger.info(f"    - 刺しゅうフラグ: {product_config.get('embroidery', False)}")
+                    logger.info(f"    - 最大色数: {product_config.get('maxColors', 'N/A')}")
+                    logger.info(f"    - 最大サイズ: {product_config.get('maxSize', 'N/A')}")
+                
+                logger.info(f"  📋 送信データ構造: {list(data.keys())}")
+                logger.info(f"  📦 商品設定: {product_config}")
                 
                 result = self._make_request('POST', '/materials', data=data)
                 

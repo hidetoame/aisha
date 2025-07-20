@@ -103,7 +103,7 @@ export const GenerationHistoryModal: React.FC<GenerationHistoryModalProps> = ({
                       title={image.displayPrompt}
                     >
                       {image.menuName
-                        ? `メニュー: ${image.menuName}`
+                        ? `${image.usedFormData.category?.name || 'カテゴリ'}: ${image.menuName}`
                         : 'カスタム生成'}
                       {image.isPublic && (
                         <span className="ml-2 text-xs text-green-400 bg-green-700/50 px-1.5 py-0.5 rounded-full">

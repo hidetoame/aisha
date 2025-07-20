@@ -81,6 +81,26 @@ class GoodsManagement(models.Model):
         verbose_name='公開フラグ'
     )
     
+    # API送信データフォーマット用フィールド
+    api_config = models.JSONField(
+        default=dict,
+        verbose_name='API送信データ設定',
+        help_text='SUZURI APIに送信する際の商品タイプ別パラメータ設定'
+    )
+    
+    item_type = models.CharField(
+        max_length=100,
+        default='heavyweight-t-shirt',
+        verbose_name='商品タイプ',
+        help_text='SUZURI APIで使用する商品タイプ識別子'
+    )
+    
+    needs_sub_materials = models.BooleanField(
+        default=False,
+        verbose_name='sub_materials必要フラグ',
+        help_text='SUZURI APIでsub_materialsパラメータが必要かどうか'
+    )
+    
     created_at = models.DateTimeField(
         auto_now_add=True,
         verbose_name='作成日時'

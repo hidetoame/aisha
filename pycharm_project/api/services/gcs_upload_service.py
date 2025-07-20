@@ -143,7 +143,7 @@ class GCSUploadService:
         logger.info(f"   - GCS_CREDENTIALS_JSON存在: {bool(gcs_credentials_json)}")
         
         credentials = None
-            
+        
         # ⭐ 方法1（優先）: Django設定のGCS_CREDENTIALS_JSONを使用
         if gcs_credentials_json:
             logger.info("🎯 GCS専用認証情報を使用（Firebase認証と分離）")
@@ -218,7 +218,7 @@ class GCSUploadService:
         # サービスアカウント情報をログ出力
         if hasattr(credentials, 'service_account_email'):
             logger.info(f"🔑 使用するサービスアカウント: {credentials.service_account_email}")
-        
+            
         # GCSクライアントの作成
         logger.info("🔨 GCS専用クライアント作成中...")
         self.client = storage.Client(

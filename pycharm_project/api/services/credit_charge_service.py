@@ -106,6 +106,22 @@ class CreditChargeService:
             Tuple[CreditCharge, error_message]
         """
         try:
+            # 既存のpendingレコードをチェック（過去1分以内）
+            from datetime import datetime, timedelta
+            one_minute_ago = datetime.now() - timedelta(minutes=1)
+            
+            existing_charge = CreditCharge.objects.filter(
+                user_id=user_id,
+                charge_amount=charge_amount,
+                credit_amount=credit_amount,
+                payment_status='pending',
+                created_at__gte=one_minute_ago
+            ).order_by('-created_at').first()
+            
+            if existing_charge:
+                logger.info(f"既存のpendingレコードを返却: {existing_charge.id} (作成時刻: {existing_charge.created_at})")
+                return existing_charge, None
+            
             # メタデータ準備
             metadata = {
                 'user_id': user_id,

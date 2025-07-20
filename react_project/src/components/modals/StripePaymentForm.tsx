@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import {
   Elements,
@@ -63,16 +63,24 @@ const PaymentForm: React.FC<StripePaymentFormProps> = ({
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [clientSecret, setClientSecret] = useState<string>('');
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [cardNumberError, setCardNumberError] = useState<string | null>(null);
   const [cardExpiryError, setCardExpiryError] = useState<string | null>(null);
   const [cardCvcError, setCardCvcError] = useState<string | null>(null);
   const [postalCode, setPostalCode] = useState<string>('');
+  
+  // useRefを使用した重複実行防止
+  const isCreatingRef = useRef(false);
 
   // PaymentIntentを作成
   useEffect(() => {
-    if (isInitialized) return; // 重複実行を防ぐ
+    if (isInitialized || isCreating || isCreatingRef.current) return; // 重複実行を防ぐ
     
     const createPaymentIntent = async () => {
+      if (isCreatingRef.current) return; // 二重チェック
+      isCreatingRef.current = true;
+      setIsCreating(true);
+      
       try {
         const requestData = {
           user_id: userId,
@@ -89,11 +97,14 @@ const PaymentForm: React.FC<StripePaymentFormProps> = ({
       } catch (error: any) {
         console.error('PaymentIntent作成エラー:', error);
         onError(error.response?.data?.message || '決済の初期化に失敗しました');
+      } finally {
+        setIsCreating(false);
+        isCreatingRef.current = false;
       }
     };
 
     createPaymentIntent();
-  }, [userId, chargeAmount, creditAmount, onError, isInitialized]);
+  }, [userId, chargeAmount, creditAmount, isInitialized]); // onErrorを依存配列から削除
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();

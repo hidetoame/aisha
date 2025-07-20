@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GeneratedImage, User } from '@/types';
 import { suzuriApiClient } from '@/services/suzuriApi';
+import { getPublicGoodsList, GoodsManagementItem } from '@/services/api/goods-management';
 import {
   XMarkIcon as CloseIcon,
   ArrowPathIcon,
@@ -50,84 +51,28 @@ interface ItemOption {
   name: string;
   displayName: string;
   icon: string;
-  basePrice: string;
+  icon_url?: string | null; // SUZURIのアイコン画像URL
+  sample_image_url?: string | null; // SUZURIのサンプル画像URLを追加
+  basePrice: number;
+  finalPrice: number;
   description: string;
   gradient: string;
-  suzuriItemId: number;  // SUZURIアイテムIDを追加
+  suzuriItemId: number;
+  isPublic: boolean;
+  displayOrder: number;
+  descriptions: string[];
+  availablePrintPlaces: string[];
+  isMultiPrintable: boolean;
+  itemType: string; // SUZURI APIで使用する商品タイプ
+  apiConfig: { // SUZURI API設定
+    itemId?: number;
+    exemplaryItemVariantId?: number;
+    sub_materials?: Array<{
+      printSide: string;
+    }>;
+    resizeMode?: string;
+  };
 }
-
-const ITEM_OPTIONS: ItemOption[] = [
-  {
-    id: 'dry-t-shirt',
-    name: 'dry-t-shirt',
-    displayName: 'ドライTシャツ',
-    icon: '👕',
-    basePrice: '',
-    description: '',
-    gradient: 'from-blue-400 to-blue-600',
-    suzuriItemId: 112,  // dry-t-shirt
-  },
-  {
-    id: 'smartphone-case',
-    name: 'smartphone-case',
-    displayName: 'iPhoneケース',
-    icon: '📱',
-    basePrice: '',
-    description: '',
-    gradient: 'from-purple-400 to-purple-600',
-    suzuriItemId: 4,  // smartphone-case
-  },
-  {
-    id: 'android-smartphone-case',
-    name: 'android-smartphone-case',
-    displayName: 'Androidケース',
-    icon: '📱',
-    basePrice: '',
-    description: '',
-    gradient: 'from-purple-400 to-purple-600',
-    suzuriItemId: 294,  // android-smartphone-case
-  },
-  {
-    id: 'big-shoulder-bag',
-    name: 'big-shoulder-bag',
-    displayName: 'ショルダーバッグ',
-    icon: '👜',
-    basePrice: '',
-    description: '',
-    gradient: 'from-green-400 to-green-600',
-    suzuriItemId: 62,  // big-shoulder-bag
-  },
-  {
-    id: 'thermo-tumbler',
-    name: 'thermo-tumbler', 
-    displayName: 'タンブラー',
-    icon: '🥤',
-    basePrice: '',
-    description: '',
-    gradient: 'from-orange-400 to-orange-600',
-    suzuriItemId: 109,  // thermo-tumbler
-  },
-  {
-    id: 'sticker',
-    name: 'sticker',
-    displayName: 'ステッカー',
-    icon: '🏷️',
-    basePrice: '',
-    description: '',
-    gradient: 'from-yellow-400 to-yellow-600',
-    suzuriItemId: 11,  // sticker
-  },
-  {
-    id: 'clear-file-folder',
-    name: 'clear-file-folder',
-    displayName: 'クリアファイル',
-    icon: '📁',
-    basePrice: '',
-    description: '',
-    gradient: 'from-indigo-400 to-indigo-600',
-    suzuriItemId: 101,  // clear-file-folder
-  },
-];
 
 export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
   isOpen,
@@ -138,10 +83,91 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
   initialStep = 'select',
   existingProductData,
 }) => {
+  const [goodsItems, setGoodsItems] = useState<ItemOption[]>([]);
+  const [isLoadingGoods, setIsLoadingGoods] = useState(false);
+
+  // 公開グッズ一覧を取得
+  useEffect(() => {
+    const loadPublicGoods = async () => {
+      setIsLoadingGoods(true);
+      try {
+        const publicGoods = await getPublicGoodsList();
+        const convertedItems: ItemOption[] = publicGoods.map(goods => {
+          // アイテム種類に応じてアイコンとグラデーションを設定
+          const getItemIcon = (itemName: string) => {
+            const iconMap: { [key: string]: string } = {
+              'dry-t-shirt': '👕',
+              'smartphone-case': '📱',
+              'android-smartphone-case': '📱',
+              'big-shoulder-bag': '👜',
+              'thermo-tumbler': '🥤',
+              'sticker': '🏷️',
+              'clear-file-folder': '📁',
+            };
+            return iconMap[itemName] || '📦';
+          };
+
+          const getItemGradient = (itemName: string) => {
+            const gradientMap: { [key: string]: string } = {
+              'dry-t-shirt': 'from-blue-400 to-blue-600',
+              'smartphone-case': 'from-purple-400 to-purple-600',
+              'android-smartphone-case': 'from-purple-400 to-purple-600',
+              'big-shoulder-bag': 'from-green-400 to-green-600',
+              'thermo-tumbler': 'from-orange-400 to-orange-600',
+              'sticker': 'from-yellow-400 to-yellow-600',
+              'clear-file-folder': 'from-indigo-400 to-indigo-600',
+            };
+            return gradientMap[itemName] || 'from-blue-400 to-blue-600';
+          };
+
+          return {
+            id: goods.item_name,
+            name: goods.item_name,
+            displayName: goods.display_name,
+            icon: getItemIcon(goods.item_name), // フォールバック用の絵文字アイコン
+            icon_url: goods.icon_url, // SUZURIのアイコン画像URL
+            sample_image_url: goods.sample_image_url, // SUZURIのサンプル画像URL
+            basePrice: goods.base_price,
+            finalPrice: goods.final_price,
+            description: goods.descriptions?.join(', ') || '',
+            gradient: getItemGradient(goods.item_name),
+            suzuriItemId: goods.suzuri_item_id,
+            isPublic: goods.is_public,
+            displayOrder: goods.display_order,
+            descriptions: goods.descriptions || [],
+            availablePrintPlaces: goods.available_print_places || [],
+            isMultiPrintable: goods.is_multi_printable,
+            itemType: goods.item_type || goods.item_name, // 管理画面のitem_typeを使用
+            apiConfig: goods.api_config || { itemId: goods.suzuri_item_id, exemplaryItemVariantId: null, sub_materials: [], resizeMode: 'cover' }, // 管理画面のapi_configを使用
+          };
+        });
+        
+        // デバッグログ: 取得した商品一覧を確認
+        console.log('🔄 公開商品一覧:', convertedItems.map(item => ({
+          id: item.id,
+          displayName: item.displayName,
+          itemType: item.itemType,
+          suzuriItemId: item.suzuriItemId,
+          apiConfig: item.apiConfig
+        })));
+        
+        setGoodsItems(convertedItems);
+      } catch (error) {
+        console.error('公開グッズ一覧取得エラー:', error);
+      } finally {
+        setIsLoadingGoods(false);
+      }
+    };
+
+    if (isOpen) {
+      loadPublicGoods();
+    }
+  }, [isOpen]);
+
   // 既存商品データがある場合は、そのアイテムを初期選択する
   const getInitialSelectedItem = () => {
     if (existingProductData) {
-      return ITEM_OPTIONS.find(item => item.id === existingProductData.selectedItemId) || null;
+      return goodsItems.find(item => item.id === existingProductData.selectedItemId) || null;
     }
     return null;
   };
@@ -244,6 +270,15 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
   const carName = extractCarName(image.displayPrompt);
 
   const handleItemSelect = (item: ItemOption) => {
+    // デバッグログ: 選択された商品の詳細を確認
+    console.log('🔄 商品選択:', {
+      id: item.id,
+      displayName: item.displayName,
+      itemType: item.itemType,
+      suzuriItemId: item.suzuriItemId,
+      apiConfig: item.apiConfig
+    });
+    
     setSelectedItem(item);
     setStep('preview');
   };
@@ -259,10 +294,27 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
         image_url: image.url,
         car_name: carName,
         description: `${carName} ${selectedItem.displayName}`,
-        item_type: selectedItem.id,
+        item_type: selectedItem.itemType, // 管理画面のitem_typeを使用
         item_id: selectedItem.suzuriItemId,  // SUZURIアイテムIDを追加
         user_id: currentUser?.id,  // ユーザーIDを追加
+        additional_profit: selectedItem.finalPrice - selectedItem.basePrice,  // 追加利益を追加
+        print_places: selectedItem.availablePrintPlaces,  // プリント位置を追加
+        is_multi_printable: selectedItem.isMultiPrintable,  // マルチプリント可能フラグを追加
+        api_config: selectedItem.apiConfig, // 管理画面のAPI設定を追加
       };
+
+      // デバッグログ: 送信データを確認
+      console.log('🔄 SUZURI API リクエストデータ:', {
+        item_type: requestData.item_type,
+        item_id: requestData.item_id,
+        api_config: requestData.api_config,
+        selectedItem: {
+          id: selectedItem.id,
+          displayName: selectedItem.displayName,
+          itemType: selectedItem.itemType,
+          apiConfig: selectedItem.apiConfig
+        }
+      });
 
       const response = await suzuriApiClient.createMerchandise(requestData);
       setResult(response);
@@ -426,25 +478,45 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
               </div>
 
               {/* シンプルなグッズ選択グリッド */}
-              <div className="grid grid-cols-3 gap-4">
-                {ITEM_OPTIONS.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleItemSelect(item);
-                    }}
-                    className="group p-4 bg-white border border-gray-200 rounded-xl hover:border-purple-300 hover:shadow-md transition-all duration-200 text-center"
-                  >
-                    <div className={`w-12 h-12 bg-gradient-to-br ${item.gradient} rounded-lg flex items-center justify-center text-xl mb-2 mx-auto group-hover:scale-105 transition-transform duration-200`}>
-                      {item.icon}
-                    </div>
-                    <h4 className="font-semibold text-gray-800 text-sm">
-                      {item.displayName}
-                    </h4>
-                  </button>
-                ))}
-              </div>
+              {isLoadingGoods ? (
+                <div className="flex justify-center items-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                  <span className="ml-2 text-gray-600">グッズ一覧を読み込み中...</span>
+                </div>
+              ) : goodsItems.length > 0 ? (
+                <div className="grid grid-cols-3 gap-4">
+                  {goodsItems.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleItemSelect(item);
+                      }}
+                      className="group p-4 bg-white border border-gray-200 rounded-xl hover:border-purple-300 hover:shadow-md transition-all duration-200 text-center"
+                    >
+                      <div className={`w-12 h-12 bg-gradient-to-br ${item.gradient} rounded-lg flex items-center justify-center text-xl mb-2 mx-auto group-hover:scale-105 transition-transform duration-200`}>
+                        {item.sample_image_url ? (
+                          <img src={item.sample_image_url} alt={item.displayName} className="w-full h-full object-contain rounded-md" />
+                        ) : item.icon_url ? (
+                          <img src={item.icon_url} alt={item.displayName} className="w-full h-full object-contain rounded-md" />
+                        ) : (
+                          item.icon
+                        )}
+                      </div>
+                      <h4 className="font-semibold text-gray-800 text-sm">
+                        {item.displayName}
+                      </h4>
+                      <p className="text-xs text-gray-500 mt-1">
+                        ¥{item.finalPrice.toLocaleString()}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">公開されているグッズがありません</p>
+                </div>
+              )}
 
               {/* シンプルな注意事項 */}
               <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl">
@@ -466,7 +538,13 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
               {/* シンプルなアイテムヘッダー */}
               <div className="text-center">
                 <div className={`w-16 h-16 bg-gradient-to-br ${selectedItem.gradient} rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4`}>
-                  {selectedItem.icon}
+                  {selectedItem.sample_image_url ? (
+                    <img src={selectedItem.sample_image_url} alt={selectedItem.displayName} className="w-full h-full object-contain" />
+                  ) : selectedItem.icon_url ? (
+                    <img src={selectedItem.icon_url} alt={selectedItem.displayName} className="w-full h-full object-contain" />
+                  ) : (
+                    selectedItem.icon
+                  )}
                 </div>
                 <h3 className="text-2xl font-bold text-gray-800">
                   {selectedItem.displayName}
@@ -512,7 +590,10 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
                         <div className="flex items-center justify-between">
                           <span className="text-gray-600 text-sm font-medium">プリント位置</span>
                           <span className="font-medium text-gray-800">
-                            フロント中央
+                            {selectedItem.availablePrintPlaces.length > 0 
+                              ? selectedItem.availablePrintPlaces.join(', ')
+                              : 'フロント中央'
+                            }
                           </span>
                         </div>
                       </div>
@@ -532,7 +613,7 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
                         <div className="flex items-center justify-between">
                           <span className="text-gray-600 text-sm font-medium">販売価格</span>
                           <span className="font-bold text-purple-600 text-xl">
-                            {getItemPrice(selectedItem.id)}
+                            ¥{selectedItem.finalPrice.toLocaleString()}
                           </span>
                         </div>
                         <div className="text-right mt-1">

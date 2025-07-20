@@ -16,6 +16,16 @@ export interface GoodsManagementItem {
   available_print_places: string[];
   is_multi_printable: boolean;
   is_public: boolean;
+  needs_sub_materials: boolean; // sub_materials必要フラグ
+  item_type: string; // SUZURI APIで使用する商品タイプ
+  api_config: { // SUZURI API設定
+    itemId?: number;
+    exemplaryItemVariantId?: number;
+    sub_materials?: Array<{
+      printSide: string;
+    }>;
+    resizeMode?: string;
+  };
   created_at: string;
   updated_at: string;
 }
@@ -25,6 +35,16 @@ export interface GoodsManagementUpdateData {
   display_order?: number;
   profit_margin?: number;
   is_public?: boolean;
+  needs_sub_materials?: boolean;
+  item_type?: string;
+  api_config?: {
+    itemId?: number;
+    exemplaryItemVariantId?: number;
+    sub_materials?: Array<{
+      printSide: string;
+    }>;
+    resizeMode?: string;
+  };
 }
 
 export interface SyncSuzuriResponse {
@@ -38,9 +58,13 @@ export interface SyncSuzuriResponse {
 }
 
 // グッズ管理一覧を取得
-export const getGoodsManagementList = async (): Promise<GoodsManagementItem[]> => {
+export const getGoodsManagementList = async (queryParams?: string): Promise<GoodsManagementItem[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/admin/goods/`, {
+    const url = queryParams 
+      ? `${API_BASE_URL}/admin/goods/?${queryParams}`
+      : `${API_BASE_URL}/admin/goods/`;
+      
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -149,6 +173,32 @@ export const syncSuzuriItems = async (): Promise<SyncSuzuriResponse> => {
     }
   } catch (error) {
     console.error('SUZURIアイテム同期エラー:', error);
+    throw error;
+  }
+}; 
+
+export const getPublicGoodsList = async (): Promise<GoodsManagementItem[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/goods/public/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    
+    if (result.success) {
+      return result.data;
+    } else {
+      throw new Error(result.error || '公開グッズ一覧の取得に失敗しました');
+    }
+  } catch (error) {
+    console.error('公開グッズ一覧取得エラー:', error);
     throw error;
   }
 }; 
