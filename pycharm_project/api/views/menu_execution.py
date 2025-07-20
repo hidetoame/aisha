@@ -31,28 +31,8 @@ class MenuExecutionView(APIView):
         # ユーザーIDを取得
         user_id = request.data.get('user_id', 'anonymous')
         
-        # クレジット消費処理（メニュー実行前）
-        if user_id != 'anonymous':
-            # メニューの必要クレジット数（デフォルト1、設定可能にする場合はMenuモデルにフィールド追加）
-            required_credits = getattr(instance, 'required_credits', 1)
-            
-            logger.info(f"💳 クレジット消費開始: user_id={user_id}, required_credits={required_credits}")
-            success, message = UnifiedCreditService.consume_credits(
-                user_id=user_id,
-                amount=required_credits,
-                description=f"メニュー実行: {instance.name}"
-            )
-            
-            if not success:
-                logger.error(f"❌ クレジット消費失敗: {message}")
-                return Response({
-                    'success': False,
-                    'error': f'クレジット不足: {message}'
-                }, status=400)
-            
-            logger.info(f"✅ クレジット消費成功: {message}")
-        else:
-            logger.warning("⚠️ 匿名ユーザーのためクレジット消費をスキップ")
+        # クレジット消費処理を削除 - フロントエンドで管理するため
+        logger.info(f"💳 クレジット消費はフロントエンドで管理: user_id={user_id}")
 
         # ビジネスロジック
         result, prompt_formatted = generate_or_edit(instance, **validated_data)

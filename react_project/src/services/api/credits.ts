@@ -61,13 +61,36 @@ export const consumeCredits = async (
   onError?: (error: unknown) => void,
 ): Promise<CreditsOperationResponseParams | null> => {
   try {
-    const response = await axios.post(
-      `${API_BASE}/consume/`,
-      keysToSnakeCase(consumeRequest),
-    );
-    return keysToCamelCase(response.data);
+    console.log('🌐 consumeCredits called with:', { consumeRequest, API_BASE });
+    
+    // 正しいAPIエンドポイントを使用
+    const url = `${API_BASE}/unified-credits/consume/`;
+    console.log('📡 Making API call to:', url);
+    
+    // UnifiedCreditServiceのAPI形式に合わせてデータを変換
+    const requestData = {
+      user_id: consumeRequest.user_id,
+      amount: consumeRequest.credits,
+      description: '画像生成によるクレジット消費'
+    };
+    
+    console.log('📤 Request data:', requestData);
+    
+    const response = await axios.post(url, requestData);
+    console.log('✅ API response status:', response.status);
+    console.log('📊 API response data:', response.data);
+    
+    // UnifiedCreditServiceのレスポンス形式に合わせて変換
+    const result = {
+      success: response.data.success,
+      message: response.data.message,
+      remainingBalance: response.data.remaining_balance || 0
+    };
+    
+    console.log('💎 Final result:', result);
+    return result;
   } catch (err) {
-    console.error('クレジット消費失敗', err);
+    console.error('💥 クレジット消費失敗', err);
     onError?.(err);
     return null;
   }

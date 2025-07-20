@@ -62,7 +62,10 @@ from api.views.unified_credit_views import (
 from api.views.admin_credit import (
     add_credits_to_user,
     get_user_credits as admin_get_user_credits,
-    delete_user
+    delete_user,
+    get_all_users,
+    get_generation_history_stats,
+    get_generation_history_list
 )
 from api.views.charge_option import (
     ChargeOptionListView,
@@ -178,6 +181,11 @@ urlpatterns += [
     path('admin/credits/add/', add_credits_to_user, name='admin-add-credits'),
     path('admin/credits/check/', admin_get_user_credits, name='admin-check-credits'),
     path('admin/users/delete/', delete_user, name='admin-delete-user'),
+    path('admin/users/', get_all_users, name='admin-get-all-users'),
+    
+    # 生成履歴管理
+    path('admin/generation-history/stats/', get_generation_history_stats, name='generation-history-stats'),
+    path('admin/generation-history/list/', get_generation_history_list, name='generation-history-list'),
     
 
     

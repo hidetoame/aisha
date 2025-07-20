@@ -3,7 +3,7 @@ import UserView from './views/UserView';
 import AdminView from './views/AdminView';
 import PublicTimelineView from './views/PublicTimelineView';
 import { Header } from './components/Header';
-import { GenerationHistoryModal } from './components/modals/GenerationHistoryModal';
+
 import { GoodsCreationHistoryModal } from './components/modals/GoodsCreationHistoryModal';
 import { PaymentHistoryModal } from './components/modals/PaymentHistoryModal'; // Added
 import { DirectionSelectionModal } from './components/modals/DirectionSelectionModal';
@@ -77,8 +77,7 @@ const App: React.FC = () => {
   const [goodsCreationHistory, setGoodsCreationHistory] = useState<
     GoodsCreationRecord[]
   >([]);
-  const [showGenerationHistoryModal, setShowGenerationHistoryModal] =
-    useState(false);
+
   const [showGoodsHistoryModal, setShowGoodsHistoryModal] = useState(false);
   const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState(false); // Added
   // 「生成用パネルに読み込ませたい入力パラメータ（menuId, prompt, 画像ファイルなど）」をAppレベルで一時的に保持している変数
@@ -600,7 +599,7 @@ const App: React.FC = () => {
         formData,
         generatedImageUrl,
       });
-      setShowGenerationHistoryModal(false);
+
       setCurrentAppView('generator');
     },
     [],
@@ -636,8 +635,7 @@ const App: React.FC = () => {
       return;
     }
 
-    // 拡張処理開始：ライブラリモーダルを閉じてジェネレータービューに切り替え
-    setShowGenerationHistoryModal(false);
+    // 拡張処理開始：ジェネレータービューに切り替え
     setCurrentAppView('generator');
     setIsLibraryExtending(true); // ローディング開始
 
@@ -914,7 +912,7 @@ const App: React.FC = () => {
           onPlansClick={() => setShowPlanModal(true)}
           onToggleAdminView={toggleView}
           isAdminView={isAdminView}
-          onGenerationHistoryClick={() => setShowGenerationHistoryModal(true)}
+
           onGoodsHistoryClick={() => setShowGoodsHistoryModal(true)}
           currentAppView={user ? currentAppView : undefined}
           onToggleAppViewMode={user ? toggleAppViewMode : undefined}
@@ -1030,20 +1028,7 @@ const App: React.FC = () => {
           currentUser={user}
           onPaymentHistoryClick={handlePaymentHistoryClick}
         />
-        <GenerationHistoryModal
-          isOpen={showGenerationHistoryModal}
-          onClose={() => setShowGenerationHistoryModal(false)}
-          history={generationHistory}
-          onLoadOptions={handleLoadOptionsFromHistory}
-          onRateImageInLibrary={handleRateImageInLibrary}
-          onDeleteFromLibrary={handleDeleteFromLibrary}
-          onCreateGoodsForLibrary={handleCreateGoodsForLibrary}
-          onExtendImageFromLibrary={handleExtendImageFromLibrary}
-          onToggleLibraryImagePublicStatus={
-            handleToggleLibraryImagePublicStatus
-          }
-          currentUser={user}
-        />
+
         <GoodsCreationHistoryModal
           isOpen={showGoodsHistoryModal}
           onClose={() => setShowGoodsHistoryModal(false)}

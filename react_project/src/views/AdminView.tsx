@@ -71,7 +71,7 @@ import {
   useCategoriesActions,
 } from '@/contexts/CategoriesContext';
 import { useMenus, useMenusActions } from '@/contexts/MenusContext';
-import { getUserCredits, addCreditsToUser, UserCreditInfo } from '@/services/api/admin-credits';
+import { getUserCredits, addCreditsToUser, getAllUsers, UserCreditInfo, UserStatistics, getGenerationHistoryStats, getGenerationHistoryList, GenerationHistoryStats, GenerationHistoryItem } from '@/services/api/admin-credits';
 import { 
   getGoodsManagementList, 
   updateGoodsManagement, 
@@ -79,6 +79,7 @@ import {
   GoodsManagementItem 
 } from '@/services/api/goods-management';
 import AdminGoodsManagementForm from '@/components/AdminGoodsManagementForm';
+import { ImageExpandModal } from '@/components/modals/ImageExpandModal';
 
 const initialGoods: AdminGoodsItem[] = DEFAULT_GOODS_OPTIONS.map((opt) => ({
   id: opt.id,
@@ -126,6 +127,31 @@ const AdminView: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [isAddingCredits, setIsAddingCredits] = useState(false);
 
+  // ユーザー管理用のstate
+  const [allUsers, setAllUsers] = useState<UserCreditInfo[]>([]);
+  const [userStatistics, setUserStatistics] = useState<UserStatistics | null>(null);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userSearchLimit, setUserSearchLimit] = useState(20);
+
+  // 生成履歴管理用のstate
+  const [generationHistoryStats, setGenerationHistoryStats] = useState<GenerationHistoryStats | null>(null);
+  const [generationHistoryList, setGenerationHistoryList] = useState<GenerationHistoryItem[]>([]);
+  const [isLoadingGenerationHistory, setIsLoadingGenerationHistory] = useState(false);
+  const [generationHistorySearch, setGenerationHistorySearch] = useState('');
+  const [generationHistoryCategory, setGenerationHistoryCategory] = useState('');
+  const [generationHistoryUser, setGenerationHistoryUser] = useState('');
+  const [generationHistoryRating, setGenerationHistoryRating] = useState('');
+  
+  // 生成履歴詳細モーダル用のstate
+  const [selectedHistoryItem, setSelectedHistoryItem] = useState<GenerationHistoryItem | null>(null);
+  const [isHistoryDetailModalOpen, setIsHistoryDetailModalOpen] = useState(false);
+
+  // 画像拡大モーダル用のstate
+  const [isImageExpandModalOpen, setIsImageExpandModalOpen] = useState(false);
+  const [expandedImageUrl, setExpandedImageUrl] = useState('');
+
+
   // ドラッグ&ドロップ用の状態
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -144,6 +170,21 @@ const AdminView: React.FC = () => {
   useEffect(() => {
     if (activeSection === 'goods') {
       loadGoodsItems();
+    }
+  }, [activeSection]);
+
+  // ユーザー管理セクションがアクティブになった時にユーザー一覧を読み込み
+  useEffect(() => {
+    if (activeSection === 'users') {
+      loadAllUsers('', 20);
+    }
+  }, [activeSection]);
+
+  // 生成履歴セクションがアクティブになった時にデータを読み込み
+  useEffect(() => {
+    if (activeSection === 'generationHistory') {
+      loadGenerationHistoryStats();
+      loadGenerationHistoryList();
     }
   }, [activeSection]);
 
@@ -300,6 +341,104 @@ const AdminView: React.FC = () => {
     } finally {
       setIsSyncingGoods(false);
     }
+  };
+
+  // ユーザー管理の関数
+  const loadAllUsers = async (searchQuery?: string, limit?: number) => {
+    setIsLoadingUsers(true);
+    try {
+      const result = await getAllUsers(searchQuery, limit);
+      setAllUsers(result.users);
+      setUserStatistics(result.statistics);
+    } catch (error) {
+      console.error('ユーザー一覧取得エラー:', error);
+      showToast(
+        error instanceof Error ? error.message : 'ユーザー一覧の取得に失敗しました',
+        'error'
+      );
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  const handleUserSearch = () => {
+    loadAllUsers(userSearchQuery, userSearchLimit);
+  };
+
+  const handleUserSearchReset = () => {
+    setUserSearchQuery('');
+    setUserSearchLimit(20);
+    loadAllUsers('', 20);
+  };
+
+  // 生成履歴管理の関数
+  const loadGenerationHistoryStats = async () => {
+    try {
+      const stats = await getGenerationHistoryStats();
+      if (stats) {
+        setGenerationHistoryStats(stats);
+      }
+    } catch (error) {
+      console.error('生成履歴統計取得エラー:', error);
+      showToast('生成履歴統計の取得に失敗しました', 'error');
+    }
+  };
+
+  const loadGenerationHistoryList = async () => {
+    setIsLoadingGenerationHistory(true);
+    try {
+      const params = {
+        limit: 50,
+        search: generationHistorySearch,
+        category: generationHistoryCategory,
+        user: generationHistoryUser,
+        rating: generationHistoryRating
+      };
+      
+      const result = await getGenerationHistoryList(params);
+      if (result) {
+        setGenerationHistoryList(result.history);
+      }
+    } catch (error) {
+      console.error('生成履歴一覧取得エラー:', error);
+      showToast('生成履歴一覧の取得に失敗しました', 'error');
+    } finally {
+      setIsLoadingGenerationHistory(false);
+    }
+  };
+
+  const handleGenerationHistorySearch = () => {
+    loadGenerationHistoryList();
+  };
+
+  const handleGenerationHistoryReset = () => {
+    setGenerationHistorySearch('');
+    setGenerationHistoryCategory('');
+    setGenerationHistoryUser('');
+    setGenerationHistoryRating('');
+    loadGenerationHistoryList();
+  };
+
+  // 生成履歴詳細モーダル関連の関数
+  const handleHistoryItemClick = (item: GenerationHistoryItem) => {
+    setSelectedHistoryItem(item);
+    setIsHistoryDetailModalOpen(true);
+  };
+
+  const handleCloseHistoryDetailModal = () => {
+    setIsHistoryDetailModalOpen(false);
+    setSelectedHistoryItem(null);
+  };
+
+  // 画像拡大モーダル用のハンドラー
+  const handleImageExpand = (imageUrl: string) => {
+    setExpandedImageUrl(imageUrl);
+    setIsImageExpandModalOpen(true);
+  };
+
+  const handleCloseImageExpandModal = () => {
+    setIsImageExpandModalOpen(false);
+    setExpandedImageUrl('');
   };
 
   const handleUpdateGoodsItem = async (goodsId: number, data: any) => {
@@ -1060,13 +1199,149 @@ const AdminView: React.FC = () => {
         );
       case 'users':
         return (
-          <div className="text-gray-400">
-            <h3 className="text-xl font-semibold text-indigo-300 mb-2">
+          <div>
+            <h3 className="text-xl font-semibold text-indigo-300 mb-6">
               ユーザー管理
             </h3>
-            <p>
-              ユーザーアカウントの一覧表示、ロール変更、アカウント停止などの機能。(現在プレースホルダー)
-            </p>
+            
+            {/* 統計情報セクション */}
+            {userStatistics && (
+              <div className="bg-gray-800 p-6 rounded-lg mb-6">
+                <h4 className="text-lg font-medium text-white mb-4">ユーザー統計</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-700 p-4 rounded-lg">
+                    <div className="text-2xl font-bold text-indigo-400">{userStatistics.total_users}</div>
+                    <div className="text-gray-400 text-sm">総ユーザー数</div>
+                  </div>
+                  <div className="bg-gray-700 p-4 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-400">{userStatistics.mygarage_users}</div>
+                    <div className="text-gray-400 text-sm">MyGarage認証</div>
+                  </div>
+                  <div className="bg-gray-700 p-4 rounded-lg">
+                    <div className="text-2xl font-bold text-green-400">{userStatistics.phone_users}</div>
+                    <div className="text-gray-400 text-sm">電話番号認証</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ユーザー検索セクション */}
+            <div className="bg-gray-800 p-6 rounded-lg mb-6">
+              <h4 className="text-lg font-medium text-white mb-4">ユーザー検索</h4>
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={userSearchQuery}
+                    onChange={(e) => setUserSearchQuery(e.target.value)}
+                    placeholder="ユーザー名またはUIDで検索"
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    onKeyPress={(e) => e.key === 'Enter' && handleUserSearch()}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <select
+                    value={userSearchLimit}
+                    onChange={(e) => setUserSearchLimit(parseInt(e.target.value))}
+                    className="px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value={10}>10件</option>
+                    <option value={20}>20件</option>
+                    <option value={50}>50件</option>
+                    <option value={100}>100件</option>
+                  </select>
+                  <button
+                    onClick={handleUserSearch}
+                    disabled={isLoadingUsers}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoadingUsers ? '検索中...' : '検索'}
+                  </button>
+                  <button
+                    onClick={handleUserSearchReset}
+                    disabled={isLoadingUsers}
+                    className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    リセット
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* ユーザー一覧セクション */}
+            <div className="bg-gray-800 p-6 rounded-lg">
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="text-lg font-medium text-white">
+                  ユーザー一覧 ({allUsers.length}件)
+                  {userSearchQuery && <span className="text-gray-400 ml-2">- "{userSearchQuery}"で検索</span>}
+                </h4>
+                <button
+                  onClick={() => loadAllUsers('', 20)}
+                  disabled={isLoadingUsers}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoadingUsers ? '読み込み中...' : '最新20件'}
+                </button>
+              </div>
+              
+              {isLoadingUsers ? (
+                <div className="text-center py-8">
+                  <div className="text-gray-400">ユーザー一覧を読み込み中...</div>
+                </div>
+              ) : allUsers.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-600">
+                        <th className="text-left py-3 px-4 text-gray-400 font-medium">名前</th>
+                        <th className="text-left py-3 px-4 text-gray-400 font-medium">登録日</th>
+                        <th className="text-left py-3 px-4 text-gray-400 font-medium">最終ログイン</th>
+                        <th className="text-left py-3 px-4 text-gray-400 font-medium">生成画像数</th>
+                        <th className="text-left py-3 px-4 text-gray-400 font-medium">ユーザータイプ</th>
+                        <th className="text-left py-3 px-4 text-gray-400 font-medium">クレジット</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allUsers.map((user) => (
+                        <tr key={user.firebase_uid} className="border-b border-gray-700 hover:bg-gray-700">
+                          <td className="py-3 px-4">
+                            <div className="font-medium text-white">{user.nickname}</div>
+                            <div className="text-xs text-gray-400">{user.firebase_uid}</div>
+                          </td>
+                          <td className="py-3 px-4 text-gray-300">
+                            {user.created_at ? new Date(user.created_at).toLocaleDateString('ja-JP') : '不明'}
+                          </td>
+                          <td className="py-3 px-4 text-gray-300">
+                            {user.last_login_at ? new Date(user.last_login_at).toLocaleDateString('ja-JP') : '記録なし'}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-blue-400 font-medium">{user.generated_images_count}</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              user.user_type === 'MyGarageユーザー' 
+                                ? 'bg-blue-900 text-blue-300' 
+                                : 'bg-green-900 text-green-300'
+                            }`}>
+                              {user.user_type}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-green-400 font-medium">{user.unified_credits}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="text-gray-400">
+                    {userSearchQuery ? `"${userSearchQuery}"に一致するユーザーが見つかりません` : 'ユーザーが見つかりません'}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         );
       case 'creditManagement':
@@ -1129,15 +1404,11 @@ const AdminView: React.FC = () => {
                           <span className="text-green-400 ml-2 font-medium">{user.unified_credits}</span>
                         </div>
                         <div>
-                          <span className="text-gray-400">レガシークレジット:</span>
-                          <span className="text-yellow-400 ml-2 font-medium">{user.legacy_credits}</span>
-                        </div>
-                        <div>
                           <span className="text-gray-400">電話番号:</span>
                           <span className="text-white ml-2">{user.phone_number || 'なし'}</span>
                         </div>
                         <div>
-                          <span className="text-gray-400">Firebase UID:</span>
+                          <span className="text-gray-400">UID:</span>
                           <span className="text-gray-300 ml-2 text-xs">{user.firebase_uid}</span>
                         </div>
                       </div>
@@ -1196,13 +1467,205 @@ const AdminView: React.FC = () => {
         );
       case 'generationHistory':
         return (
-          <div className="text-gray-400">
-            <h3 className="text-xl font-semibold text-indigo-300 mb-2">
-              生成履歴
+          <div>
+            <h3 className="text-xl font-semibold text-indigo-300 mb-6">
+              生成履歴管理
             </h3>
-            <p>
-              全ユーザーの画像生成履歴、フィルター機能（ユーザー別、メニュー別、評価別）、詳細表示などの機能。(現在プレースホルダー)
-            </p>
+            
+            {/* 統計情報セクション */}
+            {generationHistoryStats && (
+              <div className="bg-gray-800 p-6 rounded-lg mb-6">
+                <h4 className="text-lg font-medium text-white mb-4">生成統計</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-gray-700 p-4 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-400">{generationHistoryStats.total_generations}</div>
+                    <div className="text-sm text-gray-400">生成数合計（非公開含）</div>
+                  </div>
+                  <div className="bg-gray-700 p-4 rounded-lg">
+                    <div className="text-2xl font-bold text-green-400">{generationHistoryStats.library_registrations}</div>
+                    <div className="text-sm text-gray-400">ライブラリ登録数</div>
+                  </div>
+                  <div className="bg-gray-700 p-4 rounded-lg">
+                    <div className="text-2xl font-bold text-yellow-400">{generationHistoryStats.public_images}</div>
+                    <div className="text-sm text-gray-400">公開数</div>
+                  </div>
+                  <div className="bg-gray-700 p-4 rounded-lg">
+                    <div className="text-2xl font-bold text-purple-400">{generationHistoryStats.goods_creations}</div>
+                    <div className="text-sm text-gray-400">グッズ作成数</div>
+                  </div>
+                </div>
+                
+                {/* カテゴリ別統計 */}
+                <h5 className="text-md font-medium text-white mb-3">カテゴリ別</h5>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-gray-700 p-3 rounded-lg">
+                    <div className="text-xl font-bold text-indigo-400">{generationHistoryStats.category_stats.illustration}</div>
+                    <div className="text-sm text-gray-400">イラスト</div>
+                  </div>
+                  <div className="bg-gray-700 p-3 rounded-lg">
+                    <div className="text-xl font-bold text-green-400">{generationHistoryStats.category_stats.scene_change}</div>
+                    <div className="text-sm text-gray-400">シーン変更</div>
+                  </div>
+                  <div className="bg-gray-700 p-3 rounded-lg">
+                    <div className="text-xl font-bold text-orange-400">{generationHistoryStats.category_stats.customization}</div>
+                    <div className="text-sm text-gray-400">カスタマイズ</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 検索フォームセクション */}
+            <div className="bg-gray-800 p-6 rounded-lg mb-6">
+              <h4 className="text-lg font-medium text-white mb-4">生成履歴一覧 絞り込みフォーム</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-2">検索</label>
+                  <input
+                    type="text"
+                    value={generationHistorySearch}
+                    onChange={(e) => setGenerationHistorySearch(e.target.value)}
+                    placeholder="プロンプト、メニュー名、ユーザーID"
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    onKeyPress={(e) => e.key === 'Enter' && handleGenerationHistorySearch()}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-2">カテゴリ</label>
+                  <select
+                    value={generationHistoryCategory}
+                    onChange={(e) => setGenerationHistoryCategory(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">すべて</option>
+                    <option value="illustration">イラスト</option>
+                    <option value="scene_change">シーン変更</option>
+                    <option value="customization">カスタマイズ</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-2">ユーザー</label>
+                  <input
+                    type="text"
+                    value={generationHistoryUser}
+                    onChange={(e) => setGenerationHistoryUser(e.target.value)}
+                    placeholder="ユーザーID"
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-2">評価</label>
+                  <select
+                    value={generationHistoryRating}
+                    onChange={(e) => setGenerationHistoryRating(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">すべて</option>
+                    <option value="good">Good</option>
+                    <option value="bad">Bad</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleGenerationHistorySearch}
+                  disabled={isLoadingGenerationHistory}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoadingGenerationHistory ? '検索中...' : '検索'}
+                </button>
+                <button
+                  onClick={handleGenerationHistoryReset}
+                  disabled={isLoadingGenerationHistory}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  リセット
+                </button>
+              </div>
+            </div>
+
+            {/* 生成履歴一覧セクション */}
+            <div className="bg-gray-800 p-6 rounded-lg">
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="text-lg font-medium text-white">
+                  生成履歴 サムネリスト ({generationHistoryList.length}件)
+                  <span className="text-sm text-gray-400 ml-2">※最大最新50件表示</span>
+                </h4>
+                <button
+                  onClick={() => loadGenerationHistoryList()}
+                  disabled={isLoadingGenerationHistory}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoadingGenerationHistory ? '読み込み中...' : '最新50件'}
+                </button>
+              </div>
+              
+              {isLoadingGenerationHistory ? (
+                <div className="text-center py-8">
+                  <div className="text-gray-400">生成履歴を読み込み中...</div>
+                </div>
+              ) : generationHistoryList.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {generationHistoryList.map((item) => (
+                    <div 
+                      key={item.id} 
+                      className="bg-gray-700 p-4 rounded-lg hover:bg-gray-600 transition-colors cursor-pointer"
+                      onClick={() => handleHistoryItemClick(item)}
+                    >
+                      <div className="mb-3">
+                        <img
+                          src={item.image_url}
+                          alt={item.display_prompt}
+                          className="w-full h-32 object-cover rounded-md"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-white">{item.user_name}</span>
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            item.category === 'illustration' ? 'bg-indigo-900 text-indigo-300' :
+                            item.category === 'scene_change' ? 'bg-green-900 text-green-300' :
+                            'bg-orange-900 text-orange-300'
+                          }`}>
+                            {item.category === 'illustration' ? 'イラスト' :
+                             item.category === 'scene_change' ? 'シーン変更' : 'カスタマイズ'}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-400 truncate" title={item.display_prompt}>
+                          {item.display_prompt}
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-gray-400">
+                          <span>{new Date(item.timestamp).toLocaleDateString('ja-JP')}</span>
+                          <div className="flex items-center space-x-2">
+                            {item.is_public && (
+                              <span className="text-green-400">公開</span>
+                            )}
+                            {item.is_saved_to_library && (
+                              <span className="text-blue-400">ライブラリ</span>
+                            )}
+                            {item.goods_creation_count > 0 && (
+                              <span className="text-purple-400">グッズ{item.goods_creation_count}</span>
+                            )}
+                            {item.rating && (
+                              <span className={`${item.rating === 'good' ? 'text-green-400' : 'text-red-400'}`}>
+                                {item.rating === 'good' ? '👍' : '👎'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="text-gray-400">
+                    {generationHistorySearch || generationHistoryCategory || generationHistoryUser || generationHistoryRating
+                      ? '検索条件に一致する生成履歴が見つかりません'
+                      : '生成履歴が見つかりません'}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         );
       default:
@@ -1272,6 +1735,151 @@ const AdminView: React.FC = () => {
       <div className="md:w-3/4 lg:w-4/5 bg-gray-800 p-6 rounded-lg shadow-lg overflow-y-auto custom-scrollbar">
         {renderSectionContent()}
       </div>
+      
+      {/* 生成履歴詳細モーダル */}
+      {isHistoryDetailModalOpen && selectedHistoryItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            {/* ヘッダー */}
+            <div className="flex justify-between items-center p-6 border-b border-gray-700">
+              <h2 className="text-xl font-semibold text-white">生成履歴詳細</h2>
+              <button
+                onClick={handleCloseHistoryDetailModal}
+                className="text-gray-400 hover:text-white text-2xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* コンテンツ */}
+            <div className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* 画像セクション */}
+                <div>
+                  <h3 className="text-lg font-medium text-white mb-4">生成画像</h3>
+                  <div className="relative">
+                    <img
+                      src={selectedHistoryItem.image_url}
+                      alt="生成画像"
+                      className="w-full h-auto rounded-lg shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => handleImageExpand(selectedHistoryItem.image_url)}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/placeholder-image.png';
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* 詳細情報セクション */}
+                <div className="space-y-6">
+                  {/* 基本情報 */}
+                  <div>
+                    <h3 className="text-lg font-medium text-white mb-4">基本情報</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">ユーザー:</span>
+                        <span className="text-white font-medium">{selectedHistoryItem.user_name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">ユーザーID:</span>
+                        <span className="text-white font-mono text-sm">{selectedHistoryItem.user_id}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">カテゴリ:</span>
+                        <span className={`px-2 py-1 rounded text-white text-sm ${
+                          selectedHistoryItem.category === 'illustration' ? 'bg-purple-500' :
+                          selectedHistoryItem.category === 'scene_change' ? 'bg-blue-500' :
+                          'bg-orange-500'
+                        }`}>
+                          {selectedHistoryItem.category === 'illustration' ? 'イラスト' :
+                           selectedHistoryItem.category === 'scene_change' ? 'シーン変更' : 'カスタマイズ'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">メニュー名:</span>
+                        <span className="text-white">{selectedHistoryItem.menu_name || '未設定'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">生成日時:</span>
+                        <span className="text-white">
+                          {new Date(selectedHistoryItem.timestamp).toLocaleString('ja-JP', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ステータス情報 */}
+                  <div>
+                    <h3 className="text-lg font-medium text-white mb-4">ステータス</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">公開設定:</span>
+                        <span className={`px-2 py-1 rounded text-white text-sm ${selectedHistoryItem.is_public ? 'bg-green-500' : 'bg-red-500'}`}>
+                          {selectedHistoryItem.is_public ? '公開' : '非公開'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">ライブラリ保存:</span>
+                        <span className={`px-2 py-1 rounded text-white text-sm ${selectedHistoryItem.is_saved_to_library ? 'bg-blue-500' : 'bg-gray-500'}`}>
+                          {selectedHistoryItem.is_saved_to_library ? '保存済み' : '未保存'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">グッズ作成数:</span>
+                        <span className="text-white font-medium">{selectedHistoryItem.goods_creation_count}件</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">評価:</span>
+                        <span className={`px-2 py-1 rounded text-white text-sm ${
+                          selectedHistoryItem.rating === 'good' ? 'bg-green-500' : 
+                          selectedHistoryItem.rating === 'bad' ? 'bg-red-500' : 'bg-gray-500'
+                        }`}>
+                          {selectedHistoryItem.rating === 'good' ? 'Good' : 
+                           selectedHistoryItem.rating === 'bad' ? 'Bad' : '未評価'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* プロンプト */}
+                  <div>
+                    <h3 className="text-lg font-medium text-white mb-4">プロンプト</h3>
+                    <div className="bg-gray-700 p-4 rounded-lg">
+                      <p className="text-white text-sm whitespace-pre-wrap leading-relaxed">
+                        {selectedHistoryItem.display_prompt}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* フッター */}
+            <div className="flex justify-end p-6 border-t border-gray-700">
+              <button
+                onClick={handleCloseHistoryDetailModal}
+                className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500 transition-colors"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* 画像拡大モーダル */}
+      <ImageExpandModal
+        isOpen={isImageExpandModalOpen}
+        onClose={handleCloseImageExpandModal}
+        imageUrl={expandedImageUrl}
+      />
     </div>
   );
 };

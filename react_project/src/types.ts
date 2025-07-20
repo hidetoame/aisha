@@ -65,7 +65,10 @@ export interface CreditsFetchParams {
 }
 
 export interface CreditsOperationResponseParams {
-  newCredits: number;
+  success: boolean;
+  message?: string;
+  remainingBalance?: number;
+  newCredits?: number; // 後方互換性のため残す
 }
 
 export enum AspectRatio {

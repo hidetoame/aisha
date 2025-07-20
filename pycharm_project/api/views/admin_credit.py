@@ -205,6 +205,40 @@ def get_user_credits(request):
         try:
             from ..models.credit_charge import UserCredit
             from ..models.user_profile import UserProfile
+            
+            # 1. UserProfileのニックネームで部分一致検索
+            user_profiles = UserProfile.objects.filter(nickname__icontains=user_identifier)
+            for user_profile in user_profiles:
+                # 対応するUserCreditを検索
+                try:
+                    user_credit = UserCredit.objects.get(user_id=user_profile.frontend_user_id)
+                    
+                    # 既に追加済みの場合はスキップ（PhoneUserのFirebase UIDと重複チェック）
+                    if any(user['firebase_uid'] == user_credit.user_id for user in found_users):
+                        continue
+                    
+                    # user_creditsテーブルのuser_idがPhoneUserのFirebase UIDと一致する場合はスキップ
+                    try:
+                        PhoneUser.objects.get(firebase_uid=user_credit.user_id)
+                        continue  # PhoneUserが存在する場合はスキップ
+                    except PhoneUser.DoesNotExist:
+                        pass  # PhoneUserが存在しない場合は表示する
+                    
+                    unified_credits = UnifiedCreditService.get_user_credits(user_credit.user_id)
+                    
+                    found_users.append({
+                        'id': str(user_credit.id),
+                        'nickname': user_profile.nickname,
+                        'firebase_uid': user_credit.user_id,
+                        'phone_number': 'N/A',
+                        'unified_credits': unified_credits,
+                        'user_type': 'MyGarageユーザー'
+                    })
+                except UserCredit.DoesNotExist:
+                    # UserProfileは存在するがUserCreditが存在しない場合
+                    pass
+            
+            # 2. 従来のUserCreditのuser_id直接検索（UserProfileで見つからなかった場合のフォールバック）
             user_credits = UserCredit.objects.filter(user_id__icontains=user_identifier)
             for user_credit in user_credits:
                 # 既に追加済みの場合はスキップ（PhoneUserのFirebase UIDと重複チェック）
@@ -212,7 +246,6 @@ def get_user_credits(request):
                     continue
                 
                 # user_creditsテーブルのuser_idがPhoneUserのFirebase UIDと一致する場合はスキップ
-                # (統一クレジットは既にPhoneUserの検索結果に含まれているため)
                 try:
                     PhoneUser.objects.get(firebase_uid=user_credit.user_id)
                     continue  # PhoneUserが存在する場合はスキップ
@@ -279,6 +312,126 @@ def get_user_credits(request):
         
     except Exception as e:
         logger.error(f"クレジット確認エラー: {str(e)}")
+        return Response({
+            'success': False,
+            'message': f'エラーが発生しました: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_all_users(request):
+    """
+    管理者用：全ユーザー一覧を取得（ユーザー数統計付き）
+    """
+    try:
+        from ..models.credit_charge import UserCredit
+        from ..models.user_profile import UserProfile
+        
+        # 統計情報を取得
+        total_users = 0
+        mygarage_users = 0
+        phone_users = 0
+        
+        # MyGarageユーザー数（UserProfileから）
+        mygarage_users = UserProfile.objects.count()
+        
+        # 電話番号認証ユーザー数（PhoneUserから）
+        phone_users = PhoneUser.objects.count()
+        
+        # 総ユーザー数（重複を除く）
+        total_users = mygarage_users + phone_users
+        
+        # ユーザー詳細一覧を取得
+        all_users = []
+        
+        # MyGarageユーザーを追加
+        user_profiles = UserProfile.objects.all()
+        for profile in user_profiles:
+            try:
+                user_credit = UserCredit.objects.get(user_id=profile.frontend_user_id)
+                unified_credits = UnifiedCreditService.get_user_credits(user_credit.user_id)
+            except UserCredit.DoesNotExist:
+                unified_credits = 0
+            
+            # 生成画像数を取得
+            try:
+                from ..models.library import Library
+                generated_images_count = Library.objects.filter(user_id=profile.frontend_user_id).count()
+            except:
+                generated_images_count = 0
+            
+            all_users.append({
+                'id': str(profile.id),
+                'nickname': profile.nickname,
+                'firebase_uid': profile.frontend_user_id,
+                'phone_number': 'N/A',
+                'unified_credits': unified_credits,
+                'user_type': 'MyGarageユーザー',
+                'created_at': profile.created_at.isoformat() if hasattr(profile, 'created_at') else None,
+                'last_login_at': profile.last_login_at.isoformat() if hasattr(profile, 'last_login_at') and profile.last_login_at else None,
+                'generated_images_count': generated_images_count
+            })
+        
+        # 電話番号認証ユーザーを追加
+        phone_user_list = PhoneUser.objects.all()
+        for phone_user in phone_user_list:
+            # 既にMyGarageユーザーとして追加済みの場合はスキップ
+            if any(user['firebase_uid'] == phone_user.firebase_uid for user in all_users):
+                continue
+            
+            unified_credits = UnifiedCreditService.get_user_credits(phone_user.firebase_uid)
+            
+            # 生成画像数を取得
+            try:
+                from ..models.library import Library
+                generated_images_count = Library.objects.filter(user_id=phone_user.firebase_uid).count()
+            except:
+                generated_images_count = 0
+            
+            all_users.append({
+                'id': str(phone_user.id),
+                'nickname': phone_user.nickname,
+                'firebase_uid': phone_user.firebase_uid,
+                'phone_number': phone_user.phone_number,
+                'unified_credits': unified_credits,
+                'user_type': '電話番号認証',
+                'created_at': phone_user.created_at.isoformat() if hasattr(phone_user, 'created_at') else None,
+                'last_login_at': phone_user.last_login_at.isoformat() if hasattr(phone_user, 'last_login_at') and phone_user.last_login_at else None,
+                'generated_images_count': generated_images_count
+            })
+        
+        # 作成日時でソート（新しい順）
+        all_users.sort(key=lambda x: x['created_at'] or '', reverse=True)
+        
+        # 検索フィルター
+        search_query = request.GET.get('search', '').strip()
+        if search_query:
+            filtered_users = []
+            for user in all_users:
+                if (search_query.lower() in user['nickname'].lower() or 
+                    search_query.lower() in user['firebase_uid'].lower()):
+                    filtered_users.append(user)
+            all_users = filtered_users
+        
+        # 最新20件に制限
+        limit = int(request.GET.get('limit', 20))
+        all_users = all_users[:limit]
+        
+        return Response({
+            'success': True,
+            'statistics': {
+                'total_users': total_users,
+                'mygarage_users': mygarage_users,
+                'phone_users': phone_users
+            },
+            'users': all_users,
+            'count': len(all_users),
+            'search_query': search_query,
+            'limit': limit
+        })
+        
+    except Exception as e:
+        logger.error(f"ユーザー一覧取得エラー: {str(e)}")
         return Response({
             'success': False,
             'message': f'エラーが発生しました: {str(e)}'
@@ -357,4 +510,163 @@ def delete_user(request):
         return Response({
             'success': False,
             'message': f'エラーが発生しました: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_generation_history_stats(request):
+    """
+    全ユーザーの生成履歴統計を取得
+    """
+    try:
+        from api.models.library import Library
+        from django.db.models import Count, Q
+        
+        # 基本統計
+        total_generations = Library.objects.count()
+        library_registrations = Library.objects.filter(is_saved_to_library=True).count()
+        public_images = Library.objects.filter(is_public=True).count()
+        goods_creations = Library.objects.aggregate(
+            total_goods=Count('id', filter=Q(goods_creation_count__gt=0))
+        )['total_goods'] or 0
+        
+        # カテゴリ別統計
+        category_stats = {}
+        
+        # イラスト（menu_nameに「イラスト」が含まれるもの）
+        illustration_count = Library.objects.filter(
+            Q(menu_name__icontains='イラスト')
+        ).count()
+        category_stats['illustration'] = illustration_count
+        
+        # シーン変更（menu_nameに「シーン」が含まれるもの）
+        scene_change_count = Library.objects.filter(
+            Q(menu_name__icontains='シーン')
+        ).count()
+        category_stats['scene_change'] = scene_change_count
+        
+        # カスタマイズ（その他）
+        customization_count = total_generations - illustration_count - scene_change_count
+        category_stats['customization'] = max(0, customization_count)
+        
+        return Response({
+            'success': True,
+            'stats': {
+                'total_generations': total_generations,
+                'library_registrations': library_registrations,
+                'public_images': public_images,
+                'goods_creations': goods_creations,
+                'category_stats': category_stats
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"生成履歴統計取得エラー: {str(e)}")
+        return Response({
+            'success': False,
+            'error': '生成履歴統計の取得に失敗しました'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_generation_history_list(request):
+    """
+    全ユーザーの生成履歴一覧を取得（最大50件）
+    """
+    try:
+        from api.models.library import Library
+        from api.models.user_profile import UserProfile
+        from django.db.models import Q
+        
+        # クエリパラメータ
+        limit = min(int(request.query_params.get('limit', 50)), 50)  # 最大50件
+        search = request.query_params.get('search', '')
+        category_filter = request.query_params.get('category', '')
+        user_filter = request.query_params.get('user', '')
+        rating_filter = request.query_params.get('rating', '')
+        
+        # 基本クエリセット
+        queryset = Library.objects.select_related().order_by('-timestamp')
+        
+        # 検索フィルター
+        if search:
+            queryset = queryset.filter(
+                Q(display_prompt__icontains=search) |
+                Q(menu_name__icontains=search) |
+                Q(user_id__icontains=search)
+            )
+        
+        # カテゴリフィルター
+        if category_filter:
+            if category_filter == 'illustration':
+                queryset = queryset.filter(
+                    Q(menu_name__icontains='イラスト')
+                )
+            elif category_filter == 'scene_change':
+                queryset = queryset.filter(
+                    Q(menu_name__icontains='シーン')
+                )
+            elif category_filter == 'customization':
+                # イラストとシーン以外
+                queryset = queryset.exclude(
+                    Q(menu_name__icontains='イラスト') |
+                    Q(menu_name__icontains='シーン')
+                )
+        
+        # ユーザーフィルター
+        if user_filter:
+            queryset = queryset.filter(user_id__icontains=user_filter)
+        
+        # 評価フィルター
+        if rating_filter:
+            queryset = queryset.filter(rating=rating_filter)
+        
+        # ユーザー情報を取得（件数制限前に実行）
+        user_ids = list(queryset.values_list('user_id', flat=True).distinct())
+        
+        # 件数制限
+        queryset = queryset[:limit]
+        user_profiles = {
+            profile.frontend_user_id: profile.nickname 
+            for profile in UserProfile.objects.filter(frontend_user_id__in=user_ids)
+        }
+        
+        # レスポンスデータ構築
+        history_list = []
+        for item in queryset:
+            # カテゴリ判定
+            category = 'customization'
+            if 'イラスト' in (item.menu_name or ''):
+                category = 'illustration'
+            elif 'シーン' in (item.menu_name or ''):
+                category = 'scene_change'
+            
+            history_list.append({
+                'id': str(item.id),
+                'user_id': item.user_id,
+                'user_name': user_profiles.get(item.user_id, 'Unknown User'),
+                'image_url': item.image_url,
+                'display_prompt': item.display_prompt,
+                'menu_name': item.menu_name,
+                'category': category,
+                'rating': item.rating,
+                'is_public': item.is_public,
+                'is_saved_to_library': item.is_saved_to_library,
+                'goods_creation_count': item.goods_creation_count,
+                'created_at': item.created_at.isoformat(),
+                'timestamp': item.timestamp.isoformat()
+            })
+        
+        return Response({
+            'success': True,
+            'history': history_list,
+            'total_count': len(history_list)
+        })
+        
+    except Exception as e:
+        logger.error(f"生成履歴一覧取得エラー: {str(e)}")
+        return Response({
+            'success': False,
+            'error': '生成履歴一覧の取得に失敗しました'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

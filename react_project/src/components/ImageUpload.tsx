@@ -7,6 +7,7 @@ import {
   useRef,
   useEffect,
   useMemo,
+  DragEvent,
 } from 'react';
 import { PhotoIcon } from './icons/HeroIcons';
 import { getImageDimensions } from '@/utils/imageResize';
@@ -29,6 +30,7 @@ export const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
     const [fileName, setFileName] = useState<string | null>(null);
     const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
     const [willBeResized, setWillBeResized] = useState<boolean>(false);
+    const [isDragOver, setIsDragOver] = useState<boolean>(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const previewUrl = useMemo(() => {
@@ -53,30 +55,34 @@ export const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
       };
     }, [previewUrl]);
 
+    const processFile = useCallback(async (selectedFile: File) => {
+      setFile(selectedFile);
+      setFileName(selectedFile.name);
+      
+      try {
+        // 画像の実際のサイズを取得
+        const dimensions = await getImageDimensions(selectedFile);
+        setImageDimensions(dimensions);
+        
+        // リサイズが必要かチェック（長辺2000px以上の場合）
+        const longSide = Math.max(dimensions.width, dimensions.height);
+        setWillBeResized(longSide > 2000);
+        
+        console.log(`🖼️ アップロード画像: ${dimensions.width}x${dimensions.height}${longSide > 2000 ? ' (リサイズ予定)' : ''}`);
+      } catch (error) {
+        console.error('画像サイズ取得エラー:', error);
+        setImageDimensions(null);
+        setWillBeResized(false);
+      }
+      
+      onImageSelect(selectedFile);
+    }, [onImageSelect]);
+
     const handleFileChange = useCallback(
       async (event: ChangeEvent<HTMLInputElement>) => {
         const selectedFile = event.target.files?.[0];
         if (selectedFile) {
-          setFile(selectedFile);
-          setFileName(selectedFile.name);
-          
-          try {
-            // 画像の実際のサイズを取得
-            const dimensions = await getImageDimensions(selectedFile);
-            setImageDimensions(dimensions);
-            
-            // リサイズが必要かチェック（長辺2000px以上の場合）
-            const longSide = Math.max(dimensions.width, dimensions.height);
-            setWillBeResized(longSide > 2000);
-            
-            console.log(`🖼️ アップロード画像: ${dimensions.width}x${dimensions.height}${longSide > 2000 ? ' (リサイズ予定)' : ''}`);
-          } catch (error) {
-            console.error('画像サイズ取得エラー:', error);
-            setImageDimensions(null);
-            setWillBeResized(false);
-          }
-          
-          onImageSelect(selectedFile);
+          await processFile(selectedFile);
         } else {
           setFile(null);
           setFileName(null);
@@ -85,8 +91,33 @@ export const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
           onImageSelect(null);
         }
       },
-      [onImageSelect],
+      [processFile, onImageSelect],
     );
+
+    const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(true);
+    }, []);
+
+    const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
+    }, []);
+
+    const handleDrop = useCallback(async (e: DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
+
+      const files = Array.from(e.dataTransfer.files);
+      const imageFile = files.find(file => file.type.startsWith('image/'));
+      
+      if (imageFile) {
+        await processFile(imageFile);
+      }
+    }, [processFile]);
 
     const handleDelete = useCallback(() => {
       if (fileInputRef.current) {
@@ -116,7 +147,16 @@ export const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
         <label className="block text-sm font-medium text-gray-300 mb-1">
           {label}
         </label>
-        <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-600 border-dashed rounded-md hover:border-indigo-500 transition-colors">
+        <div 
+          className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md transition-colors ${
+            isDragOver 
+              ? 'border-indigo-500 bg-indigo-900 bg-opacity-20' 
+              : 'border-gray-600 hover:border-indigo-500'
+          }`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
           <div className="space-y-1 text-center">
             {previewUrl ? (
               <div className="relative">

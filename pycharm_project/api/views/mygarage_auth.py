@@ -44,6 +44,12 @@ def register_mygarage_user(request):
         try:
             existing_profile = UserProfile.objects.get(frontend_user_id=frontend_user_id)
             logger.info(f"既存ユーザーを発見: {frontend_user_id}")
+            
+            # 既存ユーザーの場合、最終ログイン日時を更新
+            existing_profile.last_login_at = timezone.now()
+            existing_profile.save()
+            logger.info(f"既存ユーザーの最終ログイン日時を更新: {frontend_user_id}")
+            
             return Response({
                 'success': True,
                 'message': 'ユーザーは既に登録されています',
@@ -64,7 +70,8 @@ def register_mygarage_user(request):
                     nickname=nickname,
                     is_admin=False,
                     created_at=timezone.now(),
-                    updated_at=timezone.now()
+                    updated_at=timezone.now(),
+                    last_login_at=timezone.now()  # 新規ユーザーの初回ログイン日時
                 )
                 logger.info(f"user_profiles登録成功: {frontend_user_id}")
                 
