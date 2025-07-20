@@ -354,3 +354,37 @@ def validate_phone_token(request):
             'success': False,
             'message': 'トークン検証に失敗しました'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def check_phone_user_exists(request):
+    """現在のユーザーがphone_usersテーブルに存在するかをチェック"""
+    try:
+        # リクエストからユーザーIDを取得
+        user_id = request.GET.get('user_id')
+        
+        if not user_id:
+            return Response({
+                'success': False,
+                'message': 'ユーザーIDが必要です'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 現在のユーザーがphone_usersテーブルに存在するかをチェック
+        try:
+            phone_user = PhoneUser.objects.get(firebase_uid=user_id)
+            hasPhoneUser = True
+        except PhoneUser.DoesNotExist:
+            hasPhoneUser = False
+        
+        return Response({
+            'success': True,
+            'hasPhoneUser': hasPhoneUser,
+            'user_id': user_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Phone user check error: {str(e)}")
+        return Response({
+            'success': False,
+            'message': f'エラーが発生しました: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

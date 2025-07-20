@@ -78,27 +78,7 @@ def inspect_database_tables(request):
             # MyGarageユーザー関連テーブルの詳細確認
             mygarage_data = {}
             
-            # mygarage_users テーブルの確認（実際のテーブル名）
-            if 'mygarage_users' in user_tables:
-                cursor.execute("SELECT COUNT(*) FROM mygarage_users;")
-                mygarage_count = cursor.fetchone()[0]
-                
-                cursor.execute("SELECT * FROM mygarage_users LIMIT 5;")
-                mygarage_users = cursor.fetchall()
-                
-                # カラム名を取得
-                cursor.execute("""
-                    SELECT column_name FROM information_schema.columns 
-                    WHERE table_name = 'mygarage_users' AND table_schema = 'public'
-                    ORDER BY ordinal_position
-                """)
-                columns = [row[0] for row in cursor.fetchall()]
-                
-                mygarage_data['mygarage_users'] = {
-                    'count': mygarage_count,
-                    'columns': columns,
-                    'sample_data': [list(row) for row in mygarage_users]
-                }
+
             
             # user_profiles テーブルの確認（実際のテーブル名）
             if 'user_profiles' in user_tables:

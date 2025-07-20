@@ -28,9 +28,9 @@ def add_credits_to_user(request):
                 'message': 'ユーザー識別子が必要です'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # ユーザーを検索（PhoneUserとMyGarageUser両方）
+        # ユーザーを検索（PhoneUserとuser_credits両方）
         phone_user = None
-        mygarage_user = None
+        user_credit = None
         firebase_uid = None
         
         # まずPhoneUserから検索
@@ -56,13 +56,13 @@ def add_credits_to_user(request):
                 user_credit = UserCredit.objects.filter(user_id__icontains=user_identifier).first()
                 if user_credit:
                     firebase_uid = user_credit.user_id
-                    # MyGarageUserの代わりにuser_creditを使用
-                    mygarage_user = user_credit
+                                    # user_creditを使用
+                user_credit = user_credit
             except Exception:
                 pass
         
         # どちらのテーブルからも見つからない場合
-        if not phone_user and not mygarage_user:
+        if not phone_user and not user_credit:
             return Response({
                 'success': False,
                 'message': f'対象ユーザーがみつかりません: {user_identifier}（電話番号認証・user_creditsテーブルの両方で検索しました）'
@@ -87,7 +87,7 @@ def add_credits_to_user(request):
             credit_balance = UnifiedCreditService.get_user_credits(firebase_uid)
             
             # ログとレスポンスを作成
-            user_name = phone_user.nickname if phone_user else mygarage_user.user_id
+            user_name = phone_user.nickname if phone_user else user_credit.user_id
             logger.info(f"管理者によるクレジット追加: {user_name} ({firebase_uid}) に {amount} クレジット追加")
             
             # レスポンスを作成（どちらのテーブルかによって異なる）
@@ -99,26 +99,26 @@ def add_credits_to_user(request):
                     'credits': credit_balance,
                     'user_type': '電話番号認証'
                 }
-            else:  # mygarage_user (user_credit)
+            else:  # user_credit
                 # user_creditsテーブルの場合、user_idをより分かりやすく表示
-                display_name = mygarage_user.user_id
+                display_name = user_credit.user_id
                 user_type = 'MyGarageユーザー'
                 
                 # MyGarageユーザーの場合はUserProfileからニックネームを取得
-                if mygarage_user.user_id.isdigit():
+                if user_credit.user_id.isdigit():
                     try:
-                        user_profile = UserProfile.objects.get(frontend_user_id=mygarage_user.user_id)
+                        user_profile = UserProfile.objects.get(frontend_user_id=user_credit.user_id)
                         if user_profile.nickname:
                             display_name = user_profile.nickname
                         else:
-                            display_name = f"ユーザー{mygarage_user.user_id}"
+                            display_name = f"ユーザー{user_credit.user_id}"
                     except UserProfile.DoesNotExist:
-                        display_name = f"ユーザー{mygarage_user.user_id}"
-                elif len(mygarage_user.user_id) > 20:
-                    display_name = f"{mygarage_user.user_id[:8]}...{mygarage_user.user_id[-8:]}"
+                        display_name = f"ユーザー{user_credit.user_id}"
+                elif len(user_credit.user_id) > 20:
+                    display_name = f"{user_credit.user_id[:8]}...{user_credit.user_id[-8:]}"
                 
                 user_data = {
-                    'id': str(mygarage_user.id),
+                    'id': str(user_credit.id),
                     'nickname': display_name,
                     'firebase_uid': firebase_uid,
                     'credits': credit_balance,
@@ -163,7 +163,7 @@ def get_user_credits(request):
                 'message': 'ユーザー識別子が必要です'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # ユーザーを検索（PhoneUserとMyGarageUser両方）
+        # ユーザーを検索（PhoneUserとuser_credits両方）
         found_users = []
         
         # まずPhoneUserから検索

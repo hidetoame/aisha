@@ -24,6 +24,7 @@ import { useCategories } from '@/contexts/CategoriesContext';
 import { useMenus } from '@/contexts/MenusContext';
 import { useCredits } from '@/contexts/CreditsContext';
 import { getCarInfo } from '@/services/api/car-info';
+import { checkPhoneUserExists } from '@/services/api/phone-login';
 
 interface MenuExecutionPanelProps {
   onGenerateClick: (formData: MenuExecutionFormData) => void;
@@ -51,6 +52,7 @@ export const MenuExecutionPanel: React.FC<MenuExecutionPanelProps> = ({
   const [isCarSelectModalOpen, setIsCarSelectModalOpen] = useState(false);
   const [carList, setCarList] = useState<CarInfo[]>([]);
   const [selectedCar, setSelectedCar] = useState<CarInfo | null>(null);
+  const [hasPhoneUser, setHasPhoneUser] = useState(false);
 
   useEffect(() => {
     let initialCategory: AdminGenerationMenuCategoryItem | null = null;
@@ -83,6 +85,23 @@ export const MenuExecutionPanel: React.FC<MenuExecutionPanelProps> = ({
       }));
     }
   }, [formData.inputType, formData.aspectRatio]); // inputTypeとaspectRatioの変更を監視
+
+  // 現在のユーザーがphone_usersテーブルに存在するかのチェック
+  useEffect(() => {
+    const checkPhoneUser = async () => {
+      if (!currentUser?.id) return;
+      
+      try {
+        const result = await checkPhoneUserExists(currentUser.id);
+        setHasPhoneUser(result.hasPhoneUser);
+      } catch (error) {
+        console.error('Phone user check error:', error);
+        setHasPhoneUser(false);
+      }
+    };
+    
+    checkPhoneUser();
+  }, [currentUser?.id]);
 
   const handleCategoryChange = (categoryId: number) => {
     setFormData((prev) => ({
@@ -356,19 +375,12 @@ export const MenuExecutionPanel: React.FC<MenuExecutionPanelProps> = ({
                     uploadedFile={formData.image}
                     showDeleteButton={false}
                   />
-                  {/* MyGarage認証ユーザーのみに表示 */}
-                  {/* デバッグ情報 */}
-                  <div className="mt-2 p-2 bg-gray-700 rounded text-xs text-gray-300">
-                    <div>デバッグ情報:</div>
-                    <div>currentUser: {currentUser ? '存在' : 'null'}</div>
-                    <div>loginType: {currentUser?.loginType || 'undefined'}</div>
-                    <div>条件判定: {currentUser?.loginType === 'mygarage' ? 'true' : 'false'}</div>
-                  </div>
-                  {currentUser?.loginType === 'mygarage' && (
+                  {/* MyGarage認証ユーザーのみに表示 - ファイルアップロードボタンの横に配置 */}
+                  {!hasPhoneUser && (
                     <div className="mt-2">
                       <button
                         onClick={handleMyGarageSelect}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded-md transition duration-150 ease-in-out flex items-center justify-center text-xs"
+                        className="w-full bg-gray-700 hover:bg-gray-600 text-indigo-400 hover:text-indigo-300 font-medium py-2 px-3 rounded-md transition duration-150 ease-in-out flex items-center justify-center text-xs"
                       >
                         <CameraIcon className="w-4 h-4 mr-1" />
                         MyGarageから選択

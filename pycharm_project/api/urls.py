@@ -45,7 +45,8 @@ from api.views.phone_login import (
     send_sms_verification,
     verify_sms_code,
     register_phone_user,
-    validate_phone_token
+    validate_phone_token,
+    check_phone_user_exists
 )
 from api.views.firebase_auth import (
     check_user_exists,
@@ -70,13 +71,7 @@ from api.views.charge_option import (
     ChargeOptionUpdateView,
     ChargeOptionDeleteView
 )
-from api.views.mygarage_auth import (
-    mygarage_login,
-    mygarage_logout,
-    validate_mygarage_token,
-    get_user_credits as mygarage_get_user_credits,
-    get_user_credit_history as mygarage_get_user_credit_history
-)
+
 from api.views import health_check
 from api.views.migrate_endpoint import run_migrations, migration_status
 from api.views.db_inspect import inspect_database_tables
@@ -87,6 +82,7 @@ from api.views.aws_sms_auth import (
 )
 from api.views.stripe_webhook import stripe_webhook
 from api.views.sales_management import SalesManagementView, SalesMonthlyDetailView
+from api.views.mygarage_auth import register_mygarage_user
 
 router = DefaultRouter()
 router.register(r'categories', CategoryViewSet, basename='category')
@@ -160,6 +156,7 @@ urlpatterns += [
     path('phone-login/verify/', verify_sms_code, name='phone-login-verify'),
     path('phone-login/register/', register_phone_user, name='phone-login-register'),
     path('phone-login/validate/', validate_phone_token, name='phone-login-validate'),
+    path('phone-login/check-exists/', check_phone_user_exists, name='phone-login-check-exists'),
     
     # Firebase認証関連
     path('firebase-auth/check-user/', check_user_exists, name='firebase-check-user'),
@@ -182,12 +179,7 @@ urlpatterns += [
     path('admin/credits/check/', admin_get_user_credits, name='admin-check-credits'),
     path('admin/users/delete/', delete_user, name='admin-delete-user'),
     
-    # MyGarage認証関連（独自システム）
-    path('mygarage-auth/login/', mygarage_login, name='mygarage-login'),
-    path('mygarage-auth/logout/', mygarage_logout, name='mygarage-logout'),
-    path('mygarage-auth/validate/', validate_mygarage_token, name='mygarage-validate'),
-    path('mygarage-auth/users/<str:user_id>/credits/', mygarage_get_user_credits, name='mygarage-user-credits'),
-    path('mygarage-auth/users/<str:user_id>/credit-history/', mygarage_get_user_credit_history, name='mygarage-user-credit-history'),
+
     
     # データベースマイグレーション（本番環境用）
     path('admin/migrate/', run_migrations, name='admin-migrate'),
@@ -200,4 +192,7 @@ urlpatterns += [
     # 売上管理関連
     path('sales/monthly-summary/', SalesManagementView.as_view(), name='sales-monthly-summary'),
     path('sales/monthly-details/', SalesMonthlyDetailView.as_view(), name='sales-monthly-details'),
+    
+    # MyGarage認証関連
+    path('mygarage-auth/register/', register_mygarage_user, name='mygarage-register'),
 ]

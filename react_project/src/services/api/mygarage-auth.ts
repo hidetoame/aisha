@@ -23,13 +23,47 @@ interface MyGarageUser {
   username: string;
   name: string;
   email?: string;
-  credits: number;
+  credits?: number; // オプショナルに変更
   isAdmin?: boolean;
   personalSettings?: any;
 }
 
 const MGDRIVE_API_BASE_URL = import.meta.env.VITE_MGDRIVE_API_BASE_URL || 'https://md2.mygare.jp/api';
 const AISHA_API_BASE_URL = import.meta.env.VITE_AISHA_API_BASE || 'http://localhost:7999/api';
+
+// MyGarage認証成功後のバックエンド登録処理
+const registerMyGarageUserToBackend = async (mygarageData: any): Promise<void> => {
+  try {
+    console.log('MyGarage認証成功後のバックエンド登録処理を開始:', mygarageData);
+    
+    const response = await fetch(`${AISHA_API_BASE_URL}/mygarage-auth/register/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(mygarageData),
+    });
+    
+    const result = await response.json();
+    
+    if (!result.success) {
+      console.error('MyGarage認証後のユーザー登録に失敗:', result);
+      console.error('エラー詳細:', result.error);
+      console.error('操作:', result.details?.operation);
+      // エラーをログに出力するが、ログイン処理は継続
+    } else {
+      console.log('MyGarage認証後のユーザー登録成功:', result);
+      if (result.is_new_user) {
+        console.log('新規ユーザー登録完了 - 初期クレジット:', result.initial_credits);
+      } else {
+        console.log('既存ユーザー - 登録処理はスキップ');
+      }
+    }
+  } catch (error) {
+    console.error('MyGarage認証後のAPI呼び出しエラー:', error);
+    // エラーが発生してもログイン処理は継続
+  }
+};
 
 // AISHA APIから管理者ステータスを取得する関数
 const fetchAdminStatus = async (userId: string): Promise<boolean> => {
@@ -193,13 +227,15 @@ export const myGarageLogin = async (username: string, password: string): Promise
         isAdmin = true;
       }
 
+      // バックエンドにユーザー登録処理を呼び出し
+      await registerMyGarageUserToBackend(data.data);
+
       // AISHAアプリ用のユーザーオブジェクトに変換
       const aishaUser: MyGarageUser = {
         id: userId, // MyGarageの実際のユーザーIDを使用
         username: data.data.email || 'unknown', // MyGarage APIではemailをusernameとして使用
         name: data.data.name || 'MyGarageユーザー', // これがログイン後に表示される名前
         email: data.data.email || '',
-        credits: 100, // デフォルトクレジット（今後APIから取得予定）
         isAdmin, // 管理者フラグを追加
         personalSettings: {
           numberManagement: {},
@@ -272,12 +308,20 @@ const handleTestLogin = async (username: string, password: string): Promise<MyGa
       isAdmin = true;
     }
     
+    // テスト用データでバックエンドにユーザー登録処理を呼び出し
+    const testMyGarageData = {
+      id: parseInt(user.id),
+      created_by: user.id,
+      name: user.name,
+      email: user.email
+    };
+    await registerMyGarageUserToBackend(testMyGarageData);
+    
     const testUser = {
       id: user.id,
       username: user.username,
       name: user.name,
       email: user.email,
-      credits: 100,
       isAdmin, // 管理者フラグを追加
       personalSettings: {
         numberManagement: {},
@@ -380,7 +424,6 @@ export const validateMyGarageToken = async (): Promise<MyGarageUser | null> => {
           username: data.data.email || 'unknown',
           name: data.data.name || 'MyGarageユーザー',
           email: data.data.email || '',
-          credits: 100, // デフォルトクレジット（今後APIから取得予定）
           isAdmin, // 管理者フラグを追加
           personalSettings: {
             numberManagement: {},
