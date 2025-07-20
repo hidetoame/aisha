@@ -57,22 +57,9 @@ def register_mygarage_user(request):
         # トランザクションでデータベース操作
         with transaction.atomic():
             try:
-                # 1. auth_userテーブルにユーザーを作成（または取得）
-                from django.contrib.auth.models import User
-                user, created = User.objects.get_or_create(
-                    username=frontend_user_id,
-                    defaults={
-                        'email': data.get('email', f'{frontend_user_id}@mygarage.com'),
-                        'first_name': nickname,
-                        'is_active': True,
-                        'last_login': timezone.now(),
-                        'date_joined': timezone.now()
-                    }
-                )
-                
-                # 2. user_profilesテーブルにデータ挿入（新規ユーザーのみ）
+                # 1. user_profilesテーブルにデータ挿入（新規ユーザーのみ）
                 user_profile = UserProfile.objects.create(
-                    user=user,  # auth_userのインスタンスを使用
+                    user_id=mygarage_id,  # MyGarageの内部ID
                     frontend_user_id=frontend_user_id,
                     nickname=nickname,
                     is_admin=False,
