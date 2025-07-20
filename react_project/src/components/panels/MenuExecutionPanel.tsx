@@ -4,6 +4,8 @@ import {
   AdminGenerationMenuItem,
   AdminGenerationMenuCategoryItem,
   MenuExecutionFormData,
+  User,
+  CarInfo,
 } from '../../types';
 import { AVAILABLE_ASPECT_RATIOS } from '../../constants';
 import { ImageUpload, ImageUploadRef } from '@/components/ImageUpload';
@@ -21,12 +23,14 @@ import {
 import { useCategories } from '@/contexts/CategoriesContext';
 import { useMenus } from '@/contexts/MenusContext';
 import { useCredits } from '@/contexts/CreditsContext';
+import { getCarInfo } from '@/services/api/car-info';
 
 interface MenuExecutionPanelProps {
   onGenerateClick: (formData: MenuExecutionFormData) => void;
   isGenerating: boolean;
   formData: MenuExecutionFormData;
   setFormData: React.Dispatch<React.SetStateAction<MenuExecutionFormData>>;
+  currentUser: User | null;
 }
 
 export const MenuExecutionPanel: React.FC<MenuExecutionPanelProps> = ({
@@ -34,6 +38,7 @@ export const MenuExecutionPanel: React.FC<MenuExecutionPanelProps> = ({
   isGenerating,
   formData,
   setFormData,
+  currentUser,
 }) => {
   const categories = useCategories();
   const menus = useMenus();
@@ -41,6 +46,11 @@ export const MenuExecutionPanel: React.FC<MenuExecutionPanelProps> = ({
 
   const imageUploadRef = useRef<ImageUploadRef>(null);
   const [showSampleModal, setShowSampleModal] = useState(false);
+  
+  // MyGarageから選択機能の状態管理
+  const [isCarSelectModalOpen, setIsCarSelectModalOpen] = useState(false);
+  const [carList, setCarList] = useState<CarInfo[]>([]);
+  const [selectedCar, setSelectedCar] = useState<CarInfo | null>(null);
 
   useEffect(() => {
     let initialCategory: AdminGenerationMenuCategoryItem | null = null;
@@ -64,7 +74,15 @@ export const MenuExecutionPanel: React.FC<MenuExecutionPanelProps> = ({
         menu: initialMenu,
       }));
     }
-  }, []); // onMount
+
+    // 画像アップロードの場合は画像比率を「元画像のまま」に設定
+    if (formData.inputType === 'upload' && formData.aspectRatio !== '') {
+      setFormData((prev) => ({
+        ...prev,
+        aspectRatio: '',
+      }));
+    }
+  }, [formData.inputType, formData.aspectRatio]); // inputTypeとaspectRatioの変更を監視
 
   const handleCategoryChange = (categoryId: number) => {
     setFormData((prev) => ({
@@ -130,6 +148,8 @@ export const MenuExecutionPanel: React.FC<MenuExecutionPanelProps> = ({
     setFormData((prev) => ({
       ...prev,
       inputType: inputType,
+      // 画像アップロードの時は画像比率を「元画像のまま」（空文字列）に設定
+      aspectRatio: inputType === 'upload' ? '' : prev.aspectRatio,
     }));
   };
 
@@ -151,6 +171,47 @@ export const MenuExecutionPanel: React.FC<MenuExecutionPanelProps> = ({
 
   const handleGeneration = () => {
     onGenerateClick(formData);
+  };
+
+  // MyGarageから選択機能のハンドラー
+  const handleMyGarageSelect = async () => {
+    if (!currentUser?.id) return;
+    
+    try {
+      const cars = await getCarInfo(currentUser.id);
+      setCarList(cars);
+      setIsCarSelectModalOpen(true);
+    } catch (error) {
+      console.error('愛車情報取得エラー:', error);
+    }
+  };
+
+  const handleCarSelect = async (car: CarInfo) => {
+    setSelectedCar(car);
+    
+    try {
+      // 選択した愛車の画像URLからファイルを取得
+      const response = await fetch(car.car_image_url);
+      const blob = await response.blob();
+      
+      // BlobからFileオブジェクトを作成
+      const file = new File([blob], `car_${car.id}.jpg`, { type: 'image/jpeg' });
+      
+      // 基準画像としてセット（onImageSelectコールバックを通じて）
+      handleImageSelectedByUploader(file);
+      
+      setIsCarSelectModalOpen(false);
+    } catch (error) {
+      console.error('愛車画像の取得エラー:', error);
+      setIsCarSelectModalOpen(false);
+    }
+  };
+
+  const formatCarName = (car: CarInfo): string => {
+    if (car.car_nickname) {
+      return `${car.car_brand_en} ${car.car_model_en} [${car.car_nickname}]`;
+    }
+    return `${car.car_brand_en} ${car.car_model_en}`;
   };
 
   return (
@@ -295,6 +356,25 @@ export const MenuExecutionPanel: React.FC<MenuExecutionPanelProps> = ({
                     uploadedFile={formData.image}
                     showDeleteButton={false}
                   />
+                  {/* MyGarage認証ユーザーのみに表示 */}
+                  {/* デバッグ情報 */}
+                  <div className="mt-2 p-2 bg-gray-700 rounded text-xs text-gray-300">
+                    <div>デバッグ情報:</div>
+                    <div>currentUser: {currentUser ? '存在' : 'null'}</div>
+                    <div>loginType: {currentUser?.loginType || 'undefined'}</div>
+                    <div>条件判定: {currentUser?.loginType === 'mygarage' ? 'true' : 'false'}</div>
+                  </div>
+                  {currentUser?.loginType === 'mygarage' && (
+                    <div className="mt-2">
+                      <button
+                        onClick={handleMyGarageSelect}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded-md transition duration-150 ease-in-out flex items-center justify-center text-xs"
+                      >
+                        <CameraIcon className="w-4 h-4 mr-1" />
+                        MyGarageから選択
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
               {formData.inputType === 'prompt' && (
@@ -324,31 +404,33 @@ export const MenuExecutionPanel: React.FC<MenuExecutionPanelProps> = ({
                 <AdjustmentsHorizontalIcon className="w-5 h-5 lg:w-6 lg:h-6 mr-2" />
                 追加共通オプション
               </h3>
-              {/* 画像比率 - テキスト入力ベースの時のみ表示 */}
-              {formData.inputType === 'prompt' && (
-                <div>
-                  <label
-                    htmlFor="aspectRatio"
-                    className="block text-xs lg:text-sm font-medium text-gray-300 mb-1"
-                  >
-                    画像比率
-                  </label>
-                  <select
-                    id="aspectRatio"
-                    value={formData.aspectRatio}
-                    onChange={(e) =>
-                      handleAspectRatio(e.target.value as AspectRatio)
-                    }
-                    className="w-full p-2 text-xs lg:text-sm bg-gray-700 border border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-gray-200"
-                  >
-                    {AVAILABLE_ASPECT_RATIOS.map((ar) => (
-                      <option key={ar} value={ar}>
-                        {ar}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              {/* 画像比率 - 両方の入力タイプで表示 */}
+              <div>
+                <label
+                  htmlFor="aspectRatio"
+                  className="block text-xs lg:text-sm font-medium text-gray-300 mb-1"
+                >
+                  画像比率
+                </label>
+                <select
+                  id="aspectRatio"
+                  value={formData.aspectRatio}
+                  onChange={(e) =>
+                    handleAspectRatio(e.target.value as AspectRatio)
+                  }
+                  className="w-full p-2 text-xs lg:text-sm bg-gray-700 border border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-gray-200"
+                >
+                  {/* 画像アップロードの時は「元画像のまま」を追加 */}
+                  {formData.inputType === 'upload' && (
+                    <option value="">元画像のまま</option>
+                  )}
+                  {AVAILABLE_ASPECT_RATIOS.map((ar) => (
+                    <option key={ar} value={ar}>
+                      {ar}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="mt-3">
                 <label
                   htmlFor="additionalPromptForOthers"
@@ -448,6 +530,62 @@ export const MenuExecutionPanel: React.FC<MenuExecutionPanelProps> = ({
           generatedUrl={formData.menu.sampleResultImageUrl}
           menuName={formData.menu.name}
         />
+      )}
+      
+      {/* 愛車選択モーダル */}
+      {isCarSelectModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-hidden">
+            <div className="flex justify-between items-center p-4 border-b border-gray-700">
+              <h3 className="text-lg font-semibold text-white">愛車を選択</h3>
+              <button
+                onClick={() => setIsCarSelectModalOpen(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-4 max-h-[60vh] overflow-y-auto">
+              {carList.length === 0 ? (
+                <p className="text-gray-400 text-center py-8">愛車が登録されていません</p>
+              ) : (
+                <div className="space-y-3">
+                  {carList.map((car) => (
+                    <button
+                      key={car.id}
+                      onClick={() => handleCarSelect(car)}
+                      className={`w-full p-3 rounded-lg border transition-all duration-200 flex items-center space-x-3 ${
+                        selectedCar?.id === car.id
+                          ? 'border-indigo-500 bg-indigo-600/20'
+                          : 'border-gray-600 hover:border-gray-500 bg-gray-700 hover:bg-gray-600'
+                      }`}
+                    >
+                      <div className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0">
+                        <img
+                          src={car.car_image_url}
+                          alt={formatCarName(car)}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/placeholder-car.png';
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <div className="text-sm font-medium text-white">
+                          {formatCarName(car)}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {car.car_brand_ja} {car.car_model_ja}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

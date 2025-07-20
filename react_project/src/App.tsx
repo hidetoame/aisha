@@ -241,6 +241,7 @@ const App: React.FC = () => {
             id: myGarageUser.id,
             name: myGarageUser.name,
             isAdmin: myGarageUser.isAdmin, // 🔧 管理者フラグを追加！
+            loginType: 'mygarage', // 🔧 loginTypeを追加！
             personalSettings: myGarageUser.personalSettings || {
               numberManagement: {},
               referenceRegistration: {
@@ -656,6 +657,7 @@ const App: React.FC = () => {
         imageToExpand.id,
         anchorPosition,
         user.id,
+        imageToExpand, // 元の画像データを送信
         (error) => {
           console.error('画像拡張エラー:', error);
           showToast('error', error instanceof Error ? error.message : '画像拡張に失敗しました');

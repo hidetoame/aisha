@@ -316,6 +316,7 @@ const UserView: React.FC<UserViewProps> = ({
         imageToExpand.id,
         anchorPosition,
         currentUser.id,
+        imageToExpand, // 元の画像データを送信
         (error) => {
           console.error('画像拡張エラー:', error);
           showToast('error', error instanceof Error ? error.message : '画像拡張に失敗しました');
@@ -404,6 +405,7 @@ const UserView: React.FC<UserViewProps> = ({
           isGenerating={isGenerating}
           formData={menuExePanelFormData}
           setFormData={setMenuExePanelFormData}
+          currentUser={currentUser}
         />
       </div>
 

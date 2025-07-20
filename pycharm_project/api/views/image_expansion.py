@@ -113,6 +113,32 @@ class ImageExpansionView(APIView):
                 file_extension='.jpg'
             )
             
+            # 元の画像のカテゴリ・メニュー情報を取得
+            original_form_data = request.data.get('original_form_data', {})
+            original_category = original_form_data.get('category')
+            original_menu = original_form_data.get('menu')
+            
+            # メニュー名を元のメニュー名 + （背景拡張）に設定
+            if original_menu and original_menu.get('name'):
+                menu_name = f"{original_menu['name']}（背景拡張）"
+            else:
+                menu_name = "背景拡張"
+            
+            # used_form_dataに元のカテゴリ・メニュー情報を引き継ぐ
+            used_form_data = {
+                'original_image_id': image_id,
+                'anchor_position': anchor_position,
+                'expansion_factor': 1.25,
+                'api_service': service_type,
+                'note': 'モック実装では拡張は行われません' if service_type.startswith('mock') else '実際の拡張処理'
+            }
+            
+            # 元のカテゴリ・メニュー情報があれば引き継ぐ
+            if original_category:
+                used_form_data['category'] = original_category
+            if original_menu:
+                used_form_data['menu'] = original_menu
+            
             # 新しいタイムラインエントリを作成
             expanded_entry = Library.objects.create(
                 user_id=user_id,
@@ -120,13 +146,7 @@ class ImageExpansionView(APIView):
                 image_url=expanded_image_url,  # url → image_url に修正
                 display_prompt=f"{display_prefix}: {original_image.display_prompt or '元画像'}",
                 menu_name=menu_name,
-                used_form_data={
-                    'original_image_id': image_id,
-                    'anchor_position': anchor_position,
-                    'expansion_factor': 1.25,
-                    'api_service': service_type,
-                    'note': 'モック実装では拡張は行われません' if service_type.startswith('mock') else '実際の拡張処理'
-                },
+                used_form_data=used_form_data,
                 timestamp=datetime.now(),
                 rating=None,
                 is_public=False,

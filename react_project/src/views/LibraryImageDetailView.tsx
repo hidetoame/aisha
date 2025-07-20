@@ -269,7 +269,7 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
               <ActionButton
                 onClick={handleExtendGeneration}
                 icon={<ExtendIcon className="w-5 h-5" />}
-                label="生成拡張"
+                label={`拡張 (${EXTEND_IMAGE_CREDIT_COST}C)`}
                 title={`画像を拡張 (コスト: ${EXTEND_IMAGE_CREDIT_COST}C)`}
                 disabled={credits < EXTEND_IMAGE_CREDIT_COST}
               />

@@ -16,6 +16,7 @@ interface ImageExpansionRequest {
   image_id: string;
   anchor_position: AnchorPosition;
   user_id: string;
+  original_form_data?: any; // 元の画像のusedFormData
 }
 
 // レスポンスの型定義
@@ -38,6 +39,7 @@ export const expandImage = async (
   imageId: string,
   anchorPosition: AnchorPosition,
   userId: string,
+  originalImage?: GeneratedImage, // 元の画像データを追加
   onError?: (error: unknown) => void,
 ): Promise<GeneratedImage | null> => {
   try {
@@ -45,6 +47,7 @@ export const expandImage = async (
       image_id: imageId,
       anchor_position: anchorPosition,
       user_id: userId,
+      original_form_data: originalImage?.usedFormData, // 元の画像のusedFormDataを送信
     };
 
     console.log('画像拡張API呼び出し:', requestData);

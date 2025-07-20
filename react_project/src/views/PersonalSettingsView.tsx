@@ -12,6 +12,8 @@ import { ImageUpload, ImageUploadRef } from '@/components/ImageUpload';
 import {
   XMarkIcon,
   CheckCircleIcon as SaveIcon,
+  ChevronDownIcon,
+  ArrowLeftIcon,
 } from '../components/icons/HeroIcons';
 import { getCarInfo } from '../services/api/car-info';
 import {
@@ -90,6 +92,10 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
     car_photo_rear?: File;
     car_photo_diagonal?: File;
   }>({});
+
+  // アコーディオン状態管理
+  const [isNumberManagementOpen, setIsNumberManagementOpen] = useState(false);
+  const [isReferenceRegistrationOpen, setIsReferenceRegistrationOpen] = useState(false);
 
   // Toast通知
   const { showToast } = useToast();
@@ -598,9 +604,35 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
         <div className="overflow-y-auto space-y-6 custom-scrollbar pr-2 flex-grow">
           {/* 愛車情報表示 - 愛車設定直下に配置 */}
           <div className="bg-gray-800/50 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div>
+            <div className="relative">
+              {/* 変更ボタンを右上に配置 */}
+              {carList.length >= 1 && (
+                <button
+                  type="button"
+                  onClick={() => setIsCarSelectModalOpen(true)}
+                  className="absolute top-0 right-0 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-md transition-colors z-10"
+                >
+                  変更
+                </button>
+              )}
+              
+              <div className="flex flex-col lg:flex-row lg:items-center space-y-4 lg:space-y-0 lg:space-x-4">
+                {/* 愛車のサムネイル画像を左に配置 */}
+                {selectedCar?.car_image_url && (
+                  <div className="flex-shrink-0">
+                    <img
+                      src={selectedCar.car_image_url}
+                      alt={formatCarName(selectedCar)}
+                      className="w-full lg:w-80 h-60 object-cover rounded-lg border border-gray-600 shadow-lg"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+                
+                {/* 車名を右に配置（画像の縦センターに合わせる） */}
+                <div className="flex-grow">
                   <label className="block text-sm font-medium text-gray-300 mb-1">
                     愛車
                   </label>
@@ -608,122 +640,125 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
                     {selectedCar ? formatCarName(selectedCar) : '車両を選択してください'}
                   </div>
                 </div>
-                {/* 愛車のサムネイル画像 */}
-                {selectedCar?.car_image_url && (
-                  <div className="flex-shrink-0">
-                    <img
-                      src={selectedCar.car_image_url}
-                      alt={formatCarName(selectedCar)}
-                      className="w-16 h-16 object-cover rounded-lg border border-gray-600"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                  </div>
-                )}
               </div>
-              {/* 愛車が1台以上ある場合に変更ボタンを表示 */}
-              {carList.length >= 1 && (
-                <button
-                  type="button"
-                  onClick={() => setIsCarSelectModalOpen(true)}
-                  className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-md transition-colors"
-                >
-                  変更
-                </button>
-              )}
             </div>
           </div>
 
           {/* Number Management Section */}
           <section className="space-y-4 p-4 bg-gray-700/50 rounded-lg">
-            <h3 className="text-xl font-medium text-indigo-300 border-b border-gray-600 pb-2">
-              ナンバー管理
-            </h3>
-            <div>
-              <label
-                htmlFor="nmLicensePlateText"
-                className="block text-sm font-medium text-gray-300 mb-1"
-              >
-                文字列 (例: 横浜 330 な 2960)
-              </label>
-              <input
-                type="text"
-                id="nmLicensePlateText"
-                name="numberManagement.licensePlateText"
-                value={settings.numberManagement.licensePlateText || ''}
-                onChange={handleInputChange}
-                className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-gray-200 placeholder-gray-500 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="横浜 330 な 2960"
-              />
-            </div>
-            <ImageUpload
-              ref={logoMarkImageUploadRef}
-              label="ロゴマーク画像"
-              initialPreviewUrl={currentCarSettings?.logo_mark_image_url || undefined}
-              showDeleteButton={true}
-              onImageSelect={(file) =>
-                handleImageUpload('numberManagement', 'logoMarkImageUrl', file)
-              }
-            />
-            <ImageUpload
-              ref={originalNumberImageUploadRef}
-              label="オリジナルナンバー画像"
-              initialPreviewUrl={currentCarSettings?.original_number_image_url || undefined}
-              showDeleteButton={true}
-              onImageSelect={(file) =>
-                handleImageUpload(
-                  'numberManagement',
-                  'originalNumberImageUrl',
-                  file,
-                )
-              }
-            />
-          </section>
-
-          {/* Reference Registration Section */}
-          <section className="space-y-4 p-4 bg-gray-700/50 rounded-lg">
-            <h3 className="text-xl font-medium text-indigo-300 border-b border-gray-600 pb-2">
-              リファレンス登録
-            </h3>
-            <div>
-              <label
-                htmlFor="rrFavoriteCarName"
-                className="block text-sm font-medium text-gray-300 mb-1"
-              >
-                愛車名前
-              </label>
-              <input
-                type="text"
-                id="rrFavoriteCarName"
-                name="referenceRegistration.favoriteCarName"
-                value={settings.referenceRegistration.favoriteCarName || ''}
-                onChange={handleInputChange}
-                className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-gray-200 placeholder-gray-500 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="車両名"
-              />
-            </div>
-            <h4 className="text-md font-medium text-gray-300 pt-2">
-              愛車写真登録
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {settings.referenceRegistration.carPhotos.map((photoSlot) => (
+            <button
+              type="button"
+              onClick={() => setIsNumberManagementOpen(!isNumberManagementOpen)}
+              className="w-full flex items-center justify-between text-xl font-medium text-indigo-300 border-b border-gray-600 pb-2 hover:text-indigo-200 transition-colors"
+            >
+              <span>ナンバー管理</span>
+              {isNumberManagementOpen ? (
+                <ChevronDownIcon className="w-5 h-5" />
+              ) : (
+                <ArrowLeftIcon className="w-5 h-5 transform rotate-90" />
+              )}
+            </button>
+            {isNumberManagementOpen && (
+              <div className="space-y-4 pt-2">
+                <div>
+                  <label
+                    htmlFor="nmLicensePlateText"
+                    className="block text-sm font-medium text-gray-300 mb-1"
+                  >
+                    文字列 (例: 横浜 330 な 2960)
+                  </label>
+                  <input
+                    type="text"
+                    id="nmLicensePlateText"
+                    name="numberManagement.licensePlateText"
+                    value={settings.numberManagement.licensePlateText || ''}
+                    onChange={handleInputChange}
+                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-gray-200 placeholder-gray-500 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="横浜 330 な 2960"
+                  />
+                </div>
                 <ImageUpload
-                  key={photoSlot.viewAngle}
-                  ref={carPhotoUploadRefs.current[photoSlot.viewAngle]}
-                  label={photoSlot.label}
-                  initialPreviewUrl={getCarSettingsImageUrl(photoSlot.viewAngle)}
+                  ref={logoMarkImageUploadRef}
+                  label="ロゴマーク画像"
+                  initialPreviewUrl={currentCarSettings?.logo_mark_image_url || undefined}
+                  showDeleteButton={true}
+                  onImageSelect={(file) =>
+                    handleImageUpload('numberManagement', 'logoMarkImageUrl', file)
+                  }
+                />
+                <ImageUpload
+                  ref={originalNumberImageUploadRef}
+                  label="オリジナルナンバー画像"
+                  initialPreviewUrl={currentCarSettings?.original_number_image_url || undefined}
                   showDeleteButton={true}
                   onImageSelect={(file) =>
                     handleImageUpload(
-                      'referenceRegistration',
-                      photoSlot.viewAngle,
+                      'numberManagement',
+                      'originalNumberImageUrl',
                       file,
                     )
                   }
                 />
-              ))}
-            </div>
+              </div>
+            )}
+          </section>
+
+          {/* Reference Registration Section */}
+          <section className="space-y-4 p-4 bg-gray-700/50 rounded-lg">
+            <button
+              type="button"
+              onClick={() => setIsReferenceRegistrationOpen(!isReferenceRegistrationOpen)}
+              className="w-full flex items-center justify-between text-xl font-medium text-indigo-300 border-b border-gray-600 pb-2 hover:text-indigo-200 transition-colors"
+            >
+              <span>リファレンス登録</span>
+              {isReferenceRegistrationOpen ? (
+                <ChevronDownIcon className="w-5 h-5" />
+              ) : (
+                <ArrowLeftIcon className="w-5 h-5 transform rotate-90" />
+              )}
+            </button>
+            {isReferenceRegistrationOpen && (
+              <div className="space-y-4 pt-2">
+                <div>
+                  <label
+                    htmlFor="rrFavoriteCarName"
+                    className="block text-sm font-medium text-gray-300 mb-1"
+                  >
+                    愛車名前
+                  </label>
+                  <input
+                    type="text"
+                    id="rrFavoriteCarName"
+                    name="referenceRegistration.favoriteCarName"
+                    value={settings.referenceRegistration.favoriteCarName || ''}
+                    onChange={handleInputChange}
+                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-gray-200 placeholder-gray-500 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="車両名"
+                  />
+                </div>
+                <h4 className="text-md font-medium text-gray-300 pt-2">
+                  愛車写真登録
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {settings.referenceRegistration.carPhotos.map((photoSlot) => (
+                    <ImageUpload
+                      key={photoSlot.viewAngle}
+                      ref={carPhotoUploadRefs.current[photoSlot.viewAngle]}
+                      label={photoSlot.label}
+                      initialPreviewUrl={getCarSettingsImageUrl(photoSlot.viewAngle)}
+                      showDeleteButton={true}
+                      onImageSelect={(file) =>
+                        handleImageUpload(
+                          'referenceRegistration',
+                          photoSlot.viewAngle,
+                          file,
+                        )
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
         </div>
 
