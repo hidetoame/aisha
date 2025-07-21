@@ -5,6 +5,7 @@ from api.views.category import CategoryViewSet
 from api.views.menu import MenuViewSet
 from api.views.menu_execution import MenuExecutionView
 from api.views.image_upload import ImageUploadView
+from api.views.menu_image_upload import MenuImageUploadView
 from api.views.car_settings import CarSettingsListCreateView, CarSettingsDetailView
 from api.views.credit_charge import (
     CreditChargeCreateView,
@@ -98,6 +99,7 @@ urlpatterns += [
     path('health/', health_check, name='health'),
     path('menus/<int:menu_id>/execute/', MenuExecutionView.as_view(), name='menu-execute'),
     path('images/upload/', ImageUploadView.as_view(), name='image-upload'),
+    path('menu-images/upload/', MenuImageUploadView.as_view(), name='menu-image-upload'),
     path('car-settings/', CarSettingsListCreateView.as_view(), name='car-settings-list-create'),
     path('car-settings/<int:pk>/', CarSettingsDetailView.as_view(), name='car-settings-detail'),
     

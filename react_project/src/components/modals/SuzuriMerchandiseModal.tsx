@@ -706,9 +706,6 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
                         <div className="w-24 h-24 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl animate-bounce">
                           <CheckIcon className="w-12 h-12 text-green-600" />
                         </div>
-                        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-4">
-                          <SparklesIcon className="w-8 h-8 text-yellow-400 animate-pulse" />
-                        </div>
                       </div>
                       
                       <div>

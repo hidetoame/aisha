@@ -48,14 +48,14 @@ import {
   FolderOpenIcon,
 } from '../components/icons/HeroIcons';
 import { GOODS_OPTIONS as DEFAULT_GOODS_OPTIONS } from '../constants';
-import { ImageUpload, ImageUploadRef } from '@/components/ImageUpload'; // Added ImageUpload import
+import { ImageUpload, ImageUploadRef } from '@/components/ImageUpload';
 import {
   createCategory,
   updateCategory,
   deleteCategory,
   updateCategoryOrder,
 } from '../services/api/categories';
-import { createMenu, updateMenu, deleteMenu } from '../services/api/menus';
+import { createMenu, updateMenu, deleteMenu, updateMenuOrder } from '../services/api/menus';
 import {
   useChargeOptions,
   useChargeOptionsActions,
@@ -80,6 +80,7 @@ import {
 } from '@/services/api/goods-management';
 import AdminGoodsManagementForm from '@/components/AdminGoodsManagementForm';
 import { ImageExpandModal } from '@/components/modals/ImageExpandModal';
+import { uploadMenuImage } from '@/services/api/menu-image-upload';
 
 const initialGoods: AdminGoodsItem[] = DEFAULT_GOODS_OPTIONS.map((opt) => ({
   id: opt.id,
@@ -150,6 +151,9 @@ const AdminView: React.FC = () => {
   // 画像拡大モーダル用のstate
   const [isImageExpandModalOpen, setIsImageExpandModalOpen] = useState(false);
   const [expandedImageUrl, setExpandedImageUrl] = useState('');
+
+  // 生成メニュー管理用のカテゴリ絞り込み状態
+  const [selectedMenuCategory, setSelectedMenuCategory] = useState<string>('');
 
 
   // ドラッグ&ドロップ用の状態
@@ -473,30 +477,60 @@ const AdminView: React.FC = () => {
       return;
     }
 
-    if (!categories) return;
+    // カテゴリのドラッグ＆ドロップ処理
+    if (categories) {
+      const oldIndex = categories.findIndex(cat => cat.id.toString() === active.id);
+      const newIndex = categories.findIndex(cat => cat.id.toString() === over.id);
 
-    const oldIndex = categories.findIndex(cat => cat.id.toString() === active.id);
-    const newIndex = categories.findIndex(cat => cat.id.toString() === over.id);
-
-    if (oldIndex !== -1 && newIndex !== -1) {
-      const newCategories = arrayMove(categories, oldIndex, newIndex);
-      
-      // ローカル状態を先に更新（ユーザー体験をスムーズに）
-      refreshCategories();
-      
-      // サーバーに順番更新を送信
-      const orderUpdates = newCategories.map((cat, index) => ({
-        id: cat.id,
-        orderIndex: index
-      }));
-      
-      const success = await updateCategoryOrder(orderUpdates, () => {
-        showToast('カテゴリ順番の更新に失敗しました', 'error');
-      });
-      
-      if (success) {
-        showToast('カテゴリ順番を更新しました', 'success');
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newCategories = arrayMove(categories, oldIndex, newIndex);
+        
+        // ローカル状態を先に更新（ユーザー体験をスムーズに）
         refreshCategories();
+        
+        // サーバーに順番更新を送信
+        const orderUpdates = newCategories.map((cat, index) => ({
+          id: cat.id,
+          orderIndex: index
+        }));
+        
+        const success = await updateCategoryOrder(orderUpdates, () => {
+          showToast('error', 'カテゴリ順番の更新に失敗しました');
+        });
+        
+        if (success) {
+          showToast('success', 'カテゴリ順番を更新しました');
+          refreshCategories();
+        }
+        return;
+      }
+    }
+
+    // メニューのドラッグ＆ドロップ処理
+    if (menus) {
+      const oldIndex = menus.findIndex(menu => menu.id.toString() === active.id);
+      const newIndex = menus.findIndex(menu => menu.id.toString() === over.id);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newMenus = arrayMove(menus, oldIndex, newIndex);
+        
+        // ローカル状態を先に更新（ユーザー体験をスムーズに）
+        refreshMenus();
+        
+        // サーバーに順番更新を送信
+        const orderUpdates = newMenus.map((menu, index) => ({
+          id: menu.id,
+          display_order: index * 10
+        }));
+        
+        const success = await updateMenuOrder(orderUpdates, () => {
+          showToast('error', 'メニュー順番の更新に失敗しました');
+        });
+        
+        if (success) {
+          showToast('success', 'メニュー順番を更新しました');
+          refreshMenus();
+        }
       }
     }
   };
@@ -721,6 +755,25 @@ const AdminView: React.FC = () => {
                 <PlusCircleIcon className="w-5 h-5 mr-2" /> 新規メニュー追加
               </button>
             </div>
+            
+            {/* カテゴリ絞り込み */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                生成メニューのカテゴリ
+              </label>
+              <select
+                value={selectedMenuCategory}
+                onChange={(e) => setSelectedMenuCategory(e.target.value)}
+                className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5"
+              >
+                <option value="">指定なし（全て表示）</option>
+                {categories?.map((category) => (
+                  <option key={category.id} value={category.id.toString()}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
             {editingGenMenu && (
               <AdminGenMenuForm
                 item={editingGenMenu}
@@ -756,93 +809,62 @@ const AdminView: React.FC = () => {
                 onCancel={() => setEditingGenMenu(null)}
               />
             )}
-            <ul className="space-y-3 mt-4">
-              {menus?.map((menu) => {
-                const category = categories?.find(
-                  (c) => c.id === menu.categoryId,
-                );
-                return (
-                  <li
-                    key={menu.id}
-                    className="bg-gray-700 p-4 rounded-md shadow flex justify-between items-start"
-                  >
-                    <div>
-                      <p className="font-semibold text-indigo-400">
-                        {menu.name}{' '}
-                        <span className="text-xs text-gray-400">
-                          ({menu.engine})
-                        </span>
-                      </p>
-                      {category && (
-                        <p className="text-xs text-cyan-400 bg-cyan-900/50 px-1.5 py-0.5 rounded-full inline-block my-1">
-                          カテゴリ: {category.name}
-                        </p>
-                      )}
-                      <p
-                        className="text-sm text-gray-300 mt-1"
-                        title={menu.description}
-                      >
-                        簡易説明: {menu.description || '未設定'}
-                      </p>
-                      <p
-                        className="text-sm text-gray-300 mt-1 truncate max-w-md"
-                        title={menu.engine}
-                      >
-                        プロンプト: {menu.engine}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        コスト: {menu.credit} クレジット
-                      </p>
-                      {(menu.sampleInputImageUrl ||
-                        menu.sampleResultImageUrl) && (
-                        <div className="mt-2 flex space-x-2">
-                          {menu.sampleInputImageUrl && (
-                            <img
-                              src={menu.sampleInputImageUrl}
-                              alt="Sample Source"
-                              className="w-16 h-10 object-cover rounded border border-gray-600"
-                            />
-                          )}
-                          {menu.sampleResultImageUrl && (
-                            <img
-                              src={menu.sampleResultImageUrl}
-                              alt="Sample Generated"
-                              className="w-16 h-10 object-cover rounded border border-gray-600"
-                            />
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <div className="space-x-2 flex-shrink-0">
-                      <button
-                        onClick={() => setEditingGenMenu(menu)}
-                        className="p-2 text-gray-400 hover:text-indigo-300"
-                        aria-label={`Edit ${menu.name}`}
-                      >
-                        <PencilAltIcon className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={async () => {
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={menus
+                  ?.filter((menu) => {
+                    // カテゴリ絞り込みが選択されている場合のみフィルタリング
+                    if (selectedMenuCategory) {
+                      return menu.categoryId?.toString() === selectedMenuCategory;
+                    }
+                    return true; // 絞り込みなしの場合は全て表示
+                  })
+                  .map((menu) => menu.id.toString()) || []}
+                strategy={verticalListSortingStrategy}
+              >
+                <ul className="space-y-3 mt-4">
+                  {menus
+                    ?.filter((menu) => {
+                      // カテゴリ絞り込みが選択されている場合のみフィルタリング
+                      if (selectedMenuCategory) {
+                        return menu.categoryId?.toString() === selectedMenuCategory;
+                      }
+                      return true; // 絞り込みなしの場合は全て表示
+                    })
+                    .map((menu) => {
+                    const category = categories?.find(
+                      (c) => c.id === menu.categoryId,
+                    );
+                    return (
+                      <SortableMenuItem
+                        key={menu.id}
+                        menu={menu}
+                        category={category}
+                        onEdit={() => setEditingGenMenu(menu)}
+                        onDelete={() => {
                           if (window.confirm(`${menu.name}を削除しますか？`)) {
-                            const success = await deleteMenu(menu.id, () => {
+                            deleteMenu(menu.id, () => {
                               showToast('error', 'メニュー削除に失敗しました');
+                            }).then((success) => {
+                              if (success) {
+                                showToast('success', 'メニューを削除しました');
+                                refreshMenus();
+                              }
                             });
-                            if (success) {
-                              showToast('success', 'メニューを削除しました');
-                              refreshMenus();
-                            }
                           }
                         }}
-                        className="p-2 text-gray-400 hover:text-red-400"
-                        aria-label={`Delete ${menu.name}`}
-                      >
-                        <TrashIcon className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+                        isDragging={activeId === menu.id.toString()}
+                      />
+                    );
+                  })}
+                </ul>
+              </SortableContext>
+            </DndContext>
           </div>
         );
       case 'goods':
@@ -2127,6 +2149,8 @@ const AdminGenMenuForm: React.FC<{
   onCancel: () => void;
 }> = ({ item, categories, onSave, onCancel }) => {
   const [currentItem, setCurrentItem] = useState<AdminGenerationMenuItem>(item);
+  const [isUploadingInput, setIsUploadingInput] = useState(false);
+  const [isUploadingResult, setIsUploadingResult] = useState(false);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -2149,6 +2173,46 @@ const AdminGenMenuForm: React.FC<{
         ...prev,
         [name]: name === 'credit' ? parseInt(value, 10) || 0 : value,
       }));
+    }
+  };
+
+  // サンプル元画像アップロード処理
+  const handleSampleInputImageUpload = async (file: File | null) => {
+    if (!file) return;
+    
+    setIsUploadingInput(true);
+    try {
+      const response = await uploadMenuImage(file, 'sample_input');
+      setCurrentItem((prev) => ({
+        ...prev,
+        sampleInputImageUrl: response.public_url,
+        sample_input_image_url: response.public_url, // バックエンド用フィールドも設定
+      }));
+    } catch (error) {
+      console.error('サンプル元画像アップロードエラー:', error);
+      alert('サンプル元画像のアップロードに失敗しました');
+    } finally {
+      setIsUploadingInput(false);
+    }
+  };
+
+  // サンプル生成後画像アップロード処理
+  const handleSampleResultImageUpload = async (file: File | null) => {
+    if (!file) return;
+    
+    setIsUploadingResult(true);
+    try {
+      const response = await uploadMenuImage(file, 'sample_result');
+      setCurrentItem((prev) => ({
+        ...prev,
+        sampleResultImageUrl: response.public_url,
+        sample_result_image_url: response.public_url, // バックエンド用フィールドも設定
+      }));
+    } catch (error) {
+      console.error('サンプル生成後画像アップロードエラー:', error);
+      alert('サンプル生成後画像のアップロードに失敗しました');
+    } finally {
+      setIsUploadingResult(false);
     }
   };
 
@@ -2291,38 +2355,39 @@ const AdminGenMenuForm: React.FC<{
             placeholder="例: blurry, watermark, text"
           />
         </div>
-        <div className="border-t border-gray-700 pt-3 mt-3 space-y-2">
-          <div>
-            <label
-              htmlFor="sampleInputImageUrl"
-              className="text-sm text-gray-400 block mb-1"
-            >
-              サンプル元画像URL (任意)
-            </label>
-            <input
-              id="sampleInputImageUrl"
-              name="sampleInputImageUrl"
-              value={currentItem.sampleInputImageUrl || ''}
-              onChange={handleChange}
-              className="w-full bg-gray-700 p-2 rounded text-gray-200"
-              placeholder="https://example.com/source.jpg"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="sampleResultImageUrl"
-              className="text-sm text-gray-400 block mb-1"
-            >
-              サンプル生成後画像URL (任意)
-            </label>
-            <input
-              id="sampleResultImageUrl"
-              name="sampleResultImageUrl"
-              value={currentItem.sampleResultImageUrl || ''}
-              onChange={handleChange}
-              className="w-full bg-gray-700 p-2 rounded text-gray-200"
-              placeholder="https://example.com/generated.jpg"
-            />
+        <div className="border-t border-gray-700 pt-3 mt-3">
+          <h5 className="text-md font-semibold text-indigo-400 mb-2">
+            サンプル画像 (任意)
+          </h5>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm text-gray-400 block mb-1">
+                サンプル元画像
+              </label>
+              <ImageUpload
+                onImageSelect={handleSampleInputImageUpload}
+                label="サンプル元画像をアップロード"
+                initialPreviewUrl={currentItem.sample_input_image_url || currentItem.sampleInputImageUrl}
+                showDeleteButton={true}
+              />
+              {isUploadingInput && (
+                <p className="text-xs text-yellow-400 mt-1">アップロード中...</p>
+              )}
+            </div>
+            <div>
+              <label className="text-sm text-gray-400 block mb-1">
+                サンプル生成後画像
+              </label>
+              <ImageUpload
+                onImageSelect={handleSampleResultImageUpload}
+                label="サンプル生成後画像をアップロード"
+                initialPreviewUrl={currentItem.sample_result_image_url || currentItem.sampleResultImageUrl}
+                showDeleteButton={true}
+              />
+              {isUploadingResult && (
+                <p className="text-xs text-yellow-400 mt-1">アップロード中...</p>
+              )}
+            </div>
           </div>
         </div>
 
@@ -2589,6 +2654,110 @@ const AdminChargeOptionForm: React.FC<{
         </div>
       </div>
     </div>
+  );
+};
+
+const SortableMenuItem: React.FC<{
+  menu: AdminGenerationMenuItem;
+  category: AdminGenerationMenuCategoryItem | undefined;
+  onEdit: () => void;
+  onDelete: () => void;
+  isDragging: boolean;
+}> = ({ menu, category, onEdit, onDelete, isDragging }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: menu.id.toString() });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={`bg-gray-700 p-4 rounded-md shadow flex justify-between items-start ${
+        isDragging ? 'opacity-50' : ''
+      }`}
+      {...attributes}
+      {...listeners}
+    >
+      <div className="flex items-center space-x-3 flex-1">
+        <div className="cursor-move text-gray-400 hover:text-indigo-300">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8h16M4 16h16"></path>
+          </svg>
+        </div>
+        <div className="flex-1">
+          <p className="font-semibold text-indigo-400">
+            {menu.name}{' '}
+            <span className="text-xs text-gray-400">
+              ({menu.engine})
+            </span>
+          </p>
+          {category && (
+            <p className="text-xs text-cyan-400 bg-cyan-900/50 px-1.5 py-0.5 rounded-full inline-block my-1">
+              カテゴリ: {category.name}
+            </p>
+          )}
+          <p
+            className="text-sm text-gray-300 mt-1"
+            title={menu.description}
+          >
+            簡易説明: {menu.description || '未設定'}
+          </p>
+          <p
+            className="text-sm text-gray-300 mt-1 truncate max-w-md"
+            title={menu.engine}
+          >
+            プロンプト: {menu.engine}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            コスト: {menu.credit} クレジット
+          </p>
+          {(menu.sampleInputImageUrl ||
+            menu.sampleResultImageUrl) && (
+            <div className="mt-2 flex space-x-2">
+              {menu.sampleInputImageUrl && (
+                <img
+                  src={menu.sampleInputImageUrl}
+                  alt="Sample Source"
+                  className="w-16 h-10 object-cover rounded border border-gray-600"
+                />
+              )}
+              {menu.sampleResultImageUrl && (
+                <img
+                  src={menu.sampleResultImageUrl}
+                  alt="Sample Generated"
+                  className="w-16 h-10 object-cover rounded border border-gray-600"
+                />
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="space-x-2 flex-shrink-0">
+        <button
+          onClick={onEdit}
+          className="p-2 text-gray-400 hover:text-indigo-300"
+          aria-label={`Edit ${menu.name}`}
+        >
+          <PencilAltIcon className="w-5 h-5" />
+        </button>
+        <button
+          onClick={onDelete}
+          className="p-2 text-gray-400 hover:text-red-400"
+          aria-label={`Delete ${menu.name}`}
+        >
+          <TrashIcon className="w-5 h-5" />
+        </button>
+      </div>
+    </li>
   );
 };
 

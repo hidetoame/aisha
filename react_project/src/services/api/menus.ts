@@ -61,3 +61,20 @@ export const deleteMenu = async (
     return false;
   }
 };
+
+export const updateMenuOrder = async (
+  menuOrders: { id: number; display_order: number }[],
+  onError?: (error: unknown) => void,
+): Promise<boolean> => {
+  try {
+    const response = await axios.post(`${API_BASE}/update_order/`, {
+      menu_orders: menuOrders,
+    });
+    console.log('メニュー順序更新成功:', response.data);
+    return true;
+  } catch (err) {
+    console.error('メニュー順序更新失敗', err);
+    onError?.(err);
+    return false;
+  }
+};

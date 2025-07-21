@@ -30,6 +30,18 @@ class MenuSerializer(serializers.ModelSerializer):
     )
 
     prompt_variables = PromptVariableSerializer(many=True, required=False)
+    
+    # フロントエンドとのフィールド名マッピング
+    sample_input_image_url = serializers.CharField(
+        source='sample_input_img_url',
+        required=False,
+        allow_blank=True
+    )
+    sample_result_image_url = serializers.CharField(
+        source='sample_result_img_url',
+        required=False,
+        allow_blank=True
+    )
 
     class Meta:
         model = Menu
@@ -42,7 +54,9 @@ class MenuSerializer(serializers.ModelSerializer):
             'category_id',  # モデル上ではなくAPI上の名前を指定
             # 自モデル
             'name', 'description', 'engine', 'prompt', 'negative_prompt', 'credit',
-            'sample_input_img_url', 'sample_result_img_url',
+            'sample_input_img_url', 'sample_result_img_url', 'display_order',
+            # フロントエンド用のフィールド名
+            'sample_input_image_url', 'sample_result_image_url',
             # 同一APIエンドポイントで扱う子モデル
             'prompt_variables',
         ]

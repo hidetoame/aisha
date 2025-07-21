@@ -26,3 +26,6 @@ class Menu(models.Model):
     credit = models.IntegerField()
     sample_input_img_url = models.URLField(max_length=200, default="", blank=True)
     sample_result_img_url = models.URLField(max_length=200, default="", blank=True)
+    
+    # 表示順序（小さい順に表示）
+    display_order = models.IntegerField(default=0, help_text="表示順序（小さい順に表示）")

@@ -205,8 +205,11 @@ export interface AdminGenerationMenuItem {
     key: string;      
   }[];
   credit: number;
-  sampleInputImageUrl?: string; 
-  sampleResultImageUrl?: string; 
+  display_order?: number; // 表示順序
+  sampleInputImageUrl?: string; // フロントエンド用（キャメルケース）
+  sampleResultImageUrl?: string; // フロントエンド用（キャメルケース）
+  sample_input_image_url?: string; // バックエンド用（スネークケース）
+  sample_result_image_url?: string; // バックエンド用（スネークケース）
 }
 
 export interface AdminGoodsItem {
