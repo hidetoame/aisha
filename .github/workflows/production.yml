@@ -26,7 +26,7 @@ jobs:
     
     - name: Deploy Backend to Cloud Run
       run: |
-        gcloud run deploy aisha-backend-new \
+        gcloud run deploy aisha-backend-test \
           --source ./pycharm_project \
           --platform managed \
           --region asia-northeast1 \
@@ -36,18 +36,18 @@ jobs:
           --min-instances 0 \
           --max-instances 10 \
           --set-env-vars DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }} \
-          --set-env-vars DATABASE_URL=${{ secrets.DATABASE_URL }} \
+          --set-env-vars DATABASE_URL=postgresql://postgres:postgres@34.85.116.154:5432/postgres \
           --set-env-vars DEBUG=False \
           --set-env-vars ALLOWED_HOSTS=*.run.app
     
     - name: Get Backend URL
       run: |
-        BACKEND_URL=$(gcloud run services describe aisha-backend-new --region asia-northeast1 --format 'value(status.url)')
+        BACKEND_URL=$(gcloud run services describe aisha-backend-test --region asia-northeast1 --format 'value(status.url)')
         echo "BACKEND_URL=$BACKEND_URL" >> $GITHUB_ENV
     
     - name: Deploy Frontend to Cloud Run
       run: |
-        gcloud run deploy aisha-frontend-new \
+        gcloud run deploy aisha-frontend-test \
           --source ./react_project \
           --platform managed \
           --region asia-northeast1 \
@@ -57,15 +57,11 @@ jobs:
           --min-instances 0 \
           --max-instances 10 \
           --set-env-vars NODE_ENV=production \
-          --set-env-vars VITE_AISHA_API_BASE=${{ env.BACKEND_URL }}/api \
-          --set-env-vars VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }} \
-          --set-env-vars VITE_FIREBASE_AUTH_DOMAIN=${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }} \
-          --set-env-vars VITE_FIREBASE_PROJECT_ID=${{ secrets.VITE_FIREBASE_PROJECT_ID }} \
-          --set-env-vars VITE_STRIPE_PUBLISHABLE_KEY=${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+          --set-env-vars VITE_AISHA_API_BASE=${{ env.BACKEND_URL }}/api
     
     - name: Get Frontend URL
       run: |
-        FRONTEND_URL=$(gcloud run services describe aisha-frontend-new --region asia-northeast1 --format 'value(status.url)')
+        FRONTEND_URL=$(gcloud run services describe aisha-frontend-test --region asia-northeast1 --format 'value(status.url)')
         echo "🎉 Deployment Complete!"
         echo "Backend: ${{ env.BACKEND_URL }}"
         echo "Frontend: $FRONTEND_URL"
