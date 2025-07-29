@@ -55,8 +55,15 @@ jobs:
             --region=${{ env.REGION }} \
             --allow-unauthenticated \
             --add-cloudsql-instances=${{ env.PROJECT_ID }}:${{ env.REGION }}:aisha-db \
-            --set-env-vars="NODE_ENV=production,DEBUG=False,ALLOWED_HOSTS=*.run.app,DATABASE_URL=${{ secrets.DATABASE_URL }},DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }},STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY_LIVE }},STRIPE_PUBLISHABLE_KEY=${{ secrets.STRIPE_PUBLISHABLE_KEY_LIVE }},SUZURI_API_TOKEN=${{ secrets.SUZURI_API_TOKEN }},GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }},CLIPDROP_API_KEY=${{ secrets.CLIPDROP_API_KEY }}" \
-            --set-env-vars="GCS_CREDENTIALS_JSON=${{ secrets.GCS_CREDENTIALS_JSON }}" \
+            --update-env-vars NODE_ENV=production,DEBUG=False,ALLOWED_HOSTS=*.run.app \
+            --update-env-vars DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+            --update-env-vars DJANGO_SECRET_KEY="${{ secrets.DJANGO_SECRET_KEY }}" \
+            --update-env-vars STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY_LIVE }}" \
+            --update-env-vars STRIPE_PUBLISHABLE_KEY="${{ secrets.STRIPE_PUBLISHABLE_KEY_LIVE }}" \
+            --update-env-vars SUZURI_API_TOKEN="${{ secrets.SUZURI_API_TOKEN }}" \
+            --update-env-vars GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}" \
+            --update-env-vars CLIPDROP_API_KEY="${{ secrets.CLIPDROP_API_KEY }}" \
+            --update-env-vars GCS_CREDENTIALS_JSON="${{ secrets.GCS_CREDENTIALS_JSON }}" \
             --memory=1Gi \
             --cpu=1 \
             --min-instances=0 \
@@ -147,7 +154,8 @@ jobs:
             --region=${{ env.REGION }} \
             --command="python,manage.py,migrate" \
             --set-cloudsql-instances=${{ env.PROJECT_ID }}:${{ env.REGION }}:aisha-db \
-            --set-env-vars="DATABASE_URL=${{ secrets.DATABASE_URL }},DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" \
+            --update-env-vars DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+            --update-env-vars DJANGO_SECRET_KEY="${{ secrets.DJANGO_SECRET_KEY }}" \
             --max-retries=1 \
             --parallelism=1 \
             --task-timeout=600 || true
