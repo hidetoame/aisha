@@ -40,7 +40,7 @@ jobs:
           --min-instances 0 \
           --max-instances 10 \
           --set-env-vars DEBUG=False \
-          --set-env-vars DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }} \
+          --set-env-vars DJANGO_SECRET_KEY=django-insecure-test-key-for-db-test \
           --set-env-vars DATABASE_URL=postgresql://postgres:postgres@34.85.116.154:5432/postgres \
           --set-env-vars ALLOWED_HOSTS=*.run.app
 
