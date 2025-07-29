@@ -30,7 +30,9 @@ COPY . /app/
 # ビルド時のみの環境変数を設定
 ARG DJANGO_SECRET_KEY=dummy-secret-key-for-build
 ENV DJANGO_SECRET_KEY=$DJANGO_SECRET_KEY
-RUN python manage.py collectstatic --noinput
+ENV DEBUG=False
+ENV DATABASE_URL=sqlite:///db.sqlite3
+RUN python manage.py collectstatic --noinput || true
 
 # Cloud Runが使用するポート
 ENV PORT 8080
