@@ -53,6 +53,22 @@ jobs:
           docker push ${{ env.ARTIFACT_REGISTRY }}/backend:${{ github.sha }}
           docker push ${{ env.ARTIFACT_REGISTRY }}/backend:latest
 
+      - name: Create environment variables file
+        run: |
+          cat > env-vars.yaml << 'EOF'
+          NODE_ENV: "production"
+          DEBUG: "False"
+          ALLOWED_HOSTS: "*.run.app"
+          DATABASE_URL: "${{ secrets.DATABASE_URL }}"
+          DJANGO_SECRET_KEY: "${{ secrets.DJANGO_SECRET_KEY }}"
+          STRIPE_SECRET_KEY: "${{ secrets.STRIPE_SECRET_KEY_LIVE }}"
+          STRIPE_PUBLISHABLE_KEY: "${{ secrets.STRIPE_PUBLISHABLE_KEY_LIVE }}"
+          SUZURI_API_TOKEN: "${{ secrets.SUZURI_API_TOKEN }}"
+          GEMINI_API_KEY: "${{ secrets.GEMINI_API_KEY }}"
+          CLIPDROP_API_KEY: "${{ secrets.CLIPDROP_API_KEY }}"
+          GCS_CREDENTIALS_JSON: "${{ secrets.GCS_CREDENTIALS_JSON }}"
+          EOF
+
       - name: Deploy Backend to Cloud Run
         id: deploy
         run: |
@@ -62,17 +78,7 @@ jobs:
             --region=${{ env.REGION }} \
             --allow-unauthenticated \
             --add-cloudsql-instances=${{ env.PROJECT_ID }}:${{ env.REGION }}:aisha-db \
-            --set-env-vars "NODE_ENV=production" \
-            --set-env-vars "DEBUG=False" \
-            --set-env-vars "ALLOWED_HOSTS=*.run.app" \
-            --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
-            --set-env-vars "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" \
-            --set-env-vars "STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY_LIVE }}" \
-            --set-env-vars "STRIPE_PUBLISHABLE_KEY=${{ secrets.STRIPE_PUBLISHABLE_KEY_LIVE }}" \
-            --set-env-vars "SUZURI_API_TOKEN=${{ secrets.SUZURI_API_TOKEN }}" \
-            --set-env-vars "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" \
-            --set-env-vars "CLIPDROP_API_KEY=${{ secrets.CLIPDROP_API_KEY }}" \
-            --set-env-vars "GCS_CREDENTIALS_JSON=${{ secrets.GCS_CREDENTIALS_JSON }}" \
+            --env-vars-file=env-vars.yaml \
             --memory=1Gi \
             --cpu=1 \
             --min-instances=0 \
@@ -161,14 +167,19 @@ jobs:
 
       - name: Run database migrations
         run: |
+          # Create environment variables file for migration job
+          cat > migrate-env-vars.yaml << 'EOF'
+          DATABASE_URL: "${{ secrets.DATABASE_URL }}"
+          DJANGO_SECRET_KEY: "${{ secrets.DJANGO_SECRET_KEY }}"
+          EOF
+          
           # Cloud Runのジョブとして実行
           gcloud run jobs create migrate-db \
             --image=${{ env.ARTIFACT_REGISTRY }}/backend:${{ github.sha }} \
             --region=${{ env.REGION }} \
             --command="python,manage.py,migrate" \
             --set-cloudsql-instances=${{ env.PROJECT_ID }}:${{ env.REGION }}:aisha-db \
-            --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
-            --set-env-vars "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" \
+            --env-vars-file=migrate-env-vars.yaml \
             --max-retries=1 \
             --parallelism=1 \
             --task-timeout=600 || true
