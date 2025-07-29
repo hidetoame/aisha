@@ -27,6 +27,9 @@ RUN pip install gunicorn
 COPY . /app/
 
 # 静的ファイルの収集（Django）
+# ビルド時のみの環境変数を設定
+ARG DJANGO_SECRET_KEY=dummy-secret-key-for-build
+ENV DJANGO_SECRET_KEY=$DJANGO_SECRET_KEY
 RUN python manage.py collectstatic --noinput
 
 # Cloud Runが使用するポート
