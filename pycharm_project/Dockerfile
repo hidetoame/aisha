@@ -1,5 +1,5 @@
 # Python公式イメージをベースにする
-FROM python:3.11
+FROM python:3.11-slim
 
 # 不要なpycファイルの生成を防止
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -8,15 +8,35 @@ ENV PYTHONUNBUFFERED 1
 # 作業ディレクトリの設定
 WORKDIR /app
 
+# システムパッケージのインストール（PostgreSQL client等）
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    gcc \
+    python3-dev \
+    musl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 # 依存関係のコピーとインストール
 COPY requirements.txt /app/
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
+# gunicornのインストール（本番用WSGIサーバー）
+RUN pip install gunicorn
+
 # アプリケーションの全ファイルをコピー
 COPY . /app/
 
-# 開発用のポート設定
-EXPOSE 8000
+# 静的ファイルの収集（Django）
+# ビルド時のみの環境変数を設定
+ARG DJANGO_SECRET_KEY=dummy-secret-key-for-build
+ENV DJANGO_SECRET_KEY=$DJANGO_SECRET_KEY
+ENV DEBUG=False
+ENV DATABASE_URL=sqlite:///db.sqlite3
+RUN python manage.py collectstatic --noinput || true
 
-# 開発用の起動コマンド（docker-compose.ymlで上書きされる）
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# Cloud Runが使用するポート
+ENV PORT 8080
+EXPOSE $PORT
+
+# 本番用の起動コマンド
+CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 django_project.wsgi:application

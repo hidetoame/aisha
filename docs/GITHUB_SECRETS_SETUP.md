@@ -41,7 +41,7 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 ```
 説明: Cloud SQL PostgreSQL接続URL
 形式: postgresql://username:password@/dbname?host=/cloudsql/connection-name
-例: postgresql://aisha_user:YOUR_PASSWORD@/aisha_db?host=/cloudsql/aisha-462412:asia-northeast1:aisha-db
+例: postgresql://postgres:YOUR_PASSWORD@/aisha_db?host=/cloudsql/aisha-462412:asia-northeast1:aisha-db
 注意: 
 - パスワードはURL エンコードが必要（特殊文字を含む場合）
 - Cloud SQL プロキシ経由での接続

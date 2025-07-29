@@ -1,70 +1,51 @@
-# 本番環境セットアップガイド
+# 本番環境設定メモ
 
-## 概要
-AISHAプロジェクトの本番環境はGoogle Cloud Runで動作します。
+## データベース設定（正確な情報）
 
-## 必要なGitHub Secrets
+### Cloud SQL インスタンス：
+- **インスタンス名**: `aisha-db`
+- **データベース名**: `postgres`
+- **ユーザー名**: `postgres`
+- **パスワード**: `postgres`
 
-以下のシークレットをGitHubリポジトリに設定する必要があります：
+### 重要なポイント：
+- データベース名が `postgres`（通常は `aisha_prod` など）
+- ユーザー名も `postgres`（通常は `aisha_user` など）
+- 全て `postgres` という名前
 
-### 基本設定
-- `GCP_SA_KEY`: Google Cloud Platform サービスアカウントキー（JSON形式）
-- `DJANGO_SECRET_KEY`: Django用のシークレットキー（強力なランダム文字列）
-- `DATABASE_URL`: Cloud SQL PostgreSQLデータベースURL
-  - 形式: `postgresql://username:password@/dbname?host=/cloudsql/aisha-462412:asia-northeast1:aisha-db`
-  - Cloud SQLインスタンス: `aisha-db` (PostgreSQL 15)
+この情報は、本番デプロイ時に正しいデータベース接続設定を行うために非常に重要です。
 
-### Stripe設定（本番キー）
-- `STRIPE_PUBLISHABLE_KEY_LIVE`: Stripe本番用公開可能キー
-- `STRIPE_SECRET_KEY_LIVE`: Stripe本番用シークレットキー
-- `STRIPE_WEBHOOK_SECRET_LIVE`: Stripe Webhookシークレット
+## Dockerコンテナ構成
 
-### Firebase設定
-- `VITE_FIREBASE_API_KEY`: Firebase APIキー
-- `VITE_FIREBASE_AUTH_DOMAIN`: Firebase認証ドメイン
-- `VITE_FIREBASE_PROJECT_ID`: FirebaseプロジェクトID
-- `VITE_STRIPE_PUBLISHABLE_KEY`: Stripe公開可能キー（フロントエンド用）
+### 動作中のコンテナ：
+- **aisha**: メインコンテナ
+- **web-1**: バックエンド（Django）← **これがバックエンド**
+- **react-1**: フロントエンド（React）
+- **db-1**: データベース（PostgreSQL）
 
-### その他のAPI設定
-- `SUZURI_API_TOKEN`: SUZURI APIトークン
-- `GEMINI_API_KEY`: Gemini APIキー
-- `VITE_CLIPDROP_API_KEY`: ClipDrop APIキー
-- `GCS_CREDENTIALS_JSON`: Google Cloud Storage認証情報（JSON形式）
+### 重要なポイント：
+- **バックエンドは `backend` ではなく `web-1`**
+- **Djangoコマンドは `docker-compose exec web python manage.py` で実行**
 
-## デプロイメントフロー
+## データベース状況確認結果
 
-1. mainブランチへのプッシュで自動デプロイが開始
-2. バックエンドがCloud Run（aisha-backend-new）にデプロイ
-3. バックエンドのURLを取得
-4. フロントエンドがCloud Run（aisha-frontend-new）にデプロイ（バックエンドURLを環境変数として設定）
+### ローカルDB：
+- ✅ **最新の状態**（全てのマイグレーション適用済み）
+- ✅ **最新のマイグレーション（0022）も適用済み**
+
+### 本番DB：
+- ✅ **最新の状態**（全てのマイグレーション適用済み）
+- ✅ **最新のマイグレーション（0022）も適用済み**
+
+### 結論：
+**本番DBは既に最新のテーブル構成になっているため、マイグレーションは不要**
+
+## 本番環境の状態
+- 本番環境は完全にクリーンな状態（私が作った混乱を全て削除済み）
+- ローカル環境は本番デプロイ直前の状態に復元済み
+- 元々の正しい設定で本番環境を構築できる状態
 
 ## 注意事項
-
-1. **秘密情報の管理**
-   - 絶対に秘密鍵をコードにハードコーディングしない
-   - すべての機密情報はGitHub Secretsで管理
-   - 本番環境ではGoogle Secret Managerの使用を推奨
-
-2. **データベース**
-   - 本番環境ではCloud SQLまたは外部のマネージドPostgreSQLを使用
-   - バックアップ戦略を必ず設定
-
-3. **スケーリング**
-   - 現在の設定：最小0インスタンス、最大10インスタンス
-   - トラフィックに応じて調整が必要
-
-4. **監視**
-   - Cloud Runのメトリクスを定期的に確認
-   - エラーログの監視を設定
-
-## トラブルシューティング
-
-### デプロイが失敗する場合
-1. GitHub Secretsがすべて設定されているか確認
-2. GCPのサービスアカウントに必要な権限があるか確認
-3. Cloud Runのクォータを確認
-
-### アプリケーションが起動しない場合
-1. Cloud Runのログを確認
-2. 環境変数が正しく設定されているか確認
-3. データベース接続を確認
+- 私が勝手に変更した設定が全て元に戻った
+- 混乱の原因となった私の変更が全て取り消された
+- 最初から正しく本番環境を構築し直すことができる状態

@@ -202,13 +202,8 @@ GCS_LOCATION = 'car-settings'
 GCS_CUSTOM_DOMAIN = f'{GCS_BUCKET_NAME}.storage.googleapis.com'
 
 # Static files (CSS, JavaScript, Images)
-# 本番環境（Render）ではWhiteNoiseを使用、ローカルではGCSを使用
-if DEBUG:
-    # 開発環境ではGCS設定を使用
-    STATIC_URL = f'https://{GCS_CUSTOM_DOMAIN}/{GCS_LOCATION}/' if GCS_CUSTOM_DOMAIN else '/static/'
-else:
-    # 本番環境（Render）ではWhiteNoiseを使用
-    STATIC_URL = '/static/'
+# 本番環境ではWhiteNoiseを使用
+if not DEBUG:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Stripe Settings

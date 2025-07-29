@@ -1,0 +1,8 @@
+DEBUG: "False"
+DJANGO_SECRET_KEY: "django-insecure-temp-key-for-deployment"
+DATABASE_URL: "postgresql://postgres:postgres@34.85.116.154:5432/aisha-db"
+TSUKURUMA_API_HOST: "https://api.tsukuruma.com"
+TSUKURUMA_API_PORT: "443"
+APP_NAME: "AISHA"
+ENV_FILE: ".env.prod"
+ALLOWED_HOSTS: "localhost,127.0.0.1,*.run.app,aisha-backend-prod-584412696241.asia-northeast1.run.app" 

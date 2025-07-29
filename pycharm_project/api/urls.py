@@ -79,6 +79,7 @@ from api.views.charge_option import (
 from api.views import health_check
 from api.views.migrate_endpoint import run_migrations, migration_status
 from api.views.db_inspect import inspect_database_tables
+from api.views.db_test import db_connection_test
 from api.views.aws_sms_auth import (
     AWSSMSAuthView,
     AWSSMSVerifyView,
@@ -195,6 +196,9 @@ urlpatterns += [
     path('admin/migrate/', run_migrations, name='admin-migrate'),
     path('admin/migrate/status/', migration_status, name='admin-migrate-status'),
     path('admin/db/inspect/', inspect_database_tables, name='admin-db-inspect'),
+    
+    # データベース接続テスト
+    path('db-test/', db_connection_test, name='db-connection-test'),
     
     # Stripe Webhook（本番環境用）
     path('stripe/webhook/', stripe_webhook, name='stripe-webhook'),
