@@ -39,4 +39,4 @@ ENV PORT 8080
 EXPOSE $PORT
 
 # 本番用の起動コマンド
-CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 ai_sha_django.wsgi:application
+CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 django_project.wsgi:application
