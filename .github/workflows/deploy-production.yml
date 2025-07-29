@@ -5,6 +5,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      trigger:
+        description: 'Manual trigger'
+        required: false
+        default: 'manual'
 
 env:
   PROJECT_ID: aisha-462412
