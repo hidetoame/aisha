@@ -150,8 +150,6 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
       inputType: 'upload' as const,
     };
     
-    console.log('この画像で生成: formData =', formData);
-    console.log('画像URL =', image.url);
     
     // 画像URLを渡してapplyRegenerateFormDataToMenuExePanelと同じ処理を実行
     onLoadOptions(formData, image.url);

@@ -24,7 +24,7 @@ export async function generateImageWithGemini(prompt: string, options: Generatio
   const generationPrompt = prompt;
   const modelName = options.generationEngineForService || "models/gemini-1.5-pro";
 
-  console.log("Final prompt for Gemini:", generationPrompt);
+  // Final prompt for Gemini
 
   try {
     const imageResponse = await ai.models.generateImages({

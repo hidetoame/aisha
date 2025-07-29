@@ -1,0 +1,37 @@
+# Python公式イメージをベースにする
+FROM python:3.11-slim
+
+# 不要なpycファイルの生成を防止
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+# 作業ディレクトリの設定
+WORKDIR /app
+
+# システムパッケージのインストール（PostgreSQL client等）
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    gcc \
+    python3-dev \
+    musl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# 依存関係のコピーとインストール
+COPY requirements.txt /app/
+RUN pip install --upgrade pip && pip install -r requirements.txt
+
+# gunicornのインストール（本番用WSGIサーバー）
+RUN pip install gunicorn
+
+# アプリケーションの全ファイルをコピー
+COPY . /app/
+
+# 静的ファイルの収集（Django）
+RUN python manage.py collectstatic --noinput
+
+# Cloud Runが使用するポート
+ENV PORT 8080
+EXPOSE $PORT
+
+# 本番用の起動コマンド
+CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 ai_sha_django.wsgi:application

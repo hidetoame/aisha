@@ -9,6 +9,7 @@ import {
   useElements
 } from '@stripe/react-stripe-js';
 import axios from 'axios';
+import { AISHA_API_BASE } from '@/constants';
 
 // Stripeのpublishable keyを取得
 let stripePromise: Promise<any>;
@@ -16,7 +17,7 @@ const getStripe = async () => {
   if (!stripePromise) {
     try {
       console.log('Stripe設定を取得中...');
-      const response = await axios.get('http://localhost:7999/api/stripe/config/');
+      const response = await axios.get(`${AISHA_API_BASE}/stripe/config/`);
       console.log('Stripe設定レスポンス:', response.data);
       
       const publishableKey = response.data.publishable_key;
@@ -90,7 +91,7 @@ const PaymentForm: React.FC<StripePaymentFormProps> = ({
         
         console.log('🔍 チャージリクエストデータ:', requestData);
         
-        const response = await axios.post('http://localhost:7999/api/charges/', requestData);
+        const response = await axios.post(`${AISHA_API_BASE}/charges/`, requestData);
         
         setClientSecret(response.data.client_secret);
         setIsInitialized(true);
@@ -148,7 +149,7 @@ const PaymentForm: React.FC<StripePaymentFormProps> = ({
         
         // バックエンドに決済完了を通知
         try {
-          const confirmResponse = await axios.post('http://localhost:7999/api/charges/confirm/', {
+          const confirmResponse = await axios.post(`${AISHA_API_BASE}/charges/confirm/`, {
             payment_intent_id: paymentIntent.id,
             user_id: userId
           });

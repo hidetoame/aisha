@@ -3,7 +3,7 @@ import UserView from './views/UserView';
 import AdminView from './views/AdminView';
 import PublicTimelineView from './views/PublicTimelineView';
 import { Header } from './components/Header';
-
+import { GenerationHistoryModal } from './components/modals/GenerationHistoryModal';
 import { GoodsCreationHistoryModal } from './components/modals/GoodsCreationHistoryModal';
 import { PaymentHistoryModal } from './components/modals/PaymentHistoryModal'; // Added
 import { DirectionSelectionModal } from './components/modals/DirectionSelectionModal';
@@ -14,7 +14,7 @@ import FirebasePhoneLoginModal from './components/modals/FirebasePhoneLoginModal
 import AwsSmsLoginModal from './components/modals/AwsSmsLoginModal'; // AWS SMS authentication
 import { auth } from './services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { getCurrentUserIdToken, signOutFirebase } from './services/api/firebase-auth';
+import { signOutFirebase } from './services/api/firebase-auth';
 import { suzuriApiClient, SuzuriGoodsHistoryItem } from './services/suzuriApi';
 import {
   User,
@@ -77,7 +77,8 @@ const App: React.FC = () => {
   const [goodsCreationHistory, setGoodsCreationHistory] = useState<
     GoodsCreationRecord[]
   >([]);
-
+  const [showGenerationHistoryModal, setShowGenerationHistoryModal] =
+    useState(false);
   const [showGoodsHistoryModal, setShowGoodsHistoryModal] = useState(false);
   const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState(false); // Added
   // 「生成用パネルに読み込ませたい入力パラメータ（menuId, prompt, 画像ファイルなど）」をAppレベルで一時的に保持している変数
@@ -315,9 +316,7 @@ const App: React.FC = () => {
   const loadGoodsHistory = async () => {
     if (user?.id) {
       try {
-        console.log('📦 グッズ履歴を取得中... user_id:', user.id);
         const historyData = await suzuriApiClient.getUserGoodsHistory(user.id);
-        console.log('✅ グッズ履歴取得成功:', historyData);
         
         const convertedHistory = historyData.map(convertToGoodsCreationRecord);
         setGoodsCreationHistory(convertedHistory);
@@ -534,7 +533,7 @@ const App: React.FC = () => {
         // タイムラインAPIに保存（ライブラリフラグ=falseで保存）
         const savedImage = await saveToTimeline(user.id, { ...imageWithAuthor, isSavedToLibrary: false });
         if (savedImage) {
-          console.log('✅ タイムラインに保存されました:', savedImage.id);
+          // タイムラインに保存されました
         }
       } catch (error: any) {
         console.error('❌ タイムライン保存に失敗しました:', error);
@@ -599,7 +598,7 @@ const App: React.FC = () => {
         formData,
         generatedImageUrl,
       });
-
+      setShowGenerationHistoryModal(false);
       setCurrentAppView('generator');
     },
     [],
@@ -635,7 +634,8 @@ const App: React.FC = () => {
       return;
     }
 
-    // 拡張処理開始：ジェネレータービューに切り替え
+    // 拡張処理開始：ライブラリモーダルを閉じてジェネレータービューに切り替え
+    setShowGenerationHistoryModal(false);
     setCurrentAppView('generator');
     setIsLibraryExtending(true); // ローディング開始
 
@@ -912,7 +912,7 @@ const App: React.FC = () => {
           onPlansClick={() => setShowPlanModal(true)}
           onToggleAdminView={toggleView}
           isAdminView={isAdminView}
-
+          onGenerationHistoryClick={() => setShowGenerationHistoryModal(true)}
           onGoodsHistoryClick={() => setShowGoodsHistoryModal(true)}
           currentAppView={user ? currentAppView : undefined}
           onToggleAppViewMode={user ? toggleAppViewMode : undefined}
@@ -1029,13 +1029,26 @@ const App: React.FC = () => {
           onPaymentHistoryClick={handlePaymentHistoryClick}
         />
 
+        <GenerationHistoryModal
+          isOpen={showGenerationHistoryModal}
+          onClose={() => setShowGenerationHistoryModal(false)}
+          history={generationHistory}
+          onLoadOptions={handleLoadOptionsFromHistory}
+          onRateImageInLibrary={handleRateImageInLibrary}
+          onDeleteFromLibrary={handleDeleteFromLibrary}
+          onCreateGoodsForLibrary={handleCreateGoodsForLibrary}
+          onExtendImageFromLibrary={handleExtendImageFromLibrary}
+          onToggleLibraryImagePublicStatus={
+            handleToggleLibraryImagePublicStatus
+          }
+          currentUser={user}
+        />
         <GoodsCreationHistoryModal
           isOpen={showGoodsHistoryModal}
           onClose={() => setShowGoodsHistoryModal(false)}
           history={goodsCreationHistory}
           currentUser={user}
           onGoodsCreated={() => {
-            console.log('🔄 App.tsx - グッズ作成完了通知受信、履歴を再取得します');
             loadGoodsHistory();
           }}
         />

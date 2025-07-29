@@ -32,10 +32,7 @@ export const CreditsProvider = ({
   const { showToast } = useToast();
 
   const load = (userId?: string) => {
-    console.log('🔍 CreditsContext.load called with userId:', userId);
-    
     if (!userId) {
-      console.warn('userId is not available for credits fetch');
       setCredits(0);
       return;
     }
@@ -44,7 +41,6 @@ export const CreditsProvider = ({
       showToast('error', 'クレジットの取得に失敗しました');
     })
       .then((res) => {
-        console.log('💰 Credits API response:', res);
         // res: { credits: number } を想定し、numberのみを抜き出す
         setCredits(res?.credits ?? 0);
       })

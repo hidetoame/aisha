@@ -52,8 +52,6 @@ const PublicTimelineView: React.FC<PublicTimelineViewProps> = ({ publicImages, c
   };
 
   const handleGoodsUpdate = (imageId: string) => {
-    console.log('🔄 handleGoodsUpdate 呼び出し - imageId:', imageId);
-    
     // グッズ作成成功時にカウンタを+1
     setImages(prevImages => {
       const updated = prevImages.map(prevImage => 
@@ -66,11 +64,6 @@ const PublicTimelineView: React.FC<PublicTimelineViewProps> = ({ publicImages, c
           : prevImage
       );
       
-      const updatedImage = updated.find(img => img.id === imageId);
-      if (updatedImage) {
-        console.log('✅ カウンタ更新完了 - 新しいカウント:', updatedImage.goodsCreationCount || updatedImage.goods_creation_count);
-      }
-      
       return updated;
     });
   };
@@ -78,7 +71,6 @@ const PublicTimelineView: React.FC<PublicTimelineViewProps> = ({ publicImages, c
   const handleLikeClick = async (image: GeneratedImage) => {
     if (!currentUser) {
       // TODO: ログインを促すモーダル表示
-      console.log('ログインが必要です');
       return;
     }
 

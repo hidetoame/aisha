@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+"""
+画像アップロードテストスクリプト
+"""
+
+import os
+import io
+from PIL import Image
+from google.cloud import storage
+from google.oauth2 import service_account
+
+def create_test_image():
+    """テスト用の画像を作成"""
+    # 200x200の赤い画像を作成
+    img = Image.new('RGB', (200, 200), color='red')
+    
+    # バイトストリームに保存
+    img_byte_arr = io.BytesIO()
+    img.save(img_byte_arr, format='PNG')
+    img_byte_arr.seek(0)
+    
+    return img_byte_arr.getvalue()
+
+def test_image_upload():
+    print("=== 画像アップロードテスト ===\n")
+    
+    # 環境変数の確認
+    gcs_project_id = os.getenv('GCS_PROJECT_ID')
+    gcs_bucket_name = os.getenv('GCS_BUCKET_NAME')
+    google_application_credentials = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+    
+    if not all([gcs_project_id, gcs_bucket_name]):
+        print("❌ エラー: 必要な環境変数が設定されていません")
+        return False
+    
+    try:
+        # 認証情報の作成
+        print("1. 認証情報の作成...")
+        if google_application_credentials and os.path.exists(google_application_credentials):
+            credentials = service_account.Credentials.from_service_account_file(google_application_credentials)
+            print("   ✅ 認証情報作成成功")
+        else:
+            print("   ❌ 認証情報ファイルが見つかりません")
+            return False
+        
+        # GCSクライアントの作成
+        print("2. GCSクライアントの作成...")
+        client = storage.Client(credentials=credentials, project=gcs_project_id)
+        bucket = client.bucket(gcs_bucket_name)
+        print("   ✅ GCSクライアント作成成功")
+        
+        # テスト画像の作成
+        print("3. テスト画像の作成...")
+        image_data = create_test_image()
+        print(f"   ✅ テスト画像作成成功 ({len(image_data)} bytes)")
+        
+        # 画像のアップロード
+        print("4. 画像のアップロード...")
+        blob_name = f"test_images/test_image_{os.urandom(4).hex()}.png"
+        blob = bucket.blob(blob_name)
+        
+        blob.upload_from_string(
+            image_data,
+            content_type='image/png'
+        )
+        print(f"   ✅ 画像アップロード成功: {blob_name}")
+        
+        # 画像情報の確認
+        print("5. アップロードした画像の情報確認...")
+        blob.reload()
+        print(f"   ファイル名: {blob.name}")
+        print(f"   サイズ: {blob.size} bytes")
+        print(f"   Content-Type: {blob.content_type}")
+        print(f"   作成日時: {blob.time_created}")
+        
+        # 画像のダウンロード確認
+        print("6. 画像のダウンロード確認...")
+        downloaded_data = blob.download_as_bytes()
+        if len(downloaded_data) == len(image_data):
+            print("   ✅ 画像ダウンロード成功（サイズ一致）")
+        else:
+            print("   ❌ 画像データのサイズが一致しません")
+            return False
+        
+        # 公開URLの取得（オプション）
+        print("7. 画像URLの取得...")
+        # Note: デフォルトでは非公開なので、署名付きURLを生成
+        from datetime import timedelta
+        url = blob.generate_signed_url(
+            version="v4",
+            expiration=timedelta(hours=1),
+            method="GET"
+        )
+        print(f"   アクセスURL（1時間有効）:")
+        print(f"   {url[:100]}...")
+        
+        # テスト画像の削除
+        print("8. テスト画像の削除...")
+        blob.delete()
+        print("   ✅ テスト画像削除成功")
+        
+        print("\n🎉 画像アップロードテストに成功しました！")
+        return True
+        
+    except Exception as e:
+        print(f"❌ エラー: {e}")
+        return False
+
+if __name__ == "__main__":
+    success = test_image_upload()
+    exit(0 if success else 1)

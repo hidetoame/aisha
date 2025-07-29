@@ -4,9 +4,9 @@ import { User } from '../../types';
 import {
   sendSMSVerification,
   verifySMSCode,
-  convertFirebaseUserToAppUser,
   cleanupRecaptcha,
 } from '../../services/api/firebase-auth';
+import { AISHA_API_BASE } from '@/constants';
 
 interface FirebasePhoneLoginModalProps {
   isOpen: boolean;
@@ -156,7 +156,7 @@ const FirebasePhoneLoginModal: React.FC<FirebasePhoneLoginModalProps> = ({
       console.log('🔐 取得したIDトークン:', idToken.substring(0, 50) + '...');
       console.log('🔐 IDトークンの長さ:', idToken.length);
       
-      const response = await fetch('http://localhost:7999/api/firebase-auth/check-user/', {
+      const response = await fetch(`${AISHA_API_BASE}/firebase-auth/check-user/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -244,8 +244,7 @@ const FirebasePhoneLoginModal: React.FC<FirebasePhoneLoginModalProps> = ({
       });
       
       // バックエンドでユーザー作成
-      const API_BASE = import.meta.env.VITE_AISHA_API_BASE || 'http://localhost:7999/api';
-      const response = await fetch(`${API_BASE}/firebase-auth/user-info/`, {
+      const response = await fetch(`${AISHA_API_BASE}/firebase-auth/user-info/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

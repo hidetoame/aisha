@@ -1,0 +1,95 @@
+#!/usr/bin/env python
+"""
+現在のapi_config設定をテストして、SUZURI APIリクエストが正しく動作するか確認
+"""
+import os
+import sys
+import django
+
+# Django設定を読み込み
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_project.settings')
+django.setup()
+
+from api.models.goods_management import GoodsManagement
+from api.services.suzuri_api_service import SuzuriAPIService
+
+def test_current_api_config():
+    """現在のapi_config設定をテスト"""
+    
+    print("=== 現在のapi_config設定テスト ===")
+    
+    try:
+        # 公開中の商品を取得
+        goods_list = GoodsManagement.objects.filter(is_public=True).order_by('display_order')
+        
+        for goods in goods_list:
+            print(f"\n🔍 {goods.display_name} (ID: {goods.suzuri_item_id})")
+            print(f"   api_config: {goods.api_config}")
+            
+            # api_configの構造をチェック
+            if not goods.api_config:
+                print("   ❌ api_configが空です")
+                continue
+            
+            # 必須フィールドのチェック
+            required_fields = ['itemId', 'exemplaryItemVariantId']
+            missing_fields = []
+            
+            for field in required_fields:
+                if field not in goods.api_config:
+                    missing_fields.append(field)
+            
+            if missing_fields:
+                print(f"   ❌ 必須フィールドが不足: {missing_fields}")
+            else:
+                print("   ✅ 必須フィールドOK")
+            
+            # itemIdの一致チェック
+            if goods.api_config.get('itemId') != goods.suzuri_item_id:
+                print(f"   ❌ itemIdが一致しません: DB={goods.suzuri_item_id}, config={goods.api_config.get('itemId')}")
+            else:
+                print("   ✅ itemID一致")
+            
+            # 不要なフィールドのチェック
+            unnecessary_fields = ['sub_materials']
+            found_unnecessary = []
+            
+            for field in unnecessary_fields:
+                if field in goods.api_config:
+                    found_unnecessary.append(field)
+            
+            if found_unnecessary:
+                print(f"   ⚠️ 不要なフィールドあり: {found_unnecessary}")
+        
+        print(f"\n=== 正しいフォーマット例 ===")
+        print("基本形式:")
+        print({
+            "itemId": 123,
+            "exemplaryItemVariantId": 456,
+            "published": True,
+            "resizeMode": "contain"  # 商品による
+        })
+        
+        print("\n複数面プリント時のみ:")
+        print({
+            "itemId": 123,
+            "exemplaryItemVariantId": 456, 
+            "published": True,
+            "resizeMode": "contain",
+            "sub_materials": [
+                {
+                    "texture": "base64_image_data",
+                    "printSide": "back",
+                    "enabled": True
+                }
+            ]
+        })
+        
+    except Exception as e:
+        print(f"❌ エラー: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
+if __name__ == '__main__':
+    test_current_api_config()

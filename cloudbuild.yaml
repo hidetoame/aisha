@@ -1,0 +1,77 @@
+# Cloud Build設定ファイル
+steps:
+  # バックエンドのビルドとデプロイ
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/aisha/backend:${SHORT_SHA}', '-f', 'pycharm_project/Dockerfile.prod', './pycharm_project']
+  
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/aisha/backend:${SHORT_SHA}']
+  
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'aisha-backend'
+      - '--image=asia-northeast1-docker.pkg.dev/${PROJECT_ID}/aisha/backend:${SHORT_SHA}'
+      - '--region=asia-northeast1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--add-cloudsql-instances=aisha-462412:asia-northeast1:aisha-db'
+      - '--set-env-vars=NODE_ENV=production,DEBUG=False'
+      - '--set-secrets=DATABASE_URL=DATABASE_URL:latest,DJANGO_SECRET_KEY=DJANGO_SECRET_KEY:latest'
+      - '--memory=1Gi'
+      - '--cpu=1'
+      - '--min-instances=0'
+      - '--max-instances=10'
+
+  # バックエンドのURLを取得
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        BACKEND_URL=$(gcloud run services describe aisha-backend --region=asia-northeast1 --format='value(status.url)')
+        echo "$$BACKEND_URL" > /workspace/backend_url.txt
+
+  # フロントエンドのビルドとデプロイ
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        BACKEND_URL=$(cat /workspace/backend_url.txt)
+        docker build \
+          --build-arg VITE_AISHA_API_BASE=$$BACKEND_URL/api \
+          --build-arg VITE_FIREBASE_API_KEY=${_VITE_FIREBASE_API_KEY} \
+          --build-arg VITE_FIREBASE_AUTH_DOMAIN=${_VITE_FIREBASE_AUTH_DOMAIN} \
+          --build-arg VITE_FIREBASE_PROJECT_ID=${_VITE_FIREBASE_PROJECT_ID} \
+          --build-arg VITE_FIREBASE_STORAGE_BUCKET=${_VITE_FIREBASE_STORAGE_BUCKET} \
+          --build-arg VITE_FIREBASE_MESSAGING_SENDER_ID=${_VITE_FIREBASE_MESSAGING_SENDER_ID} \
+          --build-arg VITE_FIREBASE_APP_ID=${_VITE_FIREBASE_APP_ID} \
+          --build-arg VITE_STRIPE_PUBLISHABLE_KEY=${_VITE_STRIPE_PUBLISHABLE_KEY} \
+          -t asia-northeast1-docker.pkg.dev/${PROJECT_ID}/aisha/frontend:${SHORT_SHA} \
+          -f react_project/Dockerfile.prod \
+          ./react_project
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/aisha/frontend:${SHORT_SHA}']
+  
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'aisha-frontend'
+      - '--image=asia-northeast1-docker.pkg.dev/${PROJECT_ID}/aisha/frontend:${SHORT_SHA}'
+      - '--region=asia-northeast1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--memory=512Mi'
+      - '--cpu=1'
+      - '--min-instances=0'
+      - '--max-instances=10'
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY

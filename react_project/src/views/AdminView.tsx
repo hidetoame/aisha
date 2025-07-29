@@ -79,7 +79,6 @@ import {
   GoodsManagementItem 
 } from '@/services/api/goods-management';
 import AdminGoodsManagementForm from '@/components/AdminGoodsManagementForm';
-import { ImageExpandModal } from '@/components/modals/ImageExpandModal';
 import { uploadMenuImage } from '@/services/api/menu-image-upload';
 
 const initialGoods: AdminGoodsItem[] = DEFAULT_GOODS_OPTIONS.map((opt) => ({
@@ -220,7 +219,6 @@ const AdminView: React.FC = () => {
     setIsSearching(true);
     try {
       const userInfo = await getUserCredits(searchUsername.trim());
-      console.log('Search result:', userInfo);
       
       if (Array.isArray(userInfo)) {
         setFoundUsers(userInfo);
@@ -232,7 +230,6 @@ const AdminView: React.FC = () => {
         showToast('ユーザーが見つかりました', 'success');
       }
     } catch (error) {
-      console.error('ユーザー検索エラー:', error);
       setFoundUsers([]);
       setSelectedUser(null);
       showToast(
@@ -303,23 +300,12 @@ const AdminView: React.FC = () => {
         params.append('needs_sub_materials', 'true');
       }
       
-      console.log('=== フィルター状態 ===');
-      console.log('showPublicOnly:', showPublicOnly);
-      console.log('showSubMaterialsOnly:', showSubMaterialsOnly);
-      console.log('APIパラメータ:', params.toString());
-      console.log('========================');
       
       const items = await getGoodsManagementList(params.toString());
       
-      console.log('=== 取得結果 ===');
-      console.log('取得した商品数:', items.length);
-      console.log('sub_materials必要の商品数:', items.filter(item => item.needs_sub_materials).length);
-      console.log('公開商品数:', items.filter(item => item.is_public).length);
-      console.log('========================');
       
       setGoodsItems(items);
     } catch (error) {
-      console.error('グッズ管理一覧取得エラー:', error);
       showToast(
         error instanceof Error ? error.message : 'グッズ管理一覧の取得に失敗しました',
         'error'
@@ -911,7 +897,6 @@ const AdminView: React.FC = () => {
                     type="checkbox"
                     checked={showPublicOnly}
                     onChange={(e) => {
-                      console.log('公開チェックボックス変更:', e.target.checked);
                       setShowPublicOnly(e.target.checked);
                       // 状態更新後に少し待ってからAPI呼び出し
                       setTimeout(() => {
@@ -927,7 +912,6 @@ const AdminView: React.FC = () => {
                     type="checkbox"
                     checked={showSubMaterialsOnly}
                     onChange={(e) => {
-                      console.log('sub_materialsチェックボックス変更:', e.target.checked);
                       setShowSubMaterialsOnly(e.target.checked);
                       // 状態更新後に少し待ってからAPI呼び出し
                       setTimeout(() => {
@@ -986,7 +970,6 @@ const AdminView: React.FC = () => {
                           key={item.id}
                           item={item}
                           onEdit={() => {
-                            console.log('Setting editing goods item:', item);
                             setEditingGoodsItem(item);
                           }}
                           isDragging={activeId === item.id.toString()}
@@ -1476,17 +1459,6 @@ const AdminView: React.FC = () => {
             )}
           </div>
         );
-      case 'sales':
-        return (
-          <div className="text-gray-400">
-            <h3 className="text-xl font-semibold text-indigo-300 mb-2">
-              売上管理
-            </h3>
-            <p>
-              チャージ履歴、クレジット消費履歴、月別レポートなどの機能。(現在プレースホルダー)
-            </p>
-          </div>
-        );
       case 'generationHistory':
         return (
           <div>
@@ -1897,11 +1869,67 @@ const AdminView: React.FC = () => {
       )}
       
       {/* 画像拡大モーダル */}
-      <ImageExpandModal
-        isOpen={isImageExpandModalOpen}
-        onClose={handleCloseImageExpandModal}
-        imageUrl={expandedImageUrl}
-      />
+      {isImageExpandModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            {/* ヘッダー */}
+            <div className="flex justify-between items-center p-6 border-b border-gray-700">
+              <h2 className="text-xl font-semibold text-white">生成画像</h2>
+              <button
+                onClick={handleCloseImageExpandModal}
+                className="text-gray-400 hover:text-white text-2xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* コンテンツ */}
+            <div className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* 画像セクション */}
+                <div>
+                  <h3 className="text-lg font-medium text-white mb-4">生成画像</h3>
+                  <div className="relative">
+                    <img
+                      src={expandedImageUrl}
+                      alt="生成画像"
+                      className="w-full h-auto rounded-lg shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/placeholder-image.png';
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* 詳細情報セクション */}
+                <div className="space-y-6">
+                  {/* 基本情報 */}
+                  <div>
+                    <h3 className="text-lg font-medium text-white mb-4">基本情報</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">URL:</span>
+                        <span className="text-white font-medium">{expandedImageUrl}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* フッター */}
+            <div className="flex justify-end p-6 border-t border-gray-700">
+              <button
+                onClick={handleCloseImageExpandModal}
+                className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500 transition-colors"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -2048,7 +2076,6 @@ const SortableGoodsItem: React.FC<{
         <button
           onClick={(e) => {
             e.stopPropagation();
-            console.log('Edit button clicked for item:', item);
             onEdit();
           }}
           onMouseDown={(e) => {
@@ -2489,7 +2516,6 @@ const AdminGenMenuForm: React.FC<{
           <button
             type="button"
             onClick={() => {
-              console.log('送信するメニュー:', currentItem);
               onSave(currentItem);
             }}
             className="bg-indigo-500 hover:bg-indigo-600 px-4 py-2 rounded text-white font-medium"

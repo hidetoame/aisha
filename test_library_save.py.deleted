@@ -1,0 +1,31 @@
+import os
+import django
+
+# Django設定を読み込み
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_project.settings')
+django.setup()
+
+from api.models.library import Library
+
+print('=== Manual Library Save Test ===')
+
+# 最新の画像を1つ取得
+latest_image = Library.objects.all().order_by('-created_at').first()
+
+if latest_image:
+    print(f'対象画像: {latest_image.id}')
+    print(f'変更前: is_saved_to_library = {latest_image.is_saved_to_library}')
+    
+    # フラグを手動で更新
+    latest_image.is_saved_to_library = True
+    latest_image.save()
+    
+    print(f'変更後: is_saved_to_library = {latest_image.is_saved_to_library}')
+    print('✅ 手動更新完了')
+    
+    # 確認のため件数を表示
+    saved_count = Library.objects.filter(is_saved_to_library=True).count()
+    total_count = Library.objects.count()
+    print(f'ライブラリ保存済み: {saved_count}/{total_count}')
+else:
+    print('❌ 画像が見つかりません') 

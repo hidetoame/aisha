@@ -1,0 +1,64 @@
+#!/usr/bin/env python
+import os
+import sys
+import django
+
+# Django設定を読み込み
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_project.settings')
+django.setup()
+
+from api.models.phone_user import PhoneUser
+
+print("=== PhoneUser テーブル内容確認 ===")
+print(f"総ユーザー数: {PhoneUser.objects.count()}")
+print()
+
+# 該当する電話番号で検索
+target_phone = "+819025237037"
+normalized_phone = "09025237037"
+
+print(f"電話番号 {target_phone} の検索結果:")
+print("1. 完全一致検索:")
+users1 = PhoneUser.objects.filter(phone_number=target_phone)
+for user in users1:
+    print(f"  ID: {user.id}")
+    print(f"  Firebase UID: {user.firebase_uid}")
+    print(f"  電話番号: {user.phone_number}")
+    print(f"  ニックネーム: {user.nickname}")
+    print(f"  作成日: {user.created_at}")
+    print("  ---")
+
+print("2. 正規化形式での検索:")
+users2 = PhoneUser.objects.filter(phone_number=normalized_phone)
+for user in users2:
+    print(f"  ID: {user.id}")
+    print(f"  Firebase UID: {user.firebase_uid}")
+    print(f"  電話番号: {user.phone_number}")
+    print(f"  ニックネーム: {user.nickname}")
+    print(f"  作成日: {user.created_at}")
+    print("  ---")
+
+print("3. 部分一致検索:")
+users3 = PhoneUser.objects.filter(phone_number__contains="9025237037")
+for user in users3:
+    print(f"  ID: {user.id}")
+    print(f"  Firebase UID: {user.firebase_uid}")
+    print(f"  電話番号: {user.phone_number}")
+    print(f"  ニックネーム: {user.nickname}")
+    print(f"  作成日: {user.created_at}")
+    print("  ---")
+
+print()
+print("全PhoneUserリスト:")
+all_users = PhoneUser.objects.all()
+if all_users.exists():
+    for user in all_users:
+        print(f"  UID: {user.firebase_uid}")
+        print(f"  電話: {user.phone_number}")
+        print(f"  名前: {user.nickname}")
+        print(f"  作成: {user.created_at}")
+        print("  ----")
+else:
+    print("  PhoneUserテーブルにデータがありません！")
+
+print(f"\nTotal PhoneUser records: {all_users.count()}")

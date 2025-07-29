@@ -1,6 +1,5 @@
 import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:7999/api';
+import { AISHA_API_BASE } from '@/constants';
 
 interface SMSAuthResponse {
   success: boolean;
@@ -35,7 +34,7 @@ interface SMSAuthError {
  */
 export const sendSMSVerification = async (phoneNumber: string): Promise<SMSAuthResponse> => {
   try {
-    const response = await axios.post<SMSAuthResponse>(`${API_BASE_URL}/aws-sms-auth/send/`, {
+    const response = await axios.post<SMSAuthResponse>(`${AISHA_API_BASE}/aws-sms-auth/send/`, {
       phone_number: phoneNumber
     });
     return response.data;
@@ -56,7 +55,7 @@ export const verifySMSCode = async (
   phoneNumber: string
 ): Promise<SMSVerifyResponse> => {
   try {
-    const response = await axios.post<SMSVerifyResponse>(`${API_BASE_URL}/aws-sms-auth/verify/`, {
+    const response = await axios.post<SMSVerifyResponse>(`${AISHA_API_BASE}/aws-sms-auth/verify/`, {
       session_id: sessionId,
       verification_code: verificationCode,
       phone_number: phoneNumber
@@ -78,7 +77,7 @@ export const updateUserInfo = async (
   nickname: string
 ): Promise<UserUpdateResponse> => {
   try {
-    const response = await axios.post<UserUpdateResponse>(`${API_BASE_URL}/aws-sms-auth/user-info/`, {
+    const response = await axios.post<UserUpdateResponse>(`${AISHA_API_BASE}/aws-sms-auth/user-info/`, {
       user_id: userId,
       nickname: nickname
     });

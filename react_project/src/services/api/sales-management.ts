@@ -1,6 +1,5 @@
 import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:7999/api';
+import { AISHA_API_BASE } from '@/constants';
 
 export interface MonthlySummary {
   year: number;
@@ -35,7 +34,7 @@ export interface MonthlyDetailParams {
  */
 export const getMonthlySummary = async (): Promise<MonthlySummary[]> => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/sales/monthly-summary/`);
+    const response = await axios.get(`${AISHA_API_BASE}/sales/monthly-summary/`);
     return response.data;
   } catch (error) {
     console.error('月別集計取得エラー:', error);
@@ -54,7 +53,7 @@ export const getMonthlyDetails = async (params: MonthlyDetailParams): Promise<Mo
       ...(params.status && { status: params.status })
     });
     
-    const response = await axios.get(`${API_BASE_URL}/sales/monthly-details/?${queryParams}`);
+    const response = await axios.get(`${AISHA_API_BASE}/sales/monthly-details/?${queryParams}`);
     return response.data;
   } catch (error) {
     console.error('月別詳細取得エラー:', error);

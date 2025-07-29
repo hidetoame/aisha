@@ -14,10 +14,6 @@ const AdminGoodsManagementForm: React.FC<AdminGoodsManagementFormProps> = ({
 }) => {
   const [currentItem, setCurrentItem] = useState<GoodsManagementItem>(item);
   
-  // デバッグ用: 説明データを確認
-  console.log('AdminGoodsManagementForm - item:', item);
-  console.log('AdminGoodsManagementForm - descriptions:', item.descriptions);
-
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => {

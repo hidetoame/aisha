@@ -5,11 +5,10 @@ import {
   LinkIcon,
   UserCircleIcon as ShareUserIcon,
   CalendarDaysIcon as ShareDateIcon,
-  DocumentTextIcon as SharePromptIcon,
   SparklesIcon as ShareMenuIcon,
   XMarkIcon as CloseIconMini,
 } from '../icons/HeroIcons';
-import { FacebookIcon, XIcon, InstagramIcon } from '../icons/SocialIcons';
+import { FacebookIcon, XIcon } from '../icons/SocialIcons';
 
 interface ShareGeneratedImageModalProps {
   isOpen: boolean;

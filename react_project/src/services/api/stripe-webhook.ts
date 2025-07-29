@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_AISHA_API_BASE || 'http://localhost:7999/api';
+import { AISHA_API_BASE } from '@/constants';
 
 export interface PaymentStatus {
   payment_intent_id: string;
@@ -33,7 +33,7 @@ export const pollPaymentStatus = async (
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      const response = await fetch(`${API_BASE_URL}/stripe/payment-status/${paymentIntentId}/`, {
+      const response = await fetch(`${AISHA_API_BASE}/stripe/payment-status/${paymentIntentId}/`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -67,7 +67,7 @@ export const pollPaymentStatus = async (
 // Webhookテスト（開発用）
 export const testWebhook = async (): Promise<WebhookResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/stripe/webhook/`, {
+    const response = await fetch(`${AISHA_API_BASE}/stripe/webhook/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -112,7 +112,7 @@ const processPaymentWithWebhook = async (
 ): Promise<{ success: boolean; payment_intent_id?: string; error?: string }> => {
   try {
     // Payment Intentを作成
-    const response = await fetch(`${API_BASE_URL}/charges/`, {
+    const response = await fetch(`${AISHA_API_BASE}/charges/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -173,7 +173,7 @@ const processPaymentLocal = async (
 ): Promise<{ success: boolean; payment_intent_id?: string; error?: string }> => {
   try {
     // 現在の決済処理をそのまま使用
-    const response = await fetch(`${API_BASE_URL}/charges/`, {
+    const response = await fetch(`${AISHA_API_BASE}/charges/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

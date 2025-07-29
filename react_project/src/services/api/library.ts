@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { GeneratedImage } from '@/types';
-import { keysToCamelCase, keysToSnakeCase } from '@/utils/caseConverter';
+import { keysToCamelCase } from '@/utils/caseConverter';
 
 const API_BASE = `${import.meta.env.VITE_AISHA_API_BASE || 'http://localhost:7999/api'}/timeline`;
 

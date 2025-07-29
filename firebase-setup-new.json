@@ -1,0 +1,19 @@
+{
+  "projectId": "aisha-462412",
+  "projectNumber": "584412696241",
+  "webApp": {
+    "name": "AISHA-Web-App",
+    "apiKey": "AIzaSyBOYxXHSDqTyeJD85CKmbag1ubATyoE_KI",
+    "authDomain": "aisha-462412.firebaseapp.com",
+    "projectId": "aisha-462412",
+    "storageBucket": "aisha-462412.appspot.com",
+    "messagingSenderId": "584412696241",
+    "appId": "1:584412696241:web:placeholder",
+    "measurementId": "G-PLACEHOLDER"
+  },
+  "authProviders": {
+    "phone": true,
+    "email": true,
+    "google": true
+  }
+}

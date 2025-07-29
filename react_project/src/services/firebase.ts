@@ -12,15 +12,7 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-// 設定値をデバッグ出力
-console.log('Firebase Config Debug:', {
-  apiKey: firebaseConfig.apiKey ? 'Set' : 'Missing',
-  authDomain: firebaseConfig.authDomain || 'Missing',
-  projectId: firebaseConfig.projectId || 'Missing',
-  storageBucket: firebaseConfig.storageBucket || 'Missing',
-  messagingSenderId: firebaseConfig.messagingSenderId || 'Missing',
-  appId: firebaseConfig.appId || 'Missing',
-});
+// Firebase設定の確認
 
 // Firebaseアプリを初期化
 let app;
@@ -47,11 +39,7 @@ try {
     const currentHost = window.location.hostname;
     const currentOrigin = window.location.origin;
     
-    console.log('Firebase Auth configured with reCAPTCHA v2', {
-      hostname: currentHost,
-      origin: currentOrigin,
-      authDomain: firebaseConfig.authDomain
-    });
+    // Firebase Auth configured with reCAPTCHA v2
     
     // 認証ドメインの設定を確認
     if (firebaseConfig.authDomain && !firebaseConfig.authDomain.includes(currentHost)) {
@@ -62,7 +50,7 @@ try {
     }
   }
   
-  console.log('Firebase initialized successfully');
+  // Firebase initialized successfully
 } catch (error) {
   console.error('Firebase initialization error:', error);
   // エラーが発生した場合は空のモックオブジェクトを作成

@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+import os
+import django
+import sys
+
+# Djangoプロジェクトのパスを追加
+sys.path.append('/app')
+
+# Django設定
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_project.settings')
+django.setup()
+
+from api.services.suzuri_api_service import SuzuriAPIService
+
+def test_real_suzuri_car_creation():
+    """実際のSUZURI APIで車の画像からグッズを作成する"""
+    print("🚗 実際のSUZURI API で車のグッズ作成テスト開始")
+    print("=" * 60)
+    
+    # APIサービスを初期化
+    try:
+        suzuri_service = SuzuriAPIService()
+        print("✅ SUZURI API サービス初期化完了")
+        print(f"🔑 API Token: {suzuri_service.api_token[:10]}...{suzuri_service.api_token[-5:]}")
+        print(f"🌐 Base URL: {suzuri_service.base_url}")
+        print(f"🎭 Demo Mode: {suzuri_service.demo_mode}")
+        
+    except Exception as e:
+        print(f"❌ SUZURI API サービス初期化エラー: {str(e)}")
+        return False
+    
+    # テスト用の車画像URL（公開アクセス可能な画像）
+    test_image_url = "https://images.unsplash.com/photo-1503376780353-7e6692767b70?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
+    car_name = "テスト用車両"
+    description = "AISHA AI画像生成システムからのテスト作成です。"
+    item_type = "heavyweight-t-shirt"
+    
+    print(f"\n🛠️ グッズ作成テスト:")
+    print(f"  📸 Image URL: {test_image_url}")
+    print(f"  🚗 Car Name: {car_name}")
+    print(f"  📝 Description: {description}")
+    print(f"  👕 Item Type: {item_type}")
+    
+    try:
+        print("\n⏳ SUZURI API でグッズ作成中...")
+        result = suzuri_service.create_car_merchandise(
+            image_url=test_image_url,
+            car_name=car_name,
+            description=description,
+            item_type=item_type
+        )
+        
+        print(f"\n📋 SUZURI API 応答:")
+        print(f"  Success: {result.get('success')}")
+        
+        if result.get('success'):
+            print(f"✅ グッズ作成成功！")
+            
+            # 商品情報を表示
+            product = result.get('product', {})
+            print(f"\n📦 作成された商品:")
+            print(f"  🆔 Product ID: {product.get('id')}")
+            print(f"  📝 Title: {product.get('title')}")

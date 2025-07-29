@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_AISHA_API_BASE || 'http://localhost:7999/api';
+import { AISHA_API_BASE } from '@/constants';
 
 export interface GoodsManagementItem {
   id: number;
@@ -61,8 +61,8 @@ export interface SyncSuzuriResponse {
 export const getGoodsManagementList = async (queryParams?: string): Promise<GoodsManagementItem[]> => {
   try {
     const url = queryParams 
-      ? `${API_BASE_URL}/admin/goods/?${queryParams}`
-      : `${API_BASE_URL}/admin/goods/`;
+      ? `${AISHA_API_BASE}/admin/goods/?${queryParams}`
+      : `${AISHA_API_BASE}/admin/goods/`;
       
     const response = await fetch(url, {
       method: 'GET',
@@ -92,7 +92,7 @@ export const getGoodsManagementList = async (queryParams?: string): Promise<Good
 // グッズ管理詳細を取得
 export const getGoodsManagementDetail = async (goodsId: number): Promise<GoodsManagementItem> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/admin/goods/${goodsId}/`, {
+    const response = await fetch(`${AISHA_API_BASE}/admin/goods/${goodsId}/`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -123,7 +123,7 @@ export const updateGoodsManagement = async (
   data: GoodsManagementUpdateData
 ): Promise<GoodsManagementItem> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/admin/goods/${goodsId}/update/`, {
+    const response = await fetch(`${AISHA_API_BASE}/admin/goods/${goodsId}/update/`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -152,7 +152,7 @@ export const updateGoodsManagement = async (
 // SUZURIアイテムを同期
 export const syncSuzuriItems = async (): Promise<SyncSuzuriResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/admin/goods/sync-suzuri/`, {
+    const response = await fetch(`${AISHA_API_BASE}/admin/goods/sync-suzuri/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -179,7 +179,7 @@ export const syncSuzuriItems = async (): Promise<SyncSuzuriResponse> => {
 
 export const getPublicGoodsList = async (): Promise<GoodsManagementItem[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/goods/public/`, {
+    const response = await fetch(`${AISHA_API_BASE}/goods/public/`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

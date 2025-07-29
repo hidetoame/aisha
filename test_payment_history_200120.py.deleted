@@ -1,0 +1,115 @@
+#!/usr/bin/env python3
+"""
+ユーザーID 200120 用の決済履歴テストデータ作成スクリプト
+"""
+
+import requests
+import json
+
+def create_payment_history_for_user():
+    """ユーザーID 200120 用の決済履歴を作成"""
+    api_url = "http://localhost:7999/api/charges/"
+    
+    # ユーザーID 200120 用の決済履歴データ
+    test_payments = [
+        {
+            "user_id": "200120",
+            "charge_amount": 500.00,
+            "credit_amount": 500
+        },
+        {
+            "user_id": "200120", 
+            "charge_amount": 1000.00,
+            "credit_amount": 1100
+        },
+        {
+            "user_id": "200120",
+            "charge_amount": 500.00,
+            "credit_amount": 500
+        },
+        {
+            "user_id": "200120",
+            "charge_amount": 2000.00,
+            "credit_amount": 2200
+        }
+    ]
+    
+    print("ユーザーID 200120 用決済履歴作成開始...")
+    print(f"URL: {api_url}")
+    
+    created_charges = []
+    
+    for i, payment_data in enumerate(test_payments):
+        print(f"\n{i+1}. 決済履歴作成中...")
+        print(f"データ: {json.dumps(payment_data, indent=2)}")
+        
+        try:
+            response = requests.post(
+                api_url,
+                json=payment_data,
+                headers={'Content-Type': 'application/json'},
+                timeout=30
+            )
+            
+            print(f"レスポンス ステータス: {response.status_code}")
+            
+            if response.status_code == 201:
+                result = response.json()
+                print(f"成功: 決済ID {result.get('charge_id')} 作成")
+                created_charges.append(result)
+            else:
+                print(f"エラー: {response.text}")
+                
+        except Exception as e:
+            print(f"例外発生: {e}")
+    
+    return created_charges
+
+def test_payment_history_api():
+    """ユーザーID 200120 の決済履歴取得APIのテスト"""
+    user_id = "200120"
+    api_url = f"http://localhost:7999/api/users/{user_id}/charge-history/"
+    
+    print(f"\nユーザーID {user_id} の決済履歴取得APIテスト開始...")
+    print(f"URL: {api_url}")
+    
+    try:
+        response = requests.get(api_url, timeout=10)
+        
+        print(f"\nレスポンス:")
+        print(f"ステータス: {response.status_code}")
+        
+        if response.status_code == 200:
+            result = response.json()
+            print(f"成功: {json.dumps(result, indent=2, ensure_ascii=False)}")
+            
+            # 履歴件数をチェック
+            count = result.get('count', 0)
+            results = result.get('results', [])
+            print(f"✅ 取得件数: {len(results)} / 全体: {count} 件")
+            
+            # 各履歴の内容をチェック
+            for idx, history in enumerate(results):
+                print(f"履歴 {idx+1}:")
+                print(f"  - ID: {history.get('id')}")
+                print(f"  - 金額: ¥{history.get('charge_amount')}")
+                print(f"  - クレジット: {history.get('credit_amount')}")
+                print(f"  - ステータス: {history.get('payment_status')}")
+                print(f"  - 作成日時: {history.get('created_at')}")
+        else:
+            print(f"エラー: {response.text}")
+            
+    except Exception as e:
+        print(f"例外発生: {e}")
+
+if __name__ == "__main__":
+    # ユーザーID 200120 用決済履歴を作成
+    charges = create_payment_history_for_user()
+    
+    # 少し待ってから履歴を取得
+    print("\n3秒待機...")
+    import time
+    time.sleep(3)
+    
+    # 決済履歴取得APIをテスト
+    test_payment_history_api()

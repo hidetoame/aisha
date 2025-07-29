@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+"""
+実際のGCS上の画像URLでテストを行う
+"""
+
+import requests
+import json
+
+def test_image_upload_with_gcs_url():
+    """GCS上の画像URLでシェアアップロードAPIのテスト"""
+    api_url = "http://localhost:7999/api/images/upload/"
+    
+    # 既にGCS上にある画像URLでテスト
+    test_data = {
+        "image_url": "https://storage.googleapis.com/aisha-car-images/generated-images/test.jpg",
+        "user_id": "test_user"
+    }
+    
+    print("GCS画像URLでアップロードAPIテスト開始...")
+    print(f"URL: {api_url}")
+    print(f"データ: {json.dumps(test_data, indent=2)}")
+    
+    try:
+        response = requests.post(
+            api_url,
+            json=test_data,
+            headers={'Content-Type': 'application/json'},
+            timeout=30
+        )
+        
+        print(f"\nレスポンス:")
+        print(f"ステータス: {response.status_code}")
+        
+        if response.status_code == 200:
+            result = response.json()
+            print(f"成功: {json.dumps(result, indent=2)}")
+        else:
+            print(f"エラー: {response.text}")
+            
+    except Exception as e:
+        print(f"例外発生: {e}")
+
+def test_image_upload_with_localhost():
+    """ローカルホスト画像URLでシェアアップロードAPIのテスト"""
+    api_url = "http://localhost:7999/api/images/upload/"
+    
+    # ローカルホスト画像URLでテスト
+    test_data = {
+        "image_url": "http://localhost:5173/some-image.jpg",
+        "user_id": "test_user"
+    }
+    
+    print("\nローカルホスト画像URLでアップロードAPIテスト開始...")
+    print(f"URL: {api_url}")
+    print(f"データ: {json.dumps(test_data, indent=2)}")
+    
+    try:
+        response = requests.post(
+            api_url,
+            json=test_data,
+            headers={'Content-Type': 'application/json'},
+            timeout=30
+        )
+        
+        print(f"\nレスポンス:")
+        print(f"ステータス: {response.status_code}")
+        
+        if response.status_code == 200:
+            result = response.json()
+            print(f"成功: {json.dumps(result, indent=2)}")
+        else:
+            print(f"エラー: {response.text}")
+            
+    except Exception as e:
+        print(f"例外発生: {e}")
+
+if __name__ == "__main__":
+    test_image_upload_with_gcs_url()
+    test_image_upload_with_localhost()

@@ -59,9 +59,7 @@ export const resizeImage = (
             lastModified: Date.now(),
           });
 
-          console.log(
-            `🖼️ 画像リサイズ完了: ${width}x${height} → ${newWidth}x${newHeight} (${Math.round(file.size / 1024)}KB → ${Math.round(resizedFile.size / 1024)}KB)`
-          );
+          // 画像リサイズ完了
 
           resolve(resizedFile);
         },

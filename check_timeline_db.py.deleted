@@ -1,0 +1,34 @@
+import os
+import django
+
+# Django設定を読み込み
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_project.settings')
+django.setup()
+
+from api.models.library import Library
+
+print('=== Timeline Database Contents ===')
+print('Total records:', Library.objects.count())
+print()
+
+print('Latest 5 records:')
+for lib in Library.objects.all().order_by('-created_at')[:5]:
+    print(f'ID: {lib.id}')
+    print(f'Display Prompt: {lib.display_prompt[:50]}...' if len(lib.display_prompt) > 50 else lib.display_prompt)
+    print(f'is_saved_to_library: {lib.is_saved_to_library}')
+    print(f'Menu Name: {lib.menu_name}')
+    print(f'Image URL: {lib.image_url}')
+    print(f'Created: {lib.created_at}')
+    print('---')
+
+print('\nSaved to Library (is_saved_to_library=True):')
+saved_count = Library.objects.filter(is_saved_to_library=True).count()
+print(f'Count: {saved_count}')
+for lib in Library.objects.filter(is_saved_to_library=True):
+    print(f'  - {lib.display_prompt[:30]}... (Created: {lib.created_at})')
+
+print('\nNot saved to Library (is_saved_to_library=False):')
+not_saved_count = Library.objects.filter(is_saved_to_library=False).count()
+print(f'Count: {not_saved_count}')
+for lib in Library.objects.filter(is_saved_to_library=False):
+    print(f'  - {lib.display_prompt[:30]}... (Created: {lib.created_at})') 

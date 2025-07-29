@@ -1,0 +1,30 @@
+import os
+import django
+
+# Django設定を読み込み
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_project.settings')
+django.setup()
+
+from api.models.library import Library
+
+print('=== Frontend ID Check ===')
+print('DB Records and their frontend_id values:')
+print()
+
+for lib in Library.objects.all().order_by('-created_at'):
+    print(f'UUID: {str(lib.id)[:8]}...')
+    print(f'frontend_id: {lib.frontend_id}')
+    print(f'user_id: {lib.user_id}')
+    print(f'is_saved_to_library: {lib.is_saved_to_library}')
+    print('---')
+
+print()
+print('Looking for frontend_id="1752415846565":')
+target_id = "1752415846565"
+try:
+    found = Library.objects.get(frontend_id=target_id)
+    print(f'✅ Found: {found.id}')
+except Library.DoesNotExist:
+    print('❌ Not found in database')
+except Library.MultipleObjectsReturned:
+    print('⚠️ Multiple objects found') 

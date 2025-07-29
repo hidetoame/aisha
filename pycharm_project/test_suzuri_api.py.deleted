@@ -1,0 +1,84 @@
+#!/usr/bin/env python
+import os
+import django
+import sys
+
+# Djangoプロジェクトのパスを追加
+sys.path.append('/app')
+
+# Django設定
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_project.settings')
+django.setup()
+
+from api.services.suzuri_api_service import SuzuriAPIService
+
+def test_suzuri_api():
+    """SUZURI API の動作テスト"""
+    print("🧪 SUZURI API 動作テスト開始")
+    print("=" * 50)
+    
+    # APIサービスを初期化
+    try:
+        suzuri_service = SuzuriAPIService()
+        print("✅ SUZURI API サービス初期化完了")
+        
+        # APIトークンの確認
+        if not suzuri_service.api_token or suzuri_service.api_token == 'your_actual_suzuri_api_token_here':
+            print("❌ SUZURI_API_TOKEN が設定されていません")
+            return False
+        
+        print(f"🔑 API Token: {suzuri_service.api_token[:10]}...{suzuri_service.api_token[-5:]}")
+        
+    except Exception as e:
+        print(f"❌ SUZURI API サービス初期化エラー: {str(e)}")
+        return False
+    
+    # アイテム一覧の取得テスト
+    print("\n📦 利用可能なアイテム一覧を取得中...")
+    try:
+        items = suzuri_service.get_items()
+        
+        if items is None:
+            print("❌ アイテム一覧の取得に失敗しました")
+            return False
+        
+        if len(items) == 0:
+            print("⚠️ アイテム一覧が空です")
+            return False
+            
+        print(f"✅ {len(items)}個のアイテムを取得しました")
+        
+        # 最初の5つのアイテムを表示
+        print("\n📋 取得したアイテム（最初の5つ）:")
+        for i, item in enumerate(items[:5]):
+            print(f"  {i+1}. ID: {item.get('id')}, Name: {item.get('name')}")
+        
+        # Tシャツアイテムを探す
+        tshirt_item = None
+        for item in items:
+            if 'tshirt' in item.get('name', '').lower() or 'シャツ' in item.get('name', '') or 't-shirt' in item.get('name', '').lower():
+                tshirt_item = item
+                break
+        
+        if tshirt_item:
+            print(f"\n👕 Tシャツアイテム発見: {tshirt_item.get('name')} (ID: {tshirt_item.get('id')})")
+        else:
+            print("\n⚠️ Tシャツアイテムが見つかりませんでした")
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ アイテム一覧取得エラー: {str(e)}")
+        return False
+
+if __name__ == "__main__":
+    success = test_suzuri_api()
+    
+    if success:
+        print("\n🎉 SUZURI API テスト成功！")
+        print("✨ AISHAでSUZURIグッズ作成機能が利用可能です")
+    else:
+        print("\n💥 SUZURI API テスト失敗")
+        print("🔧 設定やAPIトークンを確認してください")
+    
+    print("=" * 50)

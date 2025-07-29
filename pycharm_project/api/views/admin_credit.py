@@ -530,24 +530,26 @@ def get_generation_history_stats(request):
             total_goods=Count('id', filter=Q(goods_creation_count__gt=0))
         )['total_goods'] or 0
         
-        # カテゴリ別統計
+        # カテゴリ別統計（カテゴリIDベースで集計）
         category_stats = {}
         
-        # イラスト（menu_nameに「イラスト」が含まれるもの）
+        # イラスト作成（category.id = 3）
         illustration_count = Library.objects.filter(
-            Q(menu_name__icontains='イラスト')
+            used_form_data__category__id=3
         ).count()
         category_stats['illustration'] = illustration_count
         
-        # シーン変更（menu_nameに「シーン」が含まれるもの）
+        # シーン変更（category.id = 1）
         scene_change_count = Library.objects.filter(
-            Q(menu_name__icontains='シーン')
+            used_form_data__category__id=1
         ).count()
         category_stats['scene_change'] = scene_change_count
         
-        # カスタマイズ（その他）
-        customization_count = total_generations - illustration_count - scene_change_count
-        category_stats['customization'] = max(0, customization_count)
+        # カスタマイズ（category.id = 2）
+        customization_count = Library.objects.filter(
+            used_form_data__category__id=2
+        ).count()
+        category_stats['customization'] = customization_count
         
         return Response({
             'success': True,
@@ -597,21 +599,22 @@ def get_generation_history_list(request):
                 Q(user_id__icontains=search)
             )
         
-        # カテゴリフィルター
+        # カテゴリフィルター（カテゴリIDベース）
         if category_filter:
             if category_filter == 'illustration':
+                # イラスト作成（category.id = 3）
                 queryset = queryset.filter(
-                    Q(menu_name__icontains='イラスト')
+                    used_form_data__category__id=3
                 )
             elif category_filter == 'scene_change':
+                # シーン変更（category.id = 1）
                 queryset = queryset.filter(
-                    Q(menu_name__icontains='シーン')
+                    used_form_data__category__id=1
                 )
             elif category_filter == 'customization':
-                # イラストとシーン以外
-                queryset = queryset.exclude(
-                    Q(menu_name__icontains='イラスト') |
-                    Q(menu_name__icontains='シーン')
+                # カスタマイズ（category.id = 2）
+                queryset = queryset.filter(
+                    used_form_data__category__id=2
                 )
         
         # ユーザーフィルター
@@ -635,12 +638,24 @@ def get_generation_history_list(request):
         # レスポンスデータ構築
         history_list = []
         for item in queryset:
-            # カテゴリ判定
-            category = 'customization'
-            if 'イラスト' in (item.menu_name or ''):
-                category = 'illustration'
-            elif 'シーン' in (item.menu_name or ''):
-                category = 'scene_change'
+            # カテゴリ判定（カテゴリIDベース）
+            category = 'customization'  # デフォルト
+            try:
+                if item.used_form_data:
+                    import json
+                    form_data = json.loads(item.used_form_data) if isinstance(item.used_form_data, str) else item.used_form_data
+                    if isinstance(form_data, dict) and 'category' in form_data:
+                        category_data = form_data['category']
+                        if isinstance(category_data, dict):
+                            category_id = category_data.get('id')
+                            if category_id == 3:
+                                category = 'illustration'
+                            elif category_id == 1:
+                                category = 'scene_change'
+                            elif category_id == 2:
+                                category = 'customization'
+            except:
+                pass
             
             history_list.append({
                 'id': str(item.id),

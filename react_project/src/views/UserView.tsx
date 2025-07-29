@@ -378,8 +378,6 @@ const UserView: React.FC<UserViewProps> = ({
 
   // グッズ作成成功時のコールバック関数
   const handleGoodsUpdate = (imageId: string) => {
-    console.log('🔄 UserView - handleGoodsUpdate 呼び出し - imageId:', imageId);
-    
     // グッズ作成成功時にカウンタを+1
     setGeneratedImages(prevImages => {
       const updated = prevImages.map(prevImage => 
@@ -387,11 +385,6 @@ const UserView: React.FC<UserViewProps> = ({
           ? { ...prevImage, goods_creation_count: (prevImage.goods_creation_count || 0) + 1 }
           : prevImage
       );
-      
-      const updatedImage = updated.find(img => img.id === imageId);
-      if (updatedImage) {
-        console.log('✅ UserView - カウンタ更新完了 - 新しいカウント:', updatedImage.goods_creation_count);
-      }
       
       return updated;
     });

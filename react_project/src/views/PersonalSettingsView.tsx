@@ -114,8 +114,6 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
     const fetchCarInfo = async () => {
       try {
         const carData = await getCarInfo(currentUser.id);
-        console.log('取得した愛車情報:', carData);
-        console.log('愛車数:', carData.length);
         setCarList(carData);
         
         // 最初の愛車を選択済みに設定
@@ -123,7 +121,6 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
           setSelectedCar(carData[0]);
         }
       } catch (error) {
-        console.error('愛車情報の取得に失敗しました:', error);
         showToast('error', '愛車情報の取得に失敗しました');
       }
     };
@@ -144,7 +141,6 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
           currentUser.id,
           selectedCar.car_id,
           (error) => {
-            console.error('CarSettings取得エラー:', error);
           }
         );
 
@@ -199,7 +195,6 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
           setSettings(getDefaultPersonalUserSettings());
         }
              } catch (error) {
-         console.error('CarSettings読み込みエラー:', error);
          showToast('error', '設定の読み込みに失敗しました');
        } finally {
          setIsLoading(false);
@@ -256,7 +251,6 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
     field: 'logoMarkImageUrl' | 'originalNumberImageUrl' | CarPhotoAngle,
     file: File | null,
   ) => {
-    console.log('🖼️ handleImageUpload called:', { section, field, file: file?.name || 'null' });
     
     if (file) {
       const reader = new FileReader();
@@ -373,40 +367,20 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
       }
 
       // 即座にサーバーから削除
-      console.log('🗑️ 画像削除条件チェック:', { 
-        currentCarSettings: !!currentCarSettings, 
-        selectedCar: !!selectedCar,
-        currentCarSettingsId: currentCarSettings?.id,
-        selectedCarId: selectedCar?.car_id 
-      });
       
       if (currentCarSettings && selectedCar) {
-        console.log('✅ 削除条件満たしているため、handleImmediateDeleteを呼び出します');
         handleImmediateDelete(field);
       } else {
-        console.log('❌ 削除条件を満たしていません - サーバー削除をスキップ');
       }
     }
   };
 
   const handleImmediateDelete = async (field: 'logoMarkImageUrl' | 'originalNumberImageUrl' | CarPhotoAngle) => {
-    console.log('🚀 handleImmediateDelete 開始:', { field });
     
     if (!selectedCar || !currentUser.id || !currentCarSettings) {
-      console.log('❌ handleImmediateDelete: 必要な条件が不足', {
-        selectedCar: !!selectedCar,
-        userId: !!currentUser.id,
-        currentCarSettings: !!currentCarSettings
-      });
       return;
     }
 
-    console.log('📋 削除対象の情報:', {
-      carSettingsId: currentCarSettings.id,
-      userId: currentUser.id,
-      carId: selectedCar.car_id,
-      field
-    });
 
     try {
       const updateData: Partial<CarSettingsCreateUpdateRequest> = {
@@ -436,25 +410,19 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
           break;
       }
 
-      console.log('📤 API削除リクエスト送信:', updateData);
       const response = await updateCarSettings(currentCarSettings.id, updateData);
-      console.log('📥 API削除レスポンス:', response);
       
       if (response) {
-        console.log('✅ サーバー削除成功 - CarSettingsを再読み込み');
         // サーバー削除成功 → CarSettingsを再読み込み
         const carSettingsData = await fetchCarSettings(currentUser.id, selectedCar.car_id);
-        console.log('🔄 再読み込み結果:', carSettingsData);
         if (carSettingsData.length > 0) {
           setCurrentCarSettings(carSettingsData[0]);
         }
         showToast('success', '画像を削除しました');
       } else {
-        console.log('❌ サーバー削除失敗');
         showToast('error', '画像の削除に失敗しました');
       }
     } catch (error) {
-      console.error('画像削除エラー:', error);
       showToast('error', '画像の削除に失敗しました');
     }
   };
@@ -476,7 +444,6 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
     
     try {
       const success = await deleteCarSettings(currentCarSettings.id, (error: unknown) => {
-        console.error('愛車設定削除エラー:', error);
       });
 
       if (success) {
@@ -492,7 +459,6 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
         showToast('error', '愛車設定の削除に失敗しました');
       }
     } catch (error) {
-      console.error('愛車設定削除処理エラー:', error);
       showToast('error', '愛車設定の削除に失敗しました');
     } finally {
       setIsLoading(false);
@@ -522,7 +488,6 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
        const result = await createOrUpdateCarSettings(
          carSettingsRequest,
          (error) => {
-           console.error('CarSettings保存エラー:', error);
          }
        );
 
@@ -538,7 +503,6 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
          showToast('error', '設定の保存に失敗しました');
        }
      } catch (error) {
-       console.error('CarSettings保存処理エラー:', error);
        showToast('error', '設定の保存に失敗しました');
      } finally {
        setIsLoading(false);
@@ -579,7 +543,6 @@ const PersonalSettingsView: React.FC<PersonalSettingsViewProps> = ({
     
     // ログ出力を制御（開発時のみ、かつ画像がある場合のみ）
     if (import.meta.env.DEV && imageUrl) {
-      console.log(`📷 getCarSettingsImageUrl(${angle}):`, imageUrl);
     }
     return imageUrl;
   };
