@@ -1,0 +1,16 @@
+# AISHA React Frontend - Cloud Run 環境変数設定
+# 作成日: 2025-07-30
+# 目的: Cloud Run デプロイ時の環境変数定義
+
+# React Frontend 用環境変数
+VITE_AISHA_API_BASE: "https://django-api-584412696241.europe-west1.run.app/api"
+VITE_MGDRIVE_API_BASE_URL: "https://md2.mygare.jp/api"
+VITE_AISHA_SHARE_BASE_URL: "https://aisha.mygarage.jp"
+NODE_ENV: "production"
+VITE_ENVIRONMENT: "production"
+
+# ポート設定
+PORT: "8080"
+
+# nginx 設定
+NGINX_PORT: "8080"

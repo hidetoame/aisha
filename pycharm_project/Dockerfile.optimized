@@ -1,0 +1,58 @@
+# AISHA専用 最適化Dockerfile
+# 過去の失敗を全て解決した確実版
+
+FROM python:3.11-slim
+
+# Python設定
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Cloud Run用ポート設定
+ENV PORT=8080
+
+# 作業ディレクトリ
+WORKDIR /app
+
+# PostgreSQL接続用システムパッケージ
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python依存関係のインストール
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Gunicorn明示的インストール（本番サーバー用）
+RUN pip install --no-cache-dir gunicorn
+
+# アプリケーションコードをコピー
+COPY . /app/
+
+# Cloud SQL Proxy用接続ファイル作成ディレクトリ
+RUN mkdir -p /cloudsql
+
+# ポート公開
+EXPOSE $PORT
+
+# 起動スクリプト作成（環境変数読み込み後に処理実行）
+RUN echo '#!/bin/bash\n\
+# 環境変数が読み込まれた後に静的ファイル収集\n\
+python manage.py collectstatic --noinput\n\
+# Gunicornで本番サーバー起動\n\
+exec gunicorn django_project.wsgi:application \\\n\
+    --bind 0.0.0.0:$PORT \\\n\
+    --workers 2 \\\n\
+    --threads 4 \\\n\
+    --timeout 120 \\\n\
+    --keep-alive 2 \\\n\
+    --max-requests 1000 \\\n\
+    --access-logfile - \\\n\
+    --error-logfile -' > /app/start.sh
+
+# 起動スクリプトに実行権限
+RUN chmod +x /app/start.sh
+
+# 起動コマンド
+CMD ["/app/start.sh"]

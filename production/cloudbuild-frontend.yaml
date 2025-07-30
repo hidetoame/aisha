@@ -1,0 +1,50 @@
+# AISHA React Frontend - Cloud Build 設定
+# 作成日: 2025-07-30
+# 目的: React Frontend の本番デプロイ
+
+steps:
+  # ステップ1: ソースコードを準備
+  - name: 'gcr.io/cloud-builders/git'
+    args: ['clone', '--depth', '1', '.', '/workspace/aisha-frontend']
+    dir: '/workspace'
+
+  # ステップ2: Node.js環境でビルド実行
+  - name: 'node:20-alpine'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        cd react_project
+        cp /workspace/production/.env.production.corrected .env.production
+        npm ci --production=false
+        npm run build
+        ls -la dist/
+    env:
+      - 'NODE_ENV=production'
+
+  # ステップ3: Cloud Run にデプロイ
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        cd react_project
+        gcloud run deploy aisha-frontend \
+          --source . \
+          --platform managed \
+          --region europe-west1 \
+          --allow-unauthenticated \
+          --port 8080 \
+          --memory 512Mi \
+          --cpu 1000m \
+          --max-instances 10 \
+          --timeout 300s
+
+# ビルド設定
+options:
+  machineType: 'E2_MEDIUM'
+  substitutionOption: 'ALLOW_LOOSE'
+  logging: CLOUD_LOGGING_ONLY
+
+# タイムアウト設定
+timeout: '1200s'

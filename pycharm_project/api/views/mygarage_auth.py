@@ -6,6 +6,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from django.db import transaction
 from django.utils import timezone
+from django.contrib.auth.models import User
 
 from ..models.user_profile import UserProfile
 from ..models.credit_charge import UserCredit
@@ -63,14 +64,21 @@ def register_mygarage_user(request):
         # トランザクションでデータベース操作
         with transaction.atomic():
             try:
-                # 1. user_profilesテーブルにデータ挿入（新規ユーザーのみ）
+                # 1. Django Userを作成（MyGarage用）
+                # usernameはMyGarageのfrontend_user_idを使用
+                django_user = User.objects.create_user(
+                    username=f"mygarage_{frontend_user_id}",
+                    email=f"{frontend_user_id}@mygarage.local",  # ダミーメール
+                    first_name=nickname
+                )
+                logger.info(f"Django User作成成功: mygarage_{frontend_user_id}")
+                
+                # 2. user_profilesテーブルにデータ挿入（新規ユーザーのみ）
                 user_profile = UserProfile.objects.create(
-                    user_id=mygarage_id,  # MyGarageの内部ID
+                    user=django_user,  # Django Userインスタンスを設定
                     frontend_user_id=frontend_user_id,
                     nickname=nickname,
                     is_admin=False,
-                    created_at=timezone.now(),
-                    updated_at=timezone.now(),
                     last_login_at=timezone.now()  # 新規ユーザーの初回ログイン日時
                 )
                 logger.info(f"user_profiles登録成功: {frontend_user_id}")

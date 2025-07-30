@@ -31,7 +31,7 @@ COPY . /app/
 ARG DJANGO_SECRET_KEY=dummy-secret-key-for-build
 ENV DJANGO_SECRET_KEY=$DJANGO_SECRET_KEY
 ENV DEBUG=False
-ENV DATABASE_URL=sqlite:///db.sqlite3
+#ENV DATABASE_URL=sqlite:///db.sqlite3
 RUN python manage.py collectstatic --noinput || true
 
 # Cloud Runが使用するポート
