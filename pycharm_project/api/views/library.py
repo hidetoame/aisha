@@ -261,10 +261,7 @@ class TimelineDetailView(RetrieveUpdateDestroyAPIView):
             timeline_entry.delete()
             logger.info(f"✅ タイムライン削除成功: frontend_id={frontend_id}, user_id={user_id}")
             
-            return Response(
-                {'message': 'タイムラインから削除しました'}, 
-                status=status.HTTP_204_NO_CONTENT
-            )
+            return Response(status=status.HTTP_204_NO_CONTENT)
             
         except Library.DoesNotExist:
             return Response(
