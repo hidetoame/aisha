@@ -10,11 +10,7 @@ import { DirectionSelectionModal } from './components/modals/DirectionSelectionM
 import PersonalSettingsView from './views/PersonalSettingsView'; // Added
 import { ToastNotification } from './components/ToastNotification'; // Added
 import { ShareView } from './views/ShareView';
-import FirebasePhoneLoginModal from './components/modals/FirebasePhoneLoginModal'; // Firebase SMS authentication
 import AwsSmsLoginModal from './components/modals/AwsSmsLoginModal'; // AWS SMS authentication
-import { auth } from './services/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import { signOutFirebase } from './services/api/firebase-auth';
 import { suzuriApiClient, SuzuriGoodsHistoryItem } from './services/suzuriApi';
 import {
   User,
@@ -127,63 +123,23 @@ const App: React.FC = () => {
   // 初期化時のトークン検証
   useEffect(() => {
     const validateTokens = async () => {
-      // Firebase認証状態の監視
-      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-        if (firebaseUser) {
-          try {
-            const idToken = await firebaseUser.getIdToken();
-            const response = await fetch('/api/firebase-auth/validate', {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${idToken}`,
-              },
-            });
-            
-            const data = await response.json();
-            if (data.success && data.user) {
-              const phoneUser: User = {
-                id: data.user.id,
-                name: data.user.nickname,
-                loginType: 'phone',
-                phoneNumber: data.user.phoneNumber,
-                isAdmin: data.user.isAdmin || false,
-              };
-              setUser(phoneUser);
-              setCurrentAppView('generator');
-              return;
-            }
-          } catch (error) {
-            // Firebase認証エラーの場合、サイレントにログアウト
-            setUser(null);
-            try {
-              await signOutFirebase();
-            } catch (signOutError) {
-              // サインアウトエラーも無視
-            }
-          }
-        } else {
-          // Firebase認証が無い場合、MyGarageトークンを確認
-          try {
-            const myGarageUser = await validateMyGarageToken();
-            if (myGarageUser) {
-              const aishaUser: User = {
-                id: myGarageUser.id,
-                name: myGarageUser.name,
-                isAdmin: myGarageUser.isAdmin,
-                personalSettings: myGarageUser.personalSettings,
-                loginType: 'mygarage',
-              };
-              setUser(aishaUser);
-              setCurrentAppView('generator');
-            }
-          } catch (error) {
-            // MyGarageトークンエラーも無視
-          }
+      // MyGarageトークンを確認
+      try {
+        const myGarageUser = await validateMyGarageToken();
+        if (myGarageUser) {
+          const aishaUser: User = {
+            id: myGarageUser.id,
+            name: myGarageUser.name,
+            isAdmin: myGarageUser.isAdmin,
+            personalSettings: myGarageUser.personalSettings,
+            loginType: 'mygarage',
+          };
+          setUser(aishaUser);
+          setCurrentAppView('generator');
         }
-      });
-
-      // クリーンアップ関数を返す
-      return () => unsubscribe();
+      } catch (error) {
+        // MyGarageトークンエラーも無視
+      }
     };
 
     validateTokens();
@@ -421,11 +377,8 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     try {
       // ログインタイプに応じてログアウト処理を変更
-      if (user?.loginType === 'phone') {
-        await signOutFirebase();
-      } else {
-        await myGarageLogout();
-      }
+      // MyGarageログアウトのみ実行
+      await myGarageLogout();
       setUser(null);
       setIsAdminView(false);
       setCurrentAppView('timeline');
@@ -998,13 +951,6 @@ const App: React.FC = () => {
               </div>
               
               <button
-                onClick={handlePhoneLogin}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-150 ease-in-out mb-3"
-              >
-                電話番号でログイン (Firebase)
-              </button>
-              
-              <button
                 onClick={handleAwsSmsLogin}
                 className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-lg transition duration-150 ease-in-out mb-3"
               >
@@ -1075,14 +1021,6 @@ const App: React.FC = () => {
               onClose={() => setShowPersonalSettingsModal(false)}
             />
           )}
-        
-        {/* Firebase電話番号ログインモーダル */}
-        <FirebasePhoneLoginModal
-          isOpen={showPhoneLoginModal}
-          onClose={() => setShowPhoneLoginModal(false)}
-          onLoginSuccess={handlePhoneLoginSuccess}
-          onError={handlePhoneLoginError}
-        />
         
         {/* AWS SMS認証ログインモーダル */}
         <AwsSmsLoginModal

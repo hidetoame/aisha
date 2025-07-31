@@ -18,5 +18,4 @@ sqlparse==0.5.3
 urllib3==2.4.0
 whitenoise==6.9.0
 stripe==11.5.0
-firebase-admin==6.5.0
 boto3==1.39.8

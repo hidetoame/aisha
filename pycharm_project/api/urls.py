@@ -49,11 +49,6 @@ from api.views.phone_login import (
     validate_phone_token,
     check_phone_user_exists
 )
-from api.views.firebase_auth import (
-    check_user_exists,
-    get_or_create_user_info,
-    validate_firebase_user
-)
 from api.views.unified_credit_views import (
     get_user_credits,
     get_credit_history,
@@ -163,11 +158,6 @@ urlpatterns += [
     path('phone-login/register/', register_phone_user, name='phone-login-register'),
     path('phone-login/validate/', validate_phone_token, name='phone-login-validate'),
     path('phone-login/check-exists/', check_phone_user_exists, name='phone-login-check-exists'),
-    
-    # Firebase認証関連
-    path('firebase-auth/check-user/', check_user_exists, name='firebase-check-user'),
-    path('firebase-auth/user-info/', get_or_create_user_info, name='firebase-user-info'),
-    path('firebase-auth/validate/', validate_firebase_user, name='firebase-validate'),
     
     # AWS SMS認証関連
     path('aws-sms-auth/send/', AWSSMSAuthView.as_view(), name='aws-sms-send'),

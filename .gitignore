@@ -172,6 +172,8 @@ service-account.json
 gcs-credentials.json
 **/gcs-credentials.json
 **/service-account.json
+aisha-462412-*.json
+*-service-account-key.json
 
 # =====================================
 # テストファイル
