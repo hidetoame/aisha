@@ -443,24 +443,27 @@ export const MenuExecutionPanel: React.FC<MenuExecutionPanelProps> = ({
                   ))}
                 </select>
               </div>
-              <div className="mt-3">
-                <label
-                  htmlFor="additionalPromptForOthers"
-                  className="block text-xs lg:text-sm font-medium text-gray-300 mb-1"
-                >
-                  追加プロンプト (全体に効果、任意)
-                </label>
-                <input
-                  type="text"
-                  id="additionalPromptForOthers"
-                  value={formData.additionalPromptForOthers}
-                  onChange={(e) =>
-                    handleAdditionalPromptForOthers(e.target.value)
-                  }
-                  placeholder="例: 超リアル、映画風ライト、魚眼レンズ"
-                  className="w-full p-2 text-xs lg:text-sm bg-gray-700 border border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-gray-200 placeholder-gray-500"
-                />
-              </div>
+              {/* 管理者のみ追加プロンプトフォームを表示 */}
+              {currentUser?.isAdmin && (
+                <div className="mt-3">
+                  <label
+                    htmlFor="additionalPromptForOthers"
+                    className="block text-xs lg:text-sm font-medium text-gray-300 mb-1"
+                  >
+                    追加プロンプト (全体に効果、任意)
+                  </label>
+                  <input
+                    type="text"
+                    id="additionalPromptForOthers"
+                    value={formData.additionalPromptForOthers}
+                    onChange={(e) =>
+                      handleAdditionalPromptForOthers(e.target.value)
+                    }
+                    placeholder="例: 超リアル、映画風ライト、魚眼レンズ"
+                    className="w-full p-2 text-xs lg:text-sm bg-gray-700 border border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-gray-200 placeholder-gray-500"
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}

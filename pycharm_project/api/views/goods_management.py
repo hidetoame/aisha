@@ -155,6 +155,7 @@ def sync_suzuri_items(request):
                 suzuri_item_id=item['id'],
                 defaults={
                     'item_name': item.get('name', ''),
+                    'item_type': item.get('name', ''),  # item_nameと同じ値を設定
                     'display_name': item.get('humanizeName', ''),
                     'display_order': item.get('displayOrder', 0),
                     'icon_url': icon_url,
@@ -172,6 +173,7 @@ def sync_suzuri_items(request):
             else:
                 # 既存レコードの場合は基本情報を更新（公開フラグは保持）
                 goods.item_name = item.get('name', '')
+                goods.item_type = item.get('name', '')  # item_nameと同じ値を設定
                 goods.display_name = item.get('humanizeName', '')
                 goods.display_order = item.get('displayOrder', 0)
                 goods.icon_url = icon_url
