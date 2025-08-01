@@ -363,7 +363,7 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60] p-4 pb-20 backdrop-blur-sm">
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
       <div 
         className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden relative transform transition-all duration-300 scale-100"
         onClick={(e) => e.stopPropagation()}
@@ -453,7 +453,7 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
         </div>
 
         {/* コンテンツエリア */}
-        <div className="p-6 max-h-[65vh] overflow-y-auto">
+        <div className="p-6 max-h-[60vh] overflow-y-auto">
           {step === 'select' && (
             <div className="space-y-8">
               {/* シンプルな画像プレビュー */}
@@ -640,6 +640,27 @@ export const SuzuriMerchandiseModal: React.FC<SuzuriMerchandiseModalProps> = ({
                     </p>
                   </div>
                 </div>
+              </div>
+
+              {/* スマホサイズの時のみ表示される作成ボタン */}
+              <div className="block sm:hidden">
+                <button
+                  onClick={handleCreate}
+                  disabled={!selectedItem || isCreating}
+                  className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg flex items-center justify-center space-x-2"
+                >
+                  {isCreating ? (
+                    <>
+                      <ArrowPathIcon className="w-5 h-5 animate-spin" />
+                      <span>作成中...</span>
+                    </>
+                  ) : (
+                    <>
+                      <SparklesIcon className="w-5 h-5" />
+                      <span>グッズを作成</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           )}
