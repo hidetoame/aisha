@@ -1,7 +1,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import UserView from './views/UserView';
 import AdminView from './views/AdminView';
 import PublicTimelineView from './views/PublicTimelineView';
+import PublicShareView from './views/PublicShareView';
 import { Header } from './components/Header';
 import { GenerationHistoryModal } from './components/modals/GenerationHistoryModal';
 import { GoodsCreationHistoryModal } from './components/modals/GoodsCreationHistoryModal';
@@ -778,6 +780,38 @@ const App: React.FC = () => {
     [user, showToast],
   );
 
+  const handleCommentUpdate = useCallback(
+    (imageId: string, newCommentCount: number) => {
+      // ライブラリ画像のコメント数を更新
+      setGenerationHistory(prevImages => 
+        prevImages.map(prevImage => 
+          prevImage.id === imageId 
+            ? { ...prevImage, commentCount: newCommentCount, comment_count: newCommentCount }
+            : prevImage
+        )
+      );
+      
+      // セッション画像にも反映
+      setGeneratedImages(prevImages => 
+        prevImages.map(prevImage => 
+          prevImage.id === imageId 
+            ? { ...prevImage, commentCount: newCommentCount, comment_count: newCommentCount }
+            : prevImage
+        )
+      );
+      
+      // 公開画像リストにも反映
+      setAllPublicImages(prevImages => 
+        prevImages.map(prevImage => 
+          prevImage.id === imageId 
+            ? { ...prevImage, commentCount: newCommentCount, comment_count: newCommentCount }
+            : prevImage
+        )
+      );
+    },
+    [],
+  );
+
   const toggleAppViewMode = useCallback(() => {
     setCurrentAppView((prev) =>
       prev === 'generator' ? 'timeline' : 'generator',
@@ -987,6 +1021,7 @@ const App: React.FC = () => {
           onToggleLibraryImagePublicStatus={
             handleToggleLibraryImagePublicStatus
           }
+          onCommentUpdate={handleCommentUpdate}
           currentUser={user}
         />
         <GoodsCreationHistoryModal

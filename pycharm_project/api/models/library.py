@@ -71,8 +71,11 @@ class Library(models.Model):
         ]
     
     def get_comment_count(self):
-        """コメント数を取得"""
-        return self.comments.count()
+        """コメント数を取得（ログインメンバー + ゲスト）"""
+        from .public_comment import PublicComment
+        auth_comments = self.comments.count()
+        guest_comments = PublicComment.objects.filter(frontend_id=self.frontend_id).count()
+        return auth_comments + guest_comments
     
     def get_like_count(self):
         """いいね数を取得"""

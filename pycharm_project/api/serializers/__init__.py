@@ -7,3 +7,4 @@ from .menu import MenuSerializer
 from .menu_execution.request import MenuExecutionRequestSerializer
 from .menu_execution.response import MenuExecutionResponseSerializer
 from .goods_management import GoodsManagementSerializer, GoodsManagementListSerializer, GoodsManagementUpdateSerializer
+from .public_comment import PublicCommentSerializer

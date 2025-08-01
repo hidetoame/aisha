@@ -1,5 +1,42 @@
 from rest_framework import serializers
-from ..models import Comment, Like, Library
+from ..models import Comment, Like, Library, PublicComment
+
+
+class UnifiedCommentSerializer(serializers.Serializer):
+    """統合コメントシリアライザー（認証ユーザー + ゲストユーザー）"""
+    id = serializers.UUIDField(read_only=True)
+    user_id = serializers.CharField(required=False, allow_blank=True)
+    user_name = serializers.CharField()
+    content = serializers.CharField()
+    created_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
+    is_guest = serializers.BooleanField(read_only=True)
+    
+    def to_representation(self, instance):
+        """
+        CommentモデルとPublicCommentモデルの両方を扱えるようにする
+        """
+        if isinstance(instance, Comment):
+            return {
+                'id': str(instance.id),
+                'user_id': instance.user_id,
+                'user_name': instance.user_name,
+                'content': instance.content,
+                'created_at': instance.created_at,
+                'updated_at': instance.updated_at,
+                'is_guest': False
+            }
+        elif isinstance(instance, PublicComment):
+            return {
+                'id': str(instance.id),
+                'user_id': None,
+                'user_name': instance.author_name,
+                'content': instance.content,
+                'created_at': instance.created_at,
+                'updated_at': instance.created_at,  # PublicCommentにはupdated_atがない
+                'is_guest': True
+            }
+        return super().to_representation(instance)
 
 
 class CommentSerializer(serializers.ModelSerializer):

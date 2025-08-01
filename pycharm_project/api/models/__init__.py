@@ -12,5 +12,6 @@ from .phone_user import PhoneUser, PhoneVerificationSession, PhoneLoginToken
 from .suzuri_merchandise import SuzuriMerchandise
 from .goods_management import GoodsManagement
 from .payment_log import PaymentLog
+from .public_comment import PublicComment
 
-__all__ = ['Category', 'Menu', 'PromptVariable', 'CarSettings', 'CreditCharge', 'UserCredit', 'CreditTransaction', 'ChargeOption', 'Library', 'Comment', 'Like', 'UserProfile', 'PhoneUser', 'PhoneVerificationSession', 'PhoneLoginToken', 'SuzuriMerchandise', 'GoodsManagement', 'PaymentLog']
+__all__ = ['Category', 'Menu', 'PromptVariable', 'CarSettings', 'CreditCharge', 'UserCredit', 'CreditTransaction', 'ChargeOption', 'Library', 'Comment', 'Like', 'UserProfile', 'PhoneUser', 'PhoneVerificationSession', 'PhoneLoginToken', 'SuzuriMerchandise', 'GoodsManagement', 'PaymentLog', 'PublicComment']

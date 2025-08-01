@@ -6,7 +6,7 @@ import {
   SuzuriItem,
 } from './types';
 
-export const APP_NAME = 'マイガレージ - AISHA';
+export const APP_NAME = 'AISHA by MyGarage';
 export const GEMINI_IMAGE_MODEL = 'imagen-3.0-generate-002';
 export const GEMINI_TEXT_MODEL = 'gemini-2.5-flash-preview-04-17';
 

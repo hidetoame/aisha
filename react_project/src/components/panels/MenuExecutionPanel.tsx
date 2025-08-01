@@ -84,7 +84,7 @@ export const MenuExecutionPanel: React.FC<MenuExecutionPanelProps> = ({
         aspectRatio: '',
       }));
     }
-  }, [formData.inputType, formData.aspectRatio]); // inputTypeとaspectRatioの変更を監視
+  }, [formData.inputType]); // inputTypeの変更のみ監視
 
   // 現在のユーザーがphone_usersテーブルに存在するかのチェック
   useEffect(() => {

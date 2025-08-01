@@ -390,6 +390,17 @@ const UserView: React.FC<UserViewProps> = ({
     });
   };
 
+  // コメント更新時のコールバック関数
+  const handleCommentUpdate = (imageId: string, newCommentCount: number) => {
+    setGeneratedImages(prevImages => 
+      prevImages.map(prevImage => 
+        prevImage.id === imageId 
+          ? { ...prevImage, commentCount: newCommentCount, comment_count: newCommentCount }
+          : prevImage
+      )
+    );
+  };
+
   return (
     <div className="flex flex-col md:flex-row gap-6 md:gap-8 h-[calc(100vh-100px)] md:h-[calc(100vh-120px)]">
       <div className="md:w-1/3 lg:w-1/4 xl:w-2/5 h-full">
@@ -419,6 +430,7 @@ const UserView: React.FC<UserViewProps> = ({
             onCreateGoodsForImage={handleCreateGoodsForImage}
             onToggleImagePublicStatus={onToggleImagePublicStatus}
             onGoodsUpdate={handleGoodsUpdate}
+            onCommentUpdate={handleCommentUpdate}
           />
         </div>
       </div>

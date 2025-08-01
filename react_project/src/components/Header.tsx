@@ -85,7 +85,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* <img src="https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/6d/23/22/6d2322a2-79d0-4009-6663-b46e08de5283/AppIcon-1x_U007epad-0-9-0-0-0-0-85-220-0.png/1200x600wa.png" alt="AISHA ロゴ" className="h-10 w-10 rounded-md mr-3 object-contain" /> */}
           <h1 className="text-xl sm:text-2xl font-bold text-indigo-400 tracking-tight">
             {APP_NAME}
-            <span className="text-sm font-normal text-gray-400 ml-2">(β版)</span>
+            <span className="text-sm font-normal text-gray-400 ml-2">(β)</span>
           </h1>
         </div>
 

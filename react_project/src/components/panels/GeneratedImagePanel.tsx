@@ -21,9 +21,11 @@ import {
   CalendarDaysIcon,
   EyeSlashIcon,
   EyeIcon as ViewIcon,
+  ChatBubbleLeftIcon,
 } from '../icons/HeroIcons';
 import { ShareGeneratedImageModal } from '../modals/ShareGeneratedImageModal';
 import { SuzuriMerchandiseModal } from '../modals/SuzuriMerchandiseModal';
+import CommentModal from '../modals/CommentModal';
 import { useCredits } from '@/contexts/CreditsContext';
 import { suzuriApiClient } from '@/services/suzuriApi';
 
@@ -46,6 +48,7 @@ interface GeneratedImagePanelProps {
   ) => void;
   onTogglePublic: (imageId: string, isPublic: boolean) => void;
   onGoodsUpdate: (imageId: string) => void; // グッズ作成成功時のコールバック
+  onCommentUpdate?: (imageId: string, newCommentCount: number) => void; // コメント更新時のコールバック
 }
 
 export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
@@ -60,6 +63,7 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
   onCreateGoods,
   onTogglePublic,
   onGoodsUpdate,
+  onCommentUpdate,
 }) => {
   const credits = useCredits();
 
@@ -72,6 +76,7 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
   const [showImageModal, setShowImageModal] = useState(false);
   const [showSuzuriModal, setShowSuzuriModal] = useState(false);
   const [showGoodsModal, setShowGoodsModal] = useState(false);
+  const [showCommentModal, setShowCommentModal] = useState(false);
   const [merchandiseResult, setMerchandiseResult] = useState<any>(null);
   const [isCreatingMerchandise, setIsCreatingMerchandise] = useState(false);
 
@@ -149,6 +154,13 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
   };
 
   const openGoodsModal = () => {
+    // ログイン前は公開ページを開く
+    if (!currentUser) {
+      const shareUrl = `${window.location.origin}/share/${image.id}`;
+      window.open(shareUrl, '_blank');
+      return;
+    }
+    // ログイン後は通常通りモーダルを開く
     setShowSuzuriModal(true);
   };
 
@@ -302,6 +314,16 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
               )}
               {image.isPublic ? '公開中' : '非公開'}
             </button>
+            {image.isPublic && (
+              <button
+                onClick={() => setShowCommentModal(true)}
+                className="flex items-center px-2 py-1 rounded-md text-xs transition-colors duration-150 bg-gray-600 hover:bg-gray-500 text-gray-300"
+                title="コメントを見る"
+              >
+                <ChatBubbleLeftIcon className="w-4 h-4 mr-1" />
+                {(image.commentCount || image.comment_count) || 0}
+              </button>
+            )}
           </div>
         </div>
 
@@ -700,6 +722,15 @@ export const GeneratedImagePanel: React.FC<GeneratedImagePanelProps> = ({
           </div>
         </div>
       )}
+      
+      {/* コメントモーダル */}
+      <CommentModal
+        isOpen={showCommentModal}
+        onClose={() => setShowCommentModal(false)}
+        image={image}
+        currentUser={currentUser}
+        onCommentUpdate={onCommentUpdate}
+      />
     </div>
   );
 };

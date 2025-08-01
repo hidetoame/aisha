@@ -6,8 +6,8 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q
 import logging
 
-from api.models import Library, Comment, Like
-from api.serializers.comment import CommentSerializer, CommentCreateSerializer, LikeSerializer
+from api.models import Library, Comment, Like, PublicComment
+from api.serializers.comment import CommentSerializer, CommentCreateSerializer, LikeSerializer, UnifiedCommentSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -15,19 +15,38 @@ logger = logging.getLogger(__name__)
 class CommentListCreateView(ListCreateAPIView):
     """
     ライブラリ画像のコメント一覧取得・作成
-    GET /api/timeline/{frontend_id}/comments/ - コメント一覧を取得
+    GET /api/timeline/{frontend_id}/comments/ - コメント一覧を取得（認証ユーザー + ゲスト）
     POST /api/timeline/{frontend_id}/comments/ - コメントを作成
     """
-    serializer_class = CommentSerializer
+    serializer_class = UnifiedCommentSerializer
     
-    def get_queryset(self):
-        """frontend_idに基づいてコメントを取得"""
+    def get(self, request, *args, **kwargs):
+        """統合されたコメント一覧を取得"""
         frontend_id = self.kwargs.get('frontend_id')
+        
         try:
+            # ライブラリの存在確認
             library = Library.objects.get(frontend_id=frontend_id)
-            return Comment.objects.filter(library=library).order_by('created_at')
+            
+            # 認証ユーザーのコメントを取得
+            auth_comments = list(Comment.objects.filter(library=library))
+            
+            # ゲストユーザーのコメントを取得
+            guest_comments = list(PublicComment.objects.filter(frontend_id=frontend_id))
+            
+            # 両方を結合して作成日時でソート
+            all_comments = auth_comments + guest_comments
+            all_comments.sort(key=lambda x: x.created_at)
+            
+            # シリアライズして返す
+            serializer = UnifiedCommentSerializer(all_comments, many=True)
+            return Response(serializer.data)
+            
         except Library.DoesNotExist:
-            return Comment.objects.none()
+            return Response(
+                {'error': 'ライブラリが見つかりません'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
     
     def post(self, request, *args, **kwargs):
         """コメントを作成"""

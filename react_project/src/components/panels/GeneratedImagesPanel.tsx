@@ -28,6 +28,7 @@ interface GeneratedImagesPanelProps {
   ) => void;
   onToggleImagePublicStatus: (imageId: string, isPublic: boolean) => void;
   onGoodsUpdate: (imageId: string) => void; // グッズ作成成功時のコールバック
+  onCommentUpdate?: (imageId: string, newCommentCount: number) => void; // コメント更新時のコールバック
 }
 
 export const GeneratedImagesPanel: React.FC<GeneratedImagesPanelProps> = ({
@@ -43,6 +44,7 @@ export const GeneratedImagesPanel: React.FC<GeneratedImagesPanelProps> = ({
   onCreateGoodsForImage,
   onToggleImagePublicStatus,
   onGoodsUpdate,
+  onCommentUpdate,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const prevFirstImageIdRef = useRef<string | undefined>(undefined);
@@ -110,6 +112,7 @@ export const GeneratedImagesPanel: React.FC<GeneratedImagesPanelProps> = ({
           onCreateGoods={onCreateGoodsForImage}
           onTogglePublic={onToggleImagePublicStatus}
           onGoodsUpdate={onGoodsUpdate}
+          onCommentUpdate={onCommentUpdate}
         />
       ))}
     </div>

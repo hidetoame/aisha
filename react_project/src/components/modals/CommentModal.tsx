@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GeneratedImage, Comment, User } from '../../types';
-import { XMarkIcon, PaperAirplaneIcon } from '../icons/HeroIcons';
+import { XMarkIcon, PaperAirplaneIcon, UserIcon } from '../icons/HeroIcons';
 import { commentApiService } from '../../services/commentApi';
 
 interface CommentModalProps {
@@ -103,7 +103,7 @@ const CommentModal: React.FC<CommentModalProps> = ({ isOpen, onClose, image, cur
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[80] p-4 pb-20">
       <div className="bg-gray-800 rounded-lg w-full max-w-md h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-700">
@@ -135,11 +135,19 @@ const CommentModal: React.FC<CommentModalProps> = ({ isOpen, onClose, image, cur
           ) : (
             <>
               {comments.map((comment) => (
-                <div key={comment.id} className="flex">
+                <div key={comment.id} className="flex space-x-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 ${
+                    comment.is_guest ? 'bg-green-600' : 'bg-gray-600'
+                  }`}>
+                    {comment.is_guest ? 'G' : comment.user_name.charAt(0)}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="bg-gray-700 rounded-lg p-3">
                       <div className="flex items-center space-x-2 mb-1">
-                        <span className="text-white font-semibold text-sm">{comment.user_name}</span>
+                        <span className="text-white font-semibold text-sm">
+                          {comment.user_name}
+                          {comment.is_guest && <span className="text-gray-400 font-normal">（ゲストユーザー）</span>}
+                        </span>
                         <span className="text-gray-400 text-xs">{formatTime(comment.created_at)}</span>
                       </div>
                       <p className="text-gray-200 text-sm">{comment.content}</p>

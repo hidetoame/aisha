@@ -362,10 +362,11 @@ export class RateLimitError extends Error {
 // コメント関連の型定義
 export interface Comment {
   id: string;
-  library_id: string;
-  user_id: string;
+  library_id?: string;
+  user_id: string | null;
   user_name: string;
   content: string;
   created_at: string;
   updated_at: string;
+  is_guest?: boolean;
 }

@@ -17,6 +17,8 @@ from api.views.credit_charge import (
     stripe_config
 )
 from api.views.library import TimelineListCreateView, TimelineDetailView, PublicTimelineListView
+from api.views.public_share import PublicTimelineShareView
+from api.views.public_comments import PublicCommentsView
 from api.views.comment import CommentListCreateView, CommentDeleteView, LikeToggleView, LikeStatusView
 from api.views.image_expansion import ImageExpansionView
 from api.views.suzuri import (
@@ -26,7 +28,8 @@ from api.views.suzuri import (
     get_product_detail,
     create_purchase_intent,
     confirm_purchase,
-    get_user_goods_history
+    get_user_goods_history,
+    get_goods_by_image
 )
 from api.views.goods_management import (
     goods_management_list,
@@ -118,6 +121,9 @@ urlpatterns += [
     # タイムライン関連
     path('timeline/', TimelineListCreateView.as_view(), name='timeline-list-create'),
     path('timeline/public/', PublicTimelineListView.as_view(), name='timeline-public'),
+    path('timeline/share/<str:frontend_id>/', PublicTimelineShareView.as_view(), name='timeline-share'),
+    path('timeline/share/<str:frontend_id>/comments/', PublicCommentsView.as_view(), name='timeline-share-comments'),
+    path('timeline/share/<str:frontend_id>/goods/', get_goods_by_image, name='timeline-share-goods'),
     path('timeline/<str:frontend_id>/', TimelineDetailView.as_view(), name='timeline-detail'),
     
     # コメント・いいね関連（frontend_idベース）

@@ -501,6 +501,93 @@ def confirm_purchase(request):
 
 @api_view(['GET'])
 @csrf_exempt
+def get_goods_by_image(request, frontend_id):
+    """
+    特定画像から作成されたグッズ一覧を取得（重複排除・最新のみ）
+    
+    Parameters:
+    - frontend_id: 画像のfrontend_id
+    
+    Response:
+    [
+        {
+            "id": 1,
+            "product_id": 73698227,
+            "product_title": "車の画像 Tシャツ",
+            "product_url": "https://suzuri.jp/AISHA/...",
+            "sample_image_url": "https://example.com/sample.jpg",
+            "item_name": "heavyweight-t-shirt",
+            "created_at": "2024-01-01T12:00:00Z"
+        }
+    ]
+    """
+    try:
+        from api.models import Library
+        from api.models.suzuri_merchandise import SuzuriMerchandise
+        
+        # frontend_idからLibraryを取得
+        library = Library.objects.filter(frontend_id=frontend_id, is_public=True).first()
+        
+        if not library:
+            return Response(
+                {'error': '画像が見つかりません'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        logger.info(f"📦 画像のグッズ取得 - frontend_id: {frontend_id}, library_id: {library.id}")
+        
+        # その画像から作成されたグッズを取得
+        # 同じitem_nameの中で最新のものだけを取得
+        from django.db.models import Max
+        
+        # まず各item_nameごとの最新のcreated_atを取得
+        latest_items = SuzuriMerchandise.objects.filter(
+            library_image_id=library.id
+        ).values('item_name').annotate(
+            latest_created=Max('created_at')
+        )
+        
+        # 最新のグッズのみを取得
+        goods_list = []
+        for item in latest_items:
+            goods = SuzuriMerchandise.objects.filter(
+                library_image_id=library.id,
+                item_name=item['item_name'],
+                created_at=item['latest_created']
+            ).first()
+            
+            if goods:
+                goods_list.append({
+                    'id': goods.id,
+                    'product_id': goods.product_id,
+                    'product_title': goods.product_title,
+                    'product_url': goods.product_url,
+                    'sample_image_url': goods.sample_image_url,
+                    'item_name': goods.item_name,
+                    'item_id': goods.item_id,
+                    'created_at': goods.created_at.isoformat()
+                })
+        
+        # 作成日時の新しい順にソート
+        goods_list.sort(key=lambda x: x['created_at'], reverse=True)
+        
+        logger.info(f"📦 グッズ {len(goods_list)} 件取得")
+        
+        return Response({
+            'success': True,
+            'goods': goods_list
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"画像のグッズ取得エラー: {str(e)}", exc_info=True)
+        return Response(
+            {'error': 'グッズ一覧の取得中にエラーが発生しました'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@csrf_exempt
 def get_user_goods_history(request):
     """
     ユーザーのSUZURIグッズ作成履歴を取得

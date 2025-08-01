@@ -13,9 +13,11 @@ import {
   ThumbDownIcon,
   EyeSlashIcon, // For public toggle
   EyeIcon as ViewIcon, // For public toggle
+  ChatBubbleLeftIcon,
 } from '@/components/icons/HeroIcons';
 import { ShareGeneratedImageModal } from '@/components/modals/ShareGeneratedImageModal';
 import { SuzuriMerchandiseModal } from '@/components/modals/SuzuriMerchandiseModal';
+import CommentModal from '@/components/modals/CommentModal';
 import { useCredits } from '@/contexts/CreditsContext';
 
 interface LibraryImageDetailViewProps {
@@ -27,6 +29,7 @@ interface LibraryImageDetailViewProps {
   onCreateGoods: (item: SuzuriItem, image: GeneratedImage) => void;
   onExtendImage: (image: GeneratedImage) => void;
   onTogglePublicStatus: (imageId: string, isPublic: boolean) => void; // Added
+  onCommentUpdate?: (imageId: string, newCommentCount: number) => void; // Added
   currentUser: User | null;
 }
 
@@ -39,12 +42,14 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
   onCreateGoods,
   onExtendImage,
   onTogglePublicStatus, // Added
+  onCommentUpdate, // Added
   currentUser,
 }) => {
   const credits = useCredits();
 
   const [showSuzuriModal, setShowSuzuriModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showCommentModal, setShowCommentModal] = useState(false);
 
   // SuzuriModalの表示状態を監視（デバッグ用）
   useEffect(() => {
@@ -181,7 +186,7 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
   return (
     <>
       <div
-        className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[70] p-4"
+        className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[70] p-4 pb-20"
         onClick={() => {
           onClose();
         }}
@@ -254,6 +259,17 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
                 >
                   <ThumbDownIcon className="w-5 h-5" />
                 </button>
+
+                {isCurrentlyPublic && (
+                  <button
+                    onClick={() => setShowCommentModal(true)}
+                    className="ml-2 flex items-center px-2 py-1 rounded-md text-xs transition-colors duration-150 bg-gray-600 hover:bg-gray-500 text-gray-300"
+                    title="コメントを見る"
+                  >
+                    <ChatBubbleLeftIcon className="w-4 h-4 mr-1" />
+                    {(image.commentCount || image.comment_count) || 0}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -370,6 +386,15 @@ export const LibraryImageDetailView: React.FC<LibraryImageDetailViewProps> = ({
           </div>
         </div>
       )}
+      
+      {/* コメントモーダル */}
+      <CommentModal
+        isOpen={showCommentModal}
+        onClose={() => setShowCommentModal(false)}
+        image={image}
+        currentUser={currentUser}
+        onCommentUpdate={onCommentUpdate}
+      />
     </>
   );
 };

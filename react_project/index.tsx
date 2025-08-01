@@ -1,7 +1,7 @@
 import './index.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './src/App';
+import AppRouter from './src/AppRouter';
 import { ToastProvider } from './src/contexts/ToastContext';
 import { CreditsProvider } from './src/contexts/CreditsContext';
 
@@ -15,7 +15,7 @@ root.render(
   <React.StrictMode>
     <ToastProvider>
       <CreditsProvider>
-        <App />
+        <AppRouter />
       </CreditsProvider>
     </ToastProvider>
   </React.StrictMode>,

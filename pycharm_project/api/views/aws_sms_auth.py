@@ -1,7 +1,8 @@
 import json
 import random
 import string
-from datetime import datetime, timedelta
+from datetime import timedelta
+from django.utils import timezone
 from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -83,7 +84,7 @@ class AWSSMSAuthView(View):
                     defaults={
                         'session_id': str(uuid.uuid4()),
                         'verification_code': verification_code,
-                        'expires_at': datetime.now() + timedelta(minutes=5),
+                        'expires_at': timezone.now() + timedelta(minutes=5),
                         'attempts': 0
                     }
                 )
@@ -91,7 +92,7 @@ class AWSSMSAuthView(View):
                 if not created:
                     # 既存セッションを更新
                     session.verification_code = verification_code
-                    session.expires_at = datetime.now() + timedelta(minutes=5)
+                    session.expires_at = timezone.now() + timedelta(minutes=5)
                     session.attempts = 0
                     session.save()
             
@@ -180,7 +181,7 @@ class AWSSMSVerifyView(View):
                 return JsonResponse({'error': '無効なセッションです'}, status=400)
             
             # 有効期限チェック
-            if session.expires_at < datetime.now():
+            if session.expires_at < timezone.now():
                 return JsonResponse({'error': '認証コードの有効期限が切れています'}, status=400)
             
             # 試行回数チェック

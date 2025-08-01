@@ -32,6 +32,13 @@ const PublicTimelineView: React.FC<PublicTimelineViewProps> = ({ publicImages, c
   };
 
   const handleGoodsClick = (image: GeneratedImage) => {
+    // ログイン前は公開ページを開く
+    if (!currentUser) {
+      const shareUrl = `${window.location.origin}/share/${image.id}`;
+      window.open(shareUrl, '_blank');
+      return;
+    }
+    // ログイン後は通常通りモーダルを開く
     setSelectedImageForGoods(image);
     setIsGoodsModalOpen(true);
   };

@@ -74,6 +74,17 @@ export const ShareGeneratedImageModal: React.FC<
 
   if (!isOpen) return null;
 
+  // 新しい共有URL形式（動的ページ）
+  const getShareUrl = () => {
+    const baseUrl = import.meta.env.PROD 
+      ? 'https://aisha.carlife.dev'
+      : window.location.origin;
+    return `${baseUrl}/share/${image.id}`;
+  };
+  
+  const shareUrl = getShareUrl();
+
+  // 既存のクエリパラメータ形式（旧バージョン互換性のため）
   const shareBaseUrl = import.meta.env.VITE_AISHA_SHARE_BASE_URL || window.location.origin + window.location.pathname;
   const promptSummary =
     image.displayPrompt.length > 150
@@ -95,16 +106,21 @@ export const ShareGeneratedImageModal: React.FC<
     switch (platformName) {
       case 'X':
         // X (Twitter) ではURLとテキストをシェア、画像はOGPで自動表示
-        url = `https://twitter.com/intent/tweet?url=${encodeURIComponent(sharePageUrl)}&text=${text}`;
+        url = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${text}`;
         break;
       case 'Facebook':
-        url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(sharePageUrl)}&quote=${text}`;
+        url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${text}`;
         break;
       case 'Copy URL':
+        // 新しい共有URLをコピー（画像が公開されている場合のみ）
+        if (!image.isPublic) {
+          alert('この画像を共有するには、まず公開設定にしてください。');
+          return;
+        }
         navigator.clipboard
-          .writeText(sharePageUrl)
+          .writeText(shareUrl)
           .then(() => {
-            alert('シェアページのURLをクリップボードにコピーしました！');
+            alert('URLをクリップボードにコピーしました！');
           })
           .catch((err) => console.error('URLのコピーに失敗しました: ', err));
         return;

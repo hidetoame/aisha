@@ -13,6 +13,9 @@ services:
       - .env
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /app/gcs-credentials.json
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
     depends_on:
       - db
     command: >
