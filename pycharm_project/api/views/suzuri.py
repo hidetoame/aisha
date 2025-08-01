@@ -79,28 +79,102 @@ def create_merchandise(request):
                 'detail': 'SUZURI_API_TOKEN環境変数を設定してください'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # グッズ作成を実行（署名付きURLを使用）
-        logger.info(f"🛠️ グッズ作成開始:")
-        logger.info(f"  📸 Image URL: {public_image_url}")
-        logger.info(f"  🚗 Car Name: {car_name}")
-        logger.info(f"  📝 Description: {description}")
+        # ライブラリエントリを事前に取得（original_image_creator_user_idのため）
+        library_entry = None
+        try:
+            from api.models.library import Library
+            library_entry = Library.objects.filter(image_url=public_image_url).first()
+        except Exception as e:
+            logger.warning(f"ライブラリエントリ取得エラー: {str(e)}")
         
-        result = suzuri_service.create_car_merchandise(
-            image_url=public_image_url,  # 署名付きURLまたはオリジナルURL
-            car_name=car_name,
-            description=description,
-            item_type=item_type,  # アイテム種類を渡す
-            item_id=item_id,  # SUZURIアイテムIDを直接渡す
-            additional_profit=additional_profit,  # 追加利益を渡す
-            print_places=print_places,  # プリント位置を渡す
-            is_multi_printable=is_multi_printable  # マルチプリント可能フラグを渡す
-        )
+        # トランザクション内で処理
+        from django.db import transaction
+        
+        try:
+            with transaction.atomic():
+                # 1. 仮のSuzuriMerchandiseレコードを作成してIDを取得
+                from api.models.suzuri_merchandise import SuzuriMerchandise
+                
+                # 必要なデータを準備
+                goods_creator_user_id = user_id or 'anonymous'
+                original_image_creator_user_id = library_entry.user_id if library_entry else 'unknown'
+                library_image_id = library_entry.id if library_entry else None
+                
+                # 仮レコード作成
+                temp_merchandise = SuzuriMerchandise.objects.create(
+                    goods_creator_user_id=goods_creator_user_id,
+                    original_image_creator_user_id=original_image_creator_user_id,
+                    library_image_id=library_image_id,
+                    frontend_user_id=user_id or '',
+                    product_id=0,  # 仮の値
+                    material_id=0,  # 仮の値
+                    product_title='',  # 仮の値
+                    product_url='',  # 仮の値
+                    sample_image_url='',  # 仮の値
+                    original_image_url=public_image_url,
+                    car_name=car_name,
+                    description=description,
+                    item_name=item_type,
+                    item_id=item_id or 0
+                )
+                
+                # 2. 管理コード付きでグッズ作成を実行
+                logger.info(f"🏷️ 管理コード生成: A{temp_merchandise.id:06d}")
+                
+                # グッズ作成を実行（署名付きURLを使用）
+                logger.info(f"🛠️ グッズ作成開始:")
+                logger.info(f"  📸 Image URL: {public_image_url}")
+                logger.info(f"  🚗 Car Name: {car_name}")
+                logger.info(f"  📝 Description: {description}")
+                logger.info(f"  🏷️ Management Code: A{temp_merchandise.id:06d}")
+                
+                result = suzuri_service.create_car_merchandise(
+                    image_url=public_image_url,  # 署名付きURLまたはオリジナルURL
+                    car_name=car_name,
+                    description=description,
+                    item_type=item_type,  # アイテム種類を渡す
+                    item_id=item_id,  # SUZURIアイテムIDを直接渡す
+                    additional_profit=additional_profit,  # 追加利益を渡す
+                    print_places=print_places,  # プリント位置を渡す
+                    is_multi_printable=is_multi_printable,  # マルチプリント可能フラグを渡す
+                    management_code=f"A{temp_merchandise.id:06d}"  # 管理コードを渡す
+                )
+                
+                if not result['success']:
+                    # 失敗したら例外を投げてロールバック
+                    raise Exception(f"SUZURI商品作成失敗: {result.get('error', '不明なエラー')}")
+                
+                # 3. 成功したら正しい値で更新
+                product = result.get('product', {})
+                temp_merchandise.product_id = product.get('id', 0)
+                temp_merchandise.material_id = result.get('material', {}).get('id', 0)
+                temp_merchandise.product_title = product.get('title', '')
+                temp_merchandise.product_url = product.get('sampleUrl', result.get('product_url', ''))
+                temp_merchandise.sample_image_url = product.get('sampleImageUrl', '')
+                temp_merchandise.item_id = result.get('item', {}).get('id', item_id or 0)
+                temp_merchandise.item_name = result.get('item', {}).get('name', item_type)
+                temp_merchandise.save()
+                
+                logger.info(f"✅ SuzuriMerchandiseレコード更新完了: ID={temp_merchandise.id}")
+                
+                # resultに管理コードを追加
+                result['management_code'] = f"A{temp_merchandise.id:06d}"
+                result['merchandise_id'] = temp_merchandise.id
+                
+        except Exception as e:
+            # トランザクションが自動的にロールバックされる
+            logger.error(f"❌ グッズ作成トランザクション失敗: {str(e)}")
+            return Response({
+                'success': False,
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
         
         logger.info(f"🔍 SUZURI service result: {result}")
         
         if result['success']:
             logger.info(f"✅ SUZURI merchandise creation successful:")
             logger.info(f"  product_url: {result.get('product_url')}")
+            logger.info(f"  management_code: {result.get('management_code')}")
             
             product = result.get('product', {})
             logger.info(f"  product_id: {product.get('id')}")
@@ -109,9 +183,7 @@ def create_merchandise(request):
             logger.info(f"  sample_image_url: {product.get('sampleImageUrl')}")
             
             # グッズ作成成功時にLibraryのグッズ作成回数をインクリメント
-            library_entry = None
             try:
-                from api.models.library import Library
                 from django.db.models import F
                 
                 # image_urlに一致するLibraryエントリを検索してカウントを増加
@@ -121,89 +193,11 @@ def create_merchandise(request):
                 
                 if updated_count > 0:
                     logger.info(f"✅ グッズ作成回数を更新: {updated_count}件のライブラリエントリ")
-                    # 履歴記録用にLibraryエントリを取得
-                    library_entry = Library.objects.filter(image_url=public_image_url).first()
                 else:
                     logger.warning(f"⚠️ 画像URLに一致するライブラリエントリが見つかりません: {public_image_url}")
                     
             except Exception as e:
                 logger.error(f"❌ グッズ作成回数更新エラー: {str(e)}")
-            
-            # SUZURIグッズ作成履歴を記録
-            try:
-                from api.models.suzuri_merchandise import SuzuriMerchandise
-                
-                # 必要なデータを準備
-                goods_creator_user_id = user_id or 'anonymous'  # グッズを作った人のID
-                original_image_creator_user_id = library_entry.user_id if library_entry else 'unknown'  # 元画像を生成した人のID
-                library_image_id = library_entry.id if library_entry else None  # ライブラリ画像ID
-                
-                # SUZURIからの結果
-                product_id = product.get('id', 0)
-                material_id = result.get('material', {}).get('id', 0)
-                product_title = product.get('title', '')
-                product_url = product.get('sampleUrl', result.get('product_url', ''))
-                sample_image_url = product.get('sampleImageUrl', '')
-                item_name = result.get('item', {}).get('name', item_type)
-                item_id = result.get('item', {}).get('id', 0)
-                
-                # 重複チェック: 同じ画像URL + 同じアイテムタイプの組み合わせが存在するか
-                existing_merchandise = SuzuriMerchandise.objects.filter(
-                    original_image_url=public_image_url,
-                    item_name=item_name,
-                    goods_creator_user_id=goods_creator_user_id
-                ).first()
-                
-                if existing_merchandise:
-                    # 既存のレコードを更新
-                    existing_merchandise.product_id = product_id
-                    existing_merchandise.material_id = material_id
-                    existing_merchandise.product_title = product_title
-                    existing_merchandise.product_url = product_url
-                    existing_merchandise.sample_image_url = sample_image_url
-                    existing_merchandise.car_name = car_name
-                    existing_merchandise.description = description
-                    existing_merchandise.item_id = item_id
-                    existing_merchandise.save()
-                    
-                    merchandise = existing_merchandise
-                    logger.info(f"✅ SUZURI グッズ履歴を更新（重複回避）:")
-                    logger.info(f"  既存履歴ID: {merchandise.id}")
-                    logger.info(f"  グッズ作成者: {goods_creator_user_id}")
-                    logger.info(f"  元画像作成者: {original_image_creator_user_id}")
-                    logger.info(f"  ライブラリ画像ID: {library_image_id}")
-                    logger.info(f"  商品ID: {product_id}")
-                    logger.info(f"  商品タイトル: {product_title}")
-                else:
-                    # 新しいレコードを作成
-                    merchandise = SuzuriMerchandise.objects.create(
-                        goods_creator_user_id=goods_creator_user_id,
-                        original_image_creator_user_id=original_image_creator_user_id,
-                        library_image_id=library_image_id,
-                        frontend_user_id=user_id or '',  # 後方互換性
-                        product_id=product_id,
-                        material_id=material_id,
-                        product_title=product_title,
-                        product_url=product_url,
-                        sample_image_url=sample_image_url,
-                        original_image_url=public_image_url,
-                        car_name=car_name,
-                        description=description,
-                        item_name=item_name,
-                        item_id=item_id
-                    )
-                    logger.info(f"✅ SUZURI グッズ履歴を新規作成:")
-                    logger.info(f"  履歴ID: {merchandise.id}")
-                    logger.info(f"  グッズ作成者: {goods_creator_user_id}")
-                    logger.info(f"  元画像作成者: {original_image_creator_user_id}")
-                    logger.info(f"  ライブラリ画像ID: {library_image_id}")
-                    logger.info(f"  商品ID: {product_id}")
-                    logger.info(f"  商品タイトル: {product_title}")
-                
-            except Exception as e:
-                logger.error(f"❌ SUZURI グッズ履歴記録エラー: {str(e)}")
-                import traceback
-                logger.error(f"❌ エラー詳細: {traceback.format_exc()}")
             
             return Response({
                 'success': True,
@@ -213,7 +207,9 @@ def create_merchandise(request):
                 'product_title': product.get('title'),
                 'sample_image_url': product.get('sampleImageUrl'),  # プレビュー画像URL追加
                 'item_name': result.get('item', {}).get('name'),
-                'material_id': result.get('material', {}).get('id')
+                'material_id': result.get('material', {}).get('id'),
+                'management_code': result.get('management_code'),  # 管理コードを追加
+                'merchandise_id': result.get('merchandise_id')  # merchandise IDも追加
             }, status=status.HTTP_201_CREATED)
         else:
             logger.error(f"❌ SUZURI merchandise creation failed:")

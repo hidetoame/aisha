@@ -15,6 +15,7 @@ import boto3
 from botocore.exceptions import ClientError
 import uuid
 from api.models import PhoneUser, PhoneVerificationSession
+from api.services.unified_credit_service import UnifiedCreditService
 import logging
 
 # boto3のデバッグログを有効化
@@ -199,10 +200,23 @@ class AWSSMSVerifyView(View):
                 phone_user, created = PhoneUser.objects.get_or_create(
                     phone_number=phone_number,
                     defaults={
-                        'nickname': f'ユーザー{random.randint(1000, 9999)}',
-                        'unified_credits': 30  # 新規ユーザーに30クレジット付与
+                        'firebase_uid': f'aws_sms_{phone_number}',  # AWS SMS用の一意な値
+                        'nickname': f'ユーザー{random.randint(1000, 9999)}'
                     }
                 )
+                
+                # 新規ユーザーの場合、30クレジットを付与
+                if created:
+                    success, message = UnifiedCreditService.add_credits(
+                        user_id=str(phone_user.id),
+                        amount=30,
+                        description='新規登録ボーナス（電話番号認証）',
+                        transaction_type='bonus'
+                    )
+                    logger.info(f"新規ユーザー {phone_user.id} に30クレジット付与: {message}")
+                
+                # 現在のクレジット残高を取得
+                current_credits = UnifiedCreditService.get_user_credits(str(phone_user.id))
                 
                 # セッション削除
                 session.delete()
@@ -215,7 +229,7 @@ class AWSSMSVerifyView(View):
                     'user_id': str(phone_user.id),
                     'phone_number': phone_user.phone_number,
                     'nickname': phone_user.nickname,
-                    'credits': phone_user.unified_credits,
+                    'credits': current_credits,
                     'auth_token': auth_token,
                     'is_new_user': created
                 })
@@ -247,13 +261,21 @@ class AWSSMSUserInfoView(View):
             try:
                 phone_user = PhoneUser.objects.get(id=user_id)
                 phone_user.nickname = nickname
+                
+                # firebase_uidが未設定の場合は設定
+                if not phone_user.firebase_uid or phone_user.firebase_uid == '':
+                    phone_user.firebase_uid = f'aws_sms_{phone_user.phone_number}'
+                
                 phone_user.save()
+                
+                # 現在のクレジット残高を取得
+                current_credits = UnifiedCreditService.get_user_credits(str(phone_user.id))
                 
                 return JsonResponse({
                     'success': True,
                     'user_id': str(phone_user.id),
                     'nickname': phone_user.nickname,
-                    'credits': phone_user.unified_credits
+                    'credits': current_credits
                 })
                 
             except PhoneUser.DoesNotExist:

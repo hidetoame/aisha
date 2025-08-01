@@ -337,7 +337,7 @@ class SuzuriAPIService:
         # マッピングにない場合はそのまま返す
         return item_name or 'グッズ'
 
-    def create_car_merchandise(self, image_url: str, car_name: str, description: str = "", item_type: str = "heavyweight-t-shirt", item_id: int = None, additional_profit: int = 0, print_places: List[str] = None, is_multi_printable: bool = False) -> Dict[str, Any]:
+    def create_car_merchandise(self, image_url: str, car_name: str, description: str = "", item_type: str = "heavyweight-t-shirt", item_id: int = None, additional_profit: int = 0, print_places: List[str] = None, is_multi_printable: bool = False, management_code: str = None) -> Dict[str, Any]:
         """
         車の画像からグッズを作成する統合メソッド（Zennのベストプラクティスに基づく実装）
         
@@ -503,9 +503,12 @@ class SuzuriAPIService:
                 # マテリアルタイトルと商品情報
                 material_title = f"{car_name} - 生成画像"
                 
-                # アイテム種類に応じた商品名を生成
+                # アイテム種類に応じた商品名を生成（管理コード付き）
                 item_display_name = self._get_item_display_name(target_item.get('name', ''), item_type)
-                product_title = f"AISHA - {item_display_name}"
+                if management_code:
+                    product_title = f"AISHA - {item_display_name} [{management_code}]"
+                else:
+                    product_title = f"AISHA - {item_display_name}"
                 product_description = description or f"AISHA で生成された {car_name} の画像を使用したオリジナル{item_display_name}です。"
                 
                 # 追加利益が指定されている場合はそれを使用、そうでなければデフォルト値
@@ -583,6 +586,8 @@ class SuzuriAPIService:
                 logger.info(f"  💰 Profit price: {profit_amount}円")
                 logger.info(f"  📍 Print places: {print_places or 'デフォルト'}")
                 logger.info(f"  🔄 Multi printable: {is_multi_printable}")
+                if management_code:
+                    logger.info(f"  🆔 Management code: {management_code}")
                 
                 # 管理画面のAPI設定をログ出力
                 if api_config:
