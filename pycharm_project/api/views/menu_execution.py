@@ -7,11 +7,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from api.models.menu import Menu
+from api.models.library import Library
 from api.serializers.menu_execution.request import MenuExecutionRequestSerializer
 from api.serializers.menu_execution.response import MenuExecutionResponseSerializer
 from api.services.unified_credit_service import UnifiedCreditService
 from api.services.tsukuruma_api_execution import generate_or_edit
 from api.services.gcs_upload_service import gcs_upload_service
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -41,54 +43,71 @@ class MenuExecutionView(APIView):
         if result.success:
             response_data = {**result.data, "prompt_formatted": prompt_formatted}
             
-            # 画像URLをGCSにアップロードしてパブリックURLに変換
+            # フロントエンドから送信されたデータを取得
             original_image_url = response_data.get("image_presigned_url_1")
-            if original_image_url:
+            frontend_id = request.data.get('frontend_id')  # フロントエンドから送信されたfrontend_id
+            
+            if original_image_url and user_id and frontend_id:
                 try:
-                    # ユーザーIDを取得（リクエストから）
-                    user_id = request.data.get('user_id', 'anonymous')
-                    frontend_id = str(uuid.uuid4())
-                    
-                    logger.info(f"🖼️ === メニュー実行画像のGCSアップロード開始 ===")
-                    logger.info(f"📤 original_image_url: {original_image_url}")
+                    logger.info(f"📚 === Libraryテーブルへの保存開始 ===")
+                    logger.info(f"📤 original_image_url (S3): {original_image_url}")
                     logger.info(f"👤 user_id: {user_id}")
                     logger.info(f"🆔 frontend_id: {frontend_id}")
                     
-                    # 環境変数の状態をログ出力
-                    google_creds = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
-                    logger.info(f"🔑 GOOGLE_APPLICATION_CREDENTIALS: {google_creds}")
-                    
-                    # GCSにアップロード
+                    # まずGCSにアップロード
                     logger.info("☁️ GCS Upload Service呼び出し開始...")
                     gcp_image_url = gcs_upload_service.upload_generated_image_from_url(
                         original_image_url, 
                         user_id, 
                         frontend_id
                     )
+                    logger.info(f"✅ GCSアップロード成功: {gcp_image_url}")
                     
-                    # GCPのパブリックURLに置き換え
+                    # フォームデータをシリアライズ可能な形式に変換
+                    serializable_form_data = {}
+                    for key, value in request.data.items():
+                        if hasattr(value, 'read'):  # ファイルの場合
+                            serializable_form_data[key] = f"<uploaded_file: {getattr(value, 'name', 'unknown')}>"
+                        else:
+                            serializable_form_data[key] = value
+                    
+                    # Libraryテーブルに保存
+                    library_entry = Library.objects.create(
+                        user_id=user_id,
+                        frontend_id=frontend_id,
+                        image_url=gcp_image_url,  # GCSのURL
+                        display_prompt=prompt_formatted,
+                        menu_name=instance.name,
+                        used_form_data=serializable_form_data,  # シリアライズ可能なデータ
+                        rating=None,
+                        is_public=False,
+                        author_name=request.data.get('author_name', ''),
+                        is_saved_to_library=False,  # 生成時は自動的にfalse
+                        timestamp=timezone.now()  # タイムゾーン対応の現在時刻
+                    )
+                    
+                    # GCSのURLをレスポンスに設定
                     response_data["image_presigned_url_1"] = gcp_image_url
-                    logger.info(f"✅ メニュー実行画像のGCSアップロード成功!")
-                    logger.info(f"🔗 gcp_image_url: {gcp_image_url}")
+                    logger.info(f"✅ Libraryテーブル保存成功 - ID: {library_entry.id}")
+                    logger.info(f"🔗 返却するGCS URL: {gcp_image_url}")
                     
-                except Exception as gcp_error:
-                    logger.error(f"❌ === メニュー実行画像のGCSアップロードエラー ===")
-                    logger.error(f"💥 エラータイプ: {type(gcp_error).__name__}")
-                    logger.error(f"💥 エラーメッセージ: {str(gcp_error)}")
-                    logger.error(f"💥 エラー詳細: {gcp_error}")
+                except Exception as error:
+                    logger.error(f"❌ === Library保存エラー ===")
+                    logger.error(f"💥 エラータイプ: {type(error).__name__}")
+                    logger.error(f"💥 エラーメッセージ: {str(error)}")
+                    logger.error(f"💥 エラー詳細: {error}")
                     
-                    # Firebase関連エラーかチェック
-                    error_str = str(gcp_error).lower()
-                    if any(keyword in error_str for keyword in ['firebase', 'credential', 'authentication']):
-                        logger.error("🔥 Firebase認証競合の可能性あり!")
-                    
-                    # 環境変数も再度チェック
-                    google_creds = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
-                    logger.error(f"🔑 エラー時のGOOGLE_APPLICATION_CREDENTIALS: {google_creds}")
-                    
-                    logger.info("⚠️ 元の画像URLを使用します")
+                    # エラーでも元のS3 URLを使用
+                    logger.info("⚠️ エラーのため元のS3 URLを使用します")
             else:
-                logger.info("📷 画像URLが見つからないため、GCSアップロードをスキップします")
+                missing = []
+                if not original_image_url:
+                    missing.append("image_url")
+                if not frontend_id:
+                    missing.append("frontend_id")
+                if not user_id:
+                    missing.append("user_id")
+                logger.warning(f"⚠️ 必要な情報が不足: {', '.join(missing)}")
             
             response_data = MenuExecutionResponseSerializer(instance=response_data).data
         else:

@@ -111,6 +111,7 @@ export interface MenuExecutionResponseParams {
   generatedImageUrl: string;
   promptFormatted: string;
   createdAt: Date;
+  frontendId?: string;
 }
 
 export interface GenerationOptions {

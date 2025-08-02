@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AISHA by MyGarage - 最新の生成AIを活用して、愛車から新しい写真やイラスト、オリジナルグッズが作れる。カーライフラボプロジェクトの新サービス">
+    <meta name="keywords" content="AISHA,アイシャ,車,AI,画像生成,カスタムグッズ,愛車,写真加工,イラスト,カーライフ,MyGarage,マイガレージ">
+    
+    <!-- OGP Meta Tags -->
+    <meta property="og:title" content="AISHA by MyGarage - 愛車から新しい写真やイラスト、グッズが作れる">
+    <meta property="og:description" content="最新の生成AIを活用。愛車から新しい写真やイラストを作成し、オリジナルグッズも制作可能。カーライフラボプロジェクトの新サービス">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://mygarage-ai.com/lp">
+    <meta property="og:image" content="https://mygarage-ai.com/lp/assets/images/og-image.jpg">
+    
+    <title>AISHA by MyGarage - 愛車から新しい写真やイラスト、グッズが作れる</title>
+    
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="assets/css/style.css">
+    
+    <!-- Google Analytics placeholder -->
+    <!-- <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'GA_MEASUREMENT_ID');
+    </script> -->
+    
+    <!-- Facebook Pixel placeholder -->
+    <!-- <script>
+      !function(f,b,e,v,n,t,s)
+      {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+      n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+      n.queue=[];t=b.createElement(e);t.async=!0;
+      t.src=v;s=b.getElementsByTagName(e)[0];
+      s.parentNode.insertBefore(t,s)}(window, document,'script',
+      'https://connect.facebook.net/en_US/fbevents.js');
+      fbq('init', 'YOUR_PIXEL_ID');
+      fbq('track', 'PageView');
+    </script> -->
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <nav class="nav container">
+            <div class="nav__logo">
+                <span class="logo-text">AISHA <span class="logo-sub">by MyGarage</span></span>
+            </div>
+            <button class="nav__toggle" id="navToggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <ul class="nav__menu" id="navMenu">
+                <li><a href="#features" class="nav__link">特徴</a></li>
+                <li><a href="#pricing" class="nav__link">料金</a></li>
+                <li><a href="#gallery" class="nav__link">ギャラリー</a></li>
+                <li><a href="#contact" class="nav__link">お問い合わせ</a></li>
+                <li><a href="https://mygarage-ai.com/auth" class="nav__cta">今すぐ始める</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero__bg">
+            <div class="hero__gradient"></div>
+        </div>
+        <div class="container hero__container">
+            <div class="hero__content">
+                <h1 class="hero__title">
+                    愛車から新しい<br>
+                    <span class="text-gradient">写真・グッズ・イラストを</span>
+                </h1>
+                <p class="hero__description">
+                    最新の生成AIを活用して、あなたの愛車から<br>
+                    新しい写真やイラストを作成。<br>
+                    オリジナルグッズも簡単作成。
+                </p>
+                <div class="hero__badge">
+                    <span class="badge badge--beta">ベータ版リリース</span>
+                    <span class="badge badge--project">カーライフラボプロジェクト</span>
+                </div>
+                <div class="hero__buttons">
+                    <a href="https://mygarage-ai.com/auth" class="btn btn--primary btn--large">
+                        無料で始める
+                    </a>
+                    <a href="#features" class="btn btn--secondary btn--large">
+                        詳しく見る
+                    </a>
+                </div>
+                <div class="hero__stats">
+                    <div class="stat">
+                        <div class="stat__number">生成AI</div>
+                        <div class="stat__label">最新技術を活用</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat__number">SNS共有</div>
+                        <div class="stat__label">作品を公開可能</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat__number">初回特典</div>
+                        <div class="stat__label">ボーナスクレジット</div>
+                    </div>
+                </div>
+            </div>
+            <div class="hero__image">
+                <div class="hero__image-wrapper">
+                    <div class="hero__image-slider">
+                        <img src="sample_a.jpg" alt="元の車の画像1" class="hero__slide active" data-type="original" loading="lazy">
+                        <img src="sample.jpg" alt="AISHAイラスト作成" class="hero__slide" data-type="generated" loading="lazy">
+                        <img src="sample_g.jpg" alt="グッズ作成" class="hero__slide" data-type="goods" loading="lazy">
+                        <img src="sample1_b.jpg" alt="元の車の画像2" class="hero__slide" data-type="original" loading="lazy">
+                        <img src="sample1_a.jpg" alt="AISHAスタジオ撮影" class="hero__slide" data-type="studio" loading="lazy">
+                        <img src="sample1_k.jpg" alt="背景拡張" class="hero__slide"  data-type="haikei" loading="lazy">
+
+                        <div class="hero__image-label">
+                            <span class="label-original active">元画像</span>
+                            <span class="label-arrow">→</span>
+                            <span class="label-generated">AISHAイラスト作成</span>
+                            <span class="label-arrow">→</span>
+                            <span class="label-goods">グッズ作成</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section__header">
+                <h2 class="section__title">
+                    <span class="text-gradient">AISHAでできること</span>
+                </h2>
+                <p class="section__subtitle">最新の生成AIでカーライフをもっと楽しく</p>
+            </div>
+            <div class="features__grid">
+                <div class="feature">
+                    <div class="feature__icon">📸</div>
+                    <h3 class="feature__title">愛車から新しい写真を生成</h3>
+                    <p class="feature__description">
+                        様々なシーンや角度で、愛車の新しい写真を生成。SNSでシェアも可能
+                    </p>
+                </div>
+                <div class="feature">
+                    <div class="feature__icon">🎨</div>
+                    <h3 class="feature__title">イラスト作成</h3>
+                    <p class="feature__description">
+                        リアルな写真からアート風のイラストまで、様々なスタイルで表現
+                    </p>
+                </div>
+                <div class="feature">
+                    <div class="feature__icon">🎁</div>
+                    <h3 class="feature__title">オリジナルグッズ制作</h3>
+                    <p class="feature__description">
+                        Tシャツ、マグカップなど、世界に一つだけのグッズが作れる
+                    </p>
+                </div>
+                <div class="feature">
+                    <div class="feature__icon">💬</div>
+                    <h3 class="feature__title">作品を公開・共有</h3>
+                    <p class="feature__description">
+                        仲間と作品を共有。コメント機能で交流も楽しめる
+                    </p>
+                </div>
+                <div class="feature">
+                    <div class="feature__icon">🛒</div>
+                    <h3 class="feature__title">グッズ販売も可能</h3>
+                    <p class="feature__description">
+                        作成したグッズは他の人でも購入可能。プレゼントにも最適
+                    </p>
+                </div>
+                <div class="feature">
+                    <div class="feature__icon">📱</div>
+                    <h3 class="feature__title">他SNSでも利用可能</h3>
+                    <p class="feature__description">
+                        生成した画像はInstagramやTwitterなど、他のSNSでも自由に使える
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How to Use Section -->
+    <section class="how-to-use">
+        <div class="container">
+            <div class="section__header">
+                <h2 class="section__title">
+                    <span class="text-gradient">かんたん利用方法</span>
+                </h2>
+                <p class="section__subtitle">2つの方法から選べます</p>
+            </div>
+            <div class="usage__grid">
+                <div class="usage__card">
+                    <div class="usage__icon">👤</div>
+                    <h3 class="usage__title">MyGarageアカウントで利用</h3>
+                    <p class="usage__description">
+                        既存のMyGarageアカウントをお持ちの方は、そのままログインして利用開始
+                    </p>
+                    <a href="https://mygarage-ai.com/auth" class="btn btn--secondary">
+                        MyGarageでログイン
+                    </a>
+                </div>
+                <div class="usage__card">
+                    <div class="usage__icon">📱</div>
+                    <h3 class="usage__title">電話番号で利用</h3>
+                    <p class="usage__description">
+                        MyGarageアカウントをお持ちでない方も、電話番号認証ですぐに利用可能
+                    </p>
+                    <a href="https://mygarage-ai.com/auth" class="btn btn--secondary">
+                        電話番号で始める
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Gallery Section -->
+    <section class="gallery" id="gallery">
+        <div class="container">
+            <div class="section__header">
+                <h2 class="section__title">
+                    <span class="text-gradient">作品ギャラリー</span>
+                </h2>
+                <p class="section__subtitle">AIが生成した素晴らしい作品の数々</p>
+            </div>
+            <div class="gallery__grid">
+                <div class="gallery__item gallery__item--slider">
+                    <div class="gallery__slider">
+                        <img src="sample1_b.jpg" alt="元の車の画像" class="gallery__image-original active" loading="lazy">
+                        <img src="sample1_a.jpg" alt="AISHAスタジオ撮影" class="gallery__image-generated" loading="lazy">
+                        <img src="sample1_k.jpg" alt="背景拡張" class="gallery__image-generated" loading="lazy">
+                        <div class="gallery__label">
+                            <span class="gallery-label-original active">元画像</span>
+                            <span class="gallery-label-arrow">→</span>
+                            <span class="gallery-label-generated">AISHAスタジオ撮影</span>
+                            <span class="gallery-label-arrow">→</span>
+                            <span class="gallery-label-haikei">背景拡張</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="gallery__item gallery__item--triple">
+                    <div class="gallery__triple-slider">
+                        <img src="sample_a.jpg" alt="元の車の画像" class="gallery__triple-slide active" loading="lazy">
+                        <img src="sample.jpg" alt="AISHAイラスト作成" class="gallery__triple-slide" loading="lazy">
+                        <img src="sample_g.jpg" alt="グッズ作成" class="gallery__triple-slide" loading="lazy">
+                        <div class="gallery__triple-label">
+                            <span class="triple-label-1 active">元画像</span>
+                            <span class="triple-arrow">→</span>
+                            <span class="triple-label-2">AISHAイラスト</span>
+                            <span class="triple-arrow">→</span>
+                            <span class="triple-label-3">グッズ作成</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="gallery__item">
+                    <img src="assets/images/gallery-3.jpg" alt="AI生成作品3" loading="lazy">
+                </div>
+                <div class="gallery__item">
+                    <img src="assets/images/gallery-4.jpg" alt="AI生成作品4" loading="lazy">
+                </div>
+                <div class="gallery__item">
+                    <img src="assets/images/gallery-5.jpg" alt="AI生成作品5" loading="lazy">
+                </div>
+                <div class="gallery__item">
+                    <img src="assets/images/gallery-6.jpg" alt="AI生成作品6" loading="lazy">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing" id="pricing">
+        <div class="container">
+            <div class="section__header">
+                <h2 class="section__title">
+                    <span class="text-gradient">料金プラン</span>
+                </h2>
+                <p class="section__subtitle">クレジットチャージ制で、必要な分だけご利用いただけます</p>
+            </div>
+            <div class="pricing__grid">
+                <div class="pricing__card">
+                    <h3 class="pricing__name">500クレジット</h3>
+                    <div class="pricing__price">
+                        <span class="pricing__amount">¥500</span>
+                    </div>
+                    <div class="pricing__credits">500クレジット</div>
+                    <ul class="pricing__features">
+                        <li>50回の画像生成</li>
+                        <li>全機能利用可能</li>
+                        <li>グッズ作成可能</li>
+                    </ul>
+                    <a href="https://mygarage-ai.com/auth" class="btn btn--secondary btn--block">
+                        チャージする
+                    </a>
+                </div>
+                <div class="pricing__card pricing__card--popular">
+                    <div class="pricing__badge">人気プラン</div>
+                    <h3 class="pricing__name">1,100クレジット</h3>
+                    <div class="pricing__price">
+                        <span class="pricing__amount">¥1,000</span>
+                    </div>
+                    <div class="pricing__credits">1,100クレジット</div>
+                    <div class="pricing__bonus">+100クレジットボーナス</div>
+                    <ul class="pricing__features">
+                        <li>110回の画像生成</li>
+                        <li>100クレジットボーナス付き</li>
+                        <li>お得な10%増量</li>
+                    </ul>
+                    <a href="https://mygarage-ai.com/auth" class="btn btn--primary btn--block">
+                        チャージする
+                    </a>
+                </div>
+                <div class="pricing__card">
+                    <h3 class="pricing__name">3,500クレジット</h3>
+                    <div class="pricing__price">
+                        <span class="pricing__amount">¥3,000</span>
+                    </div>
+                    <div class="pricing__credits">3,500クレジット</div>
+                    <div class="pricing__bonus">+500クレジットボーナス</div>
+                    <ul class="pricing__features">
+                        <li>350回の画像生成</li>
+                        <li>500クレジットボーナス付き</li>
+                        <li>最大16%お得</li>
+                    </ul>
+                    <a href="https://mygarage-ai.com/auth" class="btn btn--secondary btn--block">
+                        チャージする
+                    </a>
+                </div>
+            </div>
+            <p class="pricing__note">
+                ※ 初回ログイン時にボーナスクレジットプレゼント<br>
+                <small>1回の画像生成で10クレジット消費</small>
+            </p>
+        </div>
+    </section>
+
+    <!-- Target Users Section -->
+    <section class="target">
+        <div class="container">
+            <div class="section__header">
+                <h2 class="section__title">
+                    <span class="text-gradient">こんな方におすすめ</span>
+                </h2>
+            </div>
+            <div class="target__grid">
+                <div class="target__card">
+                    <div class="target__icon">🚗</div>
+                    <h3 class="target__title">車を愛するオーナー様</h3>
+                    <ul class="target__list">
+                        <li>愛車を特別な形で残したい</li>
+                        <li>SNSで注目を集める写真が欲しい</li>
+                        <li>車を大切にされている方</li>
+                        <li>オリジナルグッズを作りたい</li>
+                    </ul>
+                </div>
+                <div class="target__card">
+                    <div class="target__icon">🎁</div>
+                    <h3 class="target__title">プレゼントをお探しの方</h3>
+                    <ul class="target__list">
+                        <li>車好きへの特別な贈り物</li>
+                        <li>誕生日や記念日のサプライズ</li>
+                        <li>世界に一つだけのオリジナルギフト</li>
+                        <li>思い出に残る特別なプレゼント</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SUZURI Section -->
+    <section class="suzuri">
+        <div class="container">
+            <div class="section__header">
+                <h2 class="section__title">
+                    <span class="text-gradient">オリジナルグッズ作成</span>
+                </h2>
+                <p class="section__subtitle">SUZURI連携で簡単にグッズ化</p>
+            </div>
+            <div class="suzuri__content">
+                <p class="suzuri__description">
+                    生成した画像を使って、Tシャツ、マグカップ、スマホケースなど<br>
+                    様々なオリジナルグッズを作成できます
+                </p>
+                <div class="suzuri__items">
+                    <div class="suzuri__item">Tシャツ</div>
+                    <div class="suzuri__item">マグカップ</div>
+                    <div class="suzuri__item">スマホケース</div>
+                    <div class="suzuri__item">トートバッグ</div>
+                </div>
+                <a href="https://suzuri.jp/" target="_blank" rel="noopener noreferrer" class="suzuri__link">
+                    SUZURIについて詳しく見る →
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Coming Soon Section -->
+    <section class="coming-soon">
+        <div class="container">
+            <div class="section__header">
+                <h2 class="section__title">
+                    <span class="text-gradient">Coming Soon</span>
+                </h2>
+                <p class="section__subtitle">愛車を楽しむための様々なメニューを準備中</p>
+            </div>
+            <div class="coming-soon__content">
+                <p class="coming-soon__description">
+                    AIを活用し、愛車を楽しむための様々なメニューを準備中。<br>
+                    随時リリースしていきますので、楽しみにお待ちください！
+                </p>
+                <div class="coming-soon__features">
+                    <span class="coming-soon__tag">新しい生成メニュー</span>
+                    <span class="coming-soon__tag">カスタマイズ機能</span>
+                    <span class="coming-soon__tag">コミュニティ機能拡張</span>
+                    <span class="coming-soon__tag">AI活用新機能</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section class="contact" id="contact">
+        <div class="container">
+            <div class="section__header">
+                <h2 class="section__title">
+                    <span class="text-gradient">お問い合わせ</span>
+                </h2>
+            </div>
+            <form class="contact__form" id="contactForm">
+                <div class="form__row">
+                    <div class="form__group">
+                        <label for="inquiryType">お問い合わせ種類</label>
+                        <select id="inquiryType" name="inquiryType" required>
+                            <option value="">選択してください</option>
+                            <option value="service">サービスに関する質問</option>
+                            <option value="ai">AI活用に関する相談</option>
+                            <option value="business">ビジネス提携のご相談</option>
+                            <option value="other">その他</option>
+                        </select>
+                    </div>
+                    <div class="form__group">
+                        <label for="userType">個人/法人</label>
+                        <select id="userType" name="userType" required>
+                            <option value="">選択してください</option>
+                            <option value="individual">個人</option>
+                            <option value="corporate">法人</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form__group">
+                    <label for="name">お名前/企業名</label>
+                    <input type="text" id="name" name="name" placeholder="山田太郎" required>
+                </div>
+                <div class="form__group">
+                    <label for="email">メールアドレス</label>
+                    <input type="email" id="email" name="email" placeholder="email@example.com" required>
+                </div>
+                <div class="form__group">
+                    <label for="message">お問い合わせ内容</label>
+                    <textarea id="message" name="message" rows="5" placeholder="お問い合わせ内容をご記入ください" required></textarea>
+                </div>
+                <button type="submit" class="btn btn--primary btn--large btn--block">
+                    送信する
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <div class="container">
+            <div class="cta__content">
+                <h2 class="cta__title">今すぐAISHAを始めよう</h2>
+                <p class="cta__description">初回ログインでボーナスクレジットプレゼント</p>
+                <a href="https://mygarage-ai.com/auth" class="btn btn--white btn--large">
+                    無料で始める
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer__content">
+                <div class="footer__section">
+                    <h3 class="footer__title">AISHA by MyGarage</h3>
+                    <p class="footer__description">愛車から新しい写真・イラスト・グッズを</p>
+                    <p class="footer__project">カーライフラボプロジェクト</p>
+                </div>
+                <div class="footer__section">
+                    <h3 class="footer__title">運営会社</h3>
+                    <p class="footer__text">株式会社ツクルマ</p>
+                    <a href="https://2960.co.jp/" target="_blank" rel="noopener noreferrer" class="footer__link">
+                        会社ウェブサイト
+                    </a>
+                </div>
+                <div class="footer__section">
+                    <h3 class="footer__title">リンク</h3>
+                    <ul class="footer__links">
+                        <li>
+                            <a href="https://2960.co.jp/services/mygarage/privacypolicy/" target="_blank" rel="noopener noreferrer">
+                                プライバシーポリシー
+                            </a>
+                        </li>
+                        <li>
+                            <a href="https://2960.co.jp/services/mygarage/terms/" target="_blank" rel="noopener noreferrer">
+                                利用規約
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer__bottom">
+                <p class="footer__tagline">ニッポンをクルマテーマパークにしよう。</p>
+                <p class="footer__copyright">© 2024 株式会社ツクルマ. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="assets/js/main.js"></script>
+</body>
+</html>

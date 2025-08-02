@@ -128,7 +128,7 @@ const UserView: React.FC<UserViewProps> = ({
       if (exeResponse) {
         // GeneratedImageに必要情報を格納
         const newImage: GeneratedImage = {
-          id: Date.now().toString(),
+          id: exeResponse.frontendId || Date.now().toString(),
           url: exeResponse.generatedImageUrl,
           displayPrompt: exeResponse.promptFormatted,
           menuName: selectedMenu.name,

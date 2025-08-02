@@ -37,6 +37,11 @@ export const executeMenu = async (
   if (userId) {
     formData.append('user_id', userId);
   }
+  
+  // frontend_idを生成して追加（Date.now()を使用）
+  const frontendId = Date.now().toString();
+  formData.append('frontend_id', frontendId);
+  console.log(`🆔 Generated frontend_id: ${frontendId}`);
 
   // 画像がある場合はリサイズしてからFormDataに追加
   if (image instanceof File) {
@@ -81,7 +86,12 @@ export const executeMenu = async (
     console.log('🔍 Raw API Response:', response.data); // デバッグログ追加
     const camelCaseData = keysToCamelCase(response.data);
     console.log('🔍 Camel Case Data:', camelCaseData); // デバッグログ追加
-    return camelCaseData;
+    
+    // frontendIdをレスポンスに追加
+    return {
+      ...camelCaseData,
+      frontendId: frontendId
+    };
   } catch (err) {
     console.error('画像生成API実行失敗', err);
     onError?.(err);
